@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <!-- Xaf.EditDraft.Core: the platform-agnostic part of the edit-draft (入力控) engine, extracted from
+         CareCrew.Blazor.Server (milestone M1, docs/xaf-editdraft-library-design-2026-10-01.md).
+         Supported contract v1: XAF + XPO, Guid-keyed BaseObject records, SQL Server.
+         References DevExpress and BCL packages only: never NursingHome_Chart.*, CareCrew.*, Progress.*,
+         Llamachant* or DevExpress.ExpressApp.Blazor* (pinned by EditDraftLibraryIsolationTests).
+         Package versions come from Directory.Packages.props (central package management). -->
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <RootNamespace>Xaf.EditDraft.Core</RootNamespace>
+        <AssemblyName>Xaf.EditDraft.Core</AssemblyName>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>disable</Nullable>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="DevExpress.ExpressApp" />
+        <PackageReference Include="DevExpress.ExpressApp.Xpo" />
+        <PackageReference Include="DevExpress.Persistent.Base" />
+        <PackageReference Include="DevExpress.Persistent.BaseImpl.Xpo" />
+        <PackageReference Include="Newtonsoft.Json" />
+    </ItemGroup>
+</Project>
