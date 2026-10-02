@@ -4,7 +4,9 @@ using System.Threading;
 using DevExpress.Blazor;
 using DevExpress.ExpressApp;
 using DevExpress.ExpressApp.Actions;
+using DevExpress.ExpressApp.Blazor.Components;
 using DevExpress.ExpressApp.Blazor.Editors;
+using DevExpress.ExpressApp.Blazor.Editors.ActionControls;
 using DevExpress.ExpressApp.Blazor.Templates;
 using DevExpress.ExpressApp.Editors;
 using DevExpress.Persistent.Base;
@@ -26,6 +28,11 @@ namespace Xaf.EditDraft.Blazor;
 ///
 /// 開く (B2): opens the record's approved ROOT DetailView by key in a modal window, where the wave-1 offer
 /// appears with every re-check. Nothing is ever written into a grid row; refused while a row is in edit.
+///
+/// ROW ICON (library milestone M3): XAF shows the action as a toolbar button and as an icon in every grid row; the
+/// row icon now shows only on a row in the badge set and stays usable there when another row is selected
+/// (EditDraftRowOpenRule, per row through ListEditorInlineActionControl.CustomizeInlineActionButton). The toolbar button
+/// is unchanged: shown while the screen has badged rows, enabled for a selected row that has one.
 ///
 /// Library milestone M2: owner and record access through the Core seams, "now" from the host clock, texts from
 /// EditDraftTexts, log lines through EditDraftLog (same text). The row class is styled by the library's static web
@@ -60,6 +67,7 @@ public class EditDraftListBadgeControllerBlazor : ObjectViewController<ListView,
         };
         OpenAction.Active[AdmittedKey] = false;
         OpenAction.Execute += OpenAction_Execute;
+        OpenAction.CustomizeControl += OpenAction_CustomizeControl;
     }
 
     protected override void OnActivated()
@@ -181,6 +189,28 @@ public class EditDraftListBadgeControllerBlazor : ObjectViewController<ListView,
         if (row == null) return Guid.Empty;
         if (row is BaseObject bo) return bo.Oid;
         try { return ObjectSpace?.GetKeyValue(row) is Guid g ? g : Guid.Empty; } catch { return Guid.Empty; }
+    }
+
+    // ---- the row icon (library M3: only on badged rows) -------------------------------------------
+
+    /// <summary>
+    /// XAF raises CustomizeControl for the action's inline (per-row) control as well as for its toolbar item. Only the inline
+    /// control is customised, once per control: each data row then decides its own icon (EditDraftRowOpenRule). The toolbar
+    /// item keeps the action's state (UpdateActionState).
+    /// </summary>
+    private void OpenAction_CustomizeControl(object sender, CustomizeControlEventArgs e)
+    {
+        if (e.Control is not ListEditorInlineActionControl inline) return;
+        inline.CustomizeInlineActionButton -= Inline_CustomizeButton;
+        inline.CustomizeInlineActionButton += Inline_CustomizeButton;
+    }
+
+    /// <summary>Per row, at render: the icon only on a row whose key is in the badge set (the row's own key, never the selected row).</summary>
+    private void Inline_CustomizeButton(object sender, CustomizeInlineActionButtonEventArgs e)
+    {
+        if (e == null || e.ActionId != OpenActionId) return;
+        var badged = _policy != null && _set.Count > 0 && _set.Contains(KeyOf(e.DataItem));
+        EditDraftRowOpenRule.Apply(e, badged, OpenAction.Enabled, RowKey);
     }
 
     // ---- the set ----------------------------------------------------------------------------------

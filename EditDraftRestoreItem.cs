@@ -14,21 +14,23 @@ namespace Xaf.EditDraft.Blazor;
 /// chart popup's row type (the application's TenantChartDraftRestoreItem); this is the library's own row with the
 /// same members, captions, order and visibility, so the popup grid shows the same columns. Plain XAF non-persistent
 /// object (D9): <see cref="NonPersistentBaseObject"/>, the base the replaced Llamachant NPOBase derived from.
+/// Milestone M3: the captions declared here are the English defaults; the captions shown come from the text set in
+/// use (<see cref="EditDraftPopupCaptions"/>), so a host that chose the Japanese set shows the same columns as before.
 /// </summary>
 [DomainComponent]
-[XafDisplayName("入力控の項目")]
+[XafDisplayName("Draft field")]
 public class EditDraftRestoreItem : NonPersistentBaseObject
 {
     private bool _selected;
 
     /// <summary>戻す: ticked. Raises PropertyChanged on every assignment, as the replaced base's helper did.</summary>
-    [XafDisplayName("戻す")]
+    [XafDisplayName("Put back")]
     public bool Selected { get => _selected; set { _selected = value; OnPropertyChanged(nameof(Selected)); } }
 
-    [XafDisplayName("項目")] [ModelDefault("AllowEdit", "False")] public string Label { get; set; }
-    [XafDisplayName("入力した内容")] [ModelDefault("AllowEdit", "False")] public string ChangeText { get; set; }
-    [XafDisplayName("現在の値")] [ModelDefault("AllowEdit", "False")] public string CurrentText { get; set; }
-    [XafDisplayName("状態")] [ModelDefault("AllowEdit", "False")] public string StatusText { get; set; }
+    [XafDisplayName("Field")] [ModelDefault("AllowEdit", "False")] public string Label { get; set; }
+    [XafDisplayName("Typed value")] [ModelDefault("AllowEdit", "False")] public string ChangeText { get; set; }
+    [XafDisplayName("Current value")] [ModelDefault("AllowEdit", "False")] public string CurrentText { get; set; }
+    [XafDisplayName("Status")] [ModelDefault("AllowEdit", "False")] public string StatusText { get; set; }
 
     // --- identity, not shown ---
     [Browsable(false)] public string Path { get; set; }

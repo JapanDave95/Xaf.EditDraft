@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using DevExpress.ExpressApp;
+using DevExpress.ExpressApp.Model.Core;
 using Xaf.EditDraft.Core;
 
 namespace Xaf.EditDraft.Blazor;
@@ -14,6 +15,10 @@ namespace Xaf.EditDraft.Blazor;
 /// A host registers it after the Core module (<c>.Add&lt;EditDraftBlazorModule&gt;()</c>), calls
 /// <see cref="EditDraftBlazorServiceCollectionExtensions.AddEditDraftBlazor"/> for the per-circuit services, and
 /// links the row-badge stylesheet <c>_content/Xaf.EditDraft.Blazor/edit-draft-row-badge.css</c> in its host page.
+///
+/// Milestone M3: the module's assembly also holds the read-only label editor of the popups' text lines
+/// (<see cref="EditDraftLabelEditor"/>; XAF registers [PropertyEditor] classes from each module's assembly) and the
+/// generator updaters that write the popup/list captions of the text set in use.
 /// </summary>
 public sealed class EditDraftBlazorModule : ModuleBase
 {
@@ -33,4 +38,12 @@ public sealed class EditDraftBlazorModule : ModuleBase
         typeof(EditDraftRestorePlan), typeof(EditDraftRestoreItem), typeof(EditDraftReadOnlyView),
         typeof(EditDraftList), typeof(EditDraftListItem)
     };
+
+    /// <summary>Milestone M3: the popup/list class and member captions come from the text set in use (<see cref="EditDraftPopupCaptions"/>).</summary>
+    public override void AddGeneratorUpdaters(ModelNodesGeneratorUpdaters updaters)
+    {
+        base.AddGeneratorUpdaters(updaters);
+        updaters.Add(new EditDraftPopupClassCaptionUpdater());
+        updaters.Add(new EditDraftPopupMemberCaptionUpdater());
+    }
 }
