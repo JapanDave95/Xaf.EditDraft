@@ -349,8 +349,9 @@ public class EditDraftCaptureControllerBlazor : ObjectViewController<DetailView,
     // Write — off the circuit, one at a time (same shape as the chart capture)
     // ---------------------------------------------------------------------------------------
 
-    // Public (library M1; internal since wave 1b): the ListView capture's row contexts, in the host until M2, write
-    // through the same snapshot, mark and worker loop.
+    // Public (library M1; internal since wave 1b): the ListView capture's row contexts (Xaf.EditDraft.Blazor since M2)
+    // write through the same snapshot, mark and worker loop. The two methods that take the writer are internal with it
+    // (owner decision O-3, milestone M2); the Blazor assembly sees them (InternalsVisibleTo).
     public sealed record DraftSnapshot(EditDraftSeed Seed, string Json, int Count, DateTime Now, long MaxSeq,
                                         IReadOnlyDictionary<string, long> CapturedAt)
     {
@@ -422,7 +423,7 @@ public class EditDraftCaptureControllerBlazor : ObjectViewController<DetailView,
     }
 
     /// <summary>A replaced slot's fresh start: its never-stored members only, written as a new row.</summary>
-    public static void RetiredFreshStart(DraftWriteSlot<DraftSnapshot> slot, StoredMark mark, DraftSnapshot newest, EditDraftWriter writer, Func<bool> stillEnabled)
+    internal static void RetiredFreshStart(DraftWriteSlot<DraftSnapshot> slot, StoredMark mark, DraftSnapshot newest, EditDraftWriter writer, Func<bool> stillEnabled)
     {
         slot.AcknowledgeFreshStart();
         var old = newest == null ? null : EditDraftPayload.FromJson<EditDraftPayload>(newest.Json);
@@ -537,7 +538,7 @@ public class EditDraftCaptureControllerBlazor : ObjectViewController<DetailView,
         });
     }
 
-    public static DraftWriteSlot<DraftSnapshot>.WriteTicket? RunOneWrite(
+    internal static DraftWriteSlot<DraftSnapshot>.WriteTicket? RunOneWrite(
         DraftWriteSlot<DraftSnapshot> slot, EditDraftWriter writer,
         DraftWriteSlot<DraftSnapshot>.WriteTicket ticket, Action<long> onStored,
         Action<DraftSnapshot, DraftSnapshot> onFreshStart, Func<bool> stillEnabled = null)

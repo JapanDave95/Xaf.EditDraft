@@ -21,4 +21,12 @@
         <PackageReference Include="DevExpress.Persistent.BaseImpl.Xpo" />
         <PackageReference Include="Newtonsoft.Json" />
     </ItemGroup>
+
+    <!-- Owner decision O-3 (milestone M2): the writer is internal to Core. The Blazor part (its restore, list and
+         ListView-capture controllers) and the test project that exercises the writer may see Core internals; no
+         application assembly may (pinned by EditDraftLibraryBlazorTests). -->
+    <ItemGroup>
+        <InternalsVisibleTo Include="Xaf.EditDraft.Blazor" />
+        <InternalsVisibleTo Include="NursingHome_Chart.Rostering.Tests" />
+    </ItemGroup>
 </Project>

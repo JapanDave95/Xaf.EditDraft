@@ -28,8 +28,9 @@ public enum EditDraftRowState { ReadFailed, Present, Gone, Moved, Discarded }
 /// <summary>
 /// The writer's operations, typed on the store base (the engine does not know the host's store class).
 /// Every read, update and delete takes the owner and filters on it in the statement (library design §4.11).
+/// Internal to Core (owner decision O-3, milestone M2), as are both writers below: no public API reaches the store.
 /// </summary>
-public interface IEditDraftWriter
+internal interface IEditDraftWriter
 {
     IObjectSpace CreateReadSpace(out IServiceScope scope);
     Guid Create(EditDraftSeed seed, string payloadJson, int entryCount, DateTime now);
@@ -50,7 +51,7 @@ public interface IEditDraftWriter
 /// every call goes to <see cref="EditDraftWriter{TStore}"/> for that store class. With no store registered every
 /// operation fails closed — nothing is written or read, a read is "failed", the table is "absent".
 /// </summary>
-public sealed class EditDraftWriter : IEditDraftWriter
+internal sealed class EditDraftWriter : IEditDraftWriter
 {
     private readonly IEditDraftWriter _store;
 
@@ -128,7 +129,7 @@ public sealed class EditDraftWriter : IEditDraftWriter
 /// Library (milestone M1): generic over the host's store class; the statements address its XPO table
 /// (unchanged text for CareCrew: the table is EditDraft). Supported contract v1: XPO, SQL Server.
 /// </summary>
-public sealed class EditDraftWriter<TStore> : IEditDraftWriter where TStore : EditDraftStoreBase
+internal sealed class EditDraftWriter<TStore> : IEditDraftWriter where TStore : EditDraftStoreBase
 {
     private static readonly string Table = EditDraftStoreRegistration.TableNameOf(typeof(TStore));
     private static readonly EditDraftTableCache TableCache = new();
