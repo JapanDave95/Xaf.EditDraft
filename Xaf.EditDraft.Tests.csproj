@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <!-- Xaf.EditDraft.Tests: the tests of the edit-draft (入力控) library that need ONLY its two assemblies, Xaf.EditDraft.Core
+         and Xaf.EditDraft.Blazor (library milestone M3, docs/xaf-editdraft-library-m3-2026-10-02.md). Tests that need the
+         application's types (policies, chart golden, wave-1/1b behaviour on the application's classes, the NHM mirror) stay
+         in NursingHome_Chart.Rostering.Tests. No application, Module or Progress assembly is referenced here (pinned by
+         EditDraftLibraryM3Tests). Package versions are the ones NursingHome_Chart.Rostering.Tests pins inline (no new package;
+         Google.OrTools is not needed by these tests and is left out). -->
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <OutputType>Library</OutputType>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>disable</Nullable>
+        <IsPackable>false</IsPackable>
+        <RootNamespace>Xaf.EditDraft.Tests</RootNamespace>
+        <AssemblyName>Xaf.EditDraft.Tests</AssemblyName>
+        <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="FluentAssertions" Version="6.12.0" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.1.0" />
+        <PackageReference Include="Moq" Version="4.20.70" />
+        <PackageReference Include="NUnit" Version="4.1.0" />
+        <PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Xaf.EditDraft.Core\Xaf.EditDraft.Core.csproj" />
+        <ProjectReference Include="..\Xaf.EditDraft.Blazor\Xaf.EditDraft.Blazor.csproj" />
+    </ItemGroup>
+</Project>
