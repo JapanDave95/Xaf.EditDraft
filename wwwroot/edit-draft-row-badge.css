@@ -1,0 +1,6 @@
+/* 入力控 wave 1b (owner D17): a ListView row that has an unsaved draft of the logged-in user.
+   Presence only (design §7 S2): a coloured bar at the row's left edge, no text, no count.
+   Class set by EditDraftListBadgeControllerBlazor (EditDraftBadgeSet.RowCssClass). */
+tr.edit-draft-row > td:first-child {
+    box-shadow: inset 4px 0 0 #e8a33d;
+}

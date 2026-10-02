@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+    <!-- Xaf.EditDraft.Blazor: the Blazor part of the edit-draft (入力控) library — the restore popup, the 入力控 list,
+         the ListView capture, the row badges and their stylesheet (milestone M2,
+         docs/xaf-editdraft-library-design-2026-10-01.md §4.1). A Razor class library so that wwwroot/ is served as a
+         static web asset at _content/Xaf.EditDraft.Blazor/... .
+         References Xaf.EditDraft.Core and DevExpress packages only: never NursingHome_Chart.*, CareCrew.*, Progress.*
+         or Llamachant* (pinned by EditDraftLibraryIsolationTests). Package versions come from Directory.Packages.props. -->
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <RootNamespace>Xaf.EditDraft.Blazor</RootNamespace>
+        <AssemblyName>Xaf.EditDraft.Blazor</AssemblyName>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>disable</Nullable>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="DevExpress.ExpressApp.Blazor" />
+        <PackageReference Include="DevExpress.ExpressApp.ConditionalAppearance" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Xaf.EditDraft.Core\Xaf.EditDraft.Core.csproj" />
+    </ItemGroup>
+</Project>
