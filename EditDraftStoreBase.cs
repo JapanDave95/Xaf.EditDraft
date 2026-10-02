@@ -26,6 +26,9 @@ namespace Xaf.EditDraft.Core;
 /// <see cref="DeletedOn"/> = soft discard (破棄). Saving the record deletes the draft.
 ///
 /// BaseObject: its key is the Guid Oid the writer's statements name (KB fix-497: not CustomBaseObject).
+///
+/// Captions (milestone M3): the three member captions below are the English defaults; the captions shown come from the
+/// text set in use, written into the model by <see cref="EditDraftStoreCaptionUpdater"/> (<see cref="EditDraftModelCaptions.Store"/>).
 /// </summary>
 [NonPersistent]
 [DeferredDeletion(false)]
@@ -57,7 +60,7 @@ public abstract class EditDraftStoreBase : BaseObject
     private Guid _OwnerUserOid;
     /// <summary>The XAF login that typed it. Every read path filters on this in the query.</summary>
     [Indexed(nameof(ExpiresOn), Name = "iEditDraft_Owner_Expiry")]
-    [ModelDefault("Caption", "入力者")]
+    [ModelDefault("Caption", "Owner")]
     public Guid OwnerUserOid { get => _OwnerUserOid; set => SetPropertyValue(nameof(OwnerUserOid), ref _OwnerUserOid, value); }
 
     private bool _LoginIsStaffMember;
@@ -69,7 +72,7 @@ public abstract class EditDraftStoreBase : BaseObject
     private string _ObjectType;
     /// <summary>The CLR class name of the record (e.g. "ToDo"), mapped back only through the engine's registry.</summary>
     [Size(100)]
-    [ModelDefault("Caption", "記録種別")]
+    [ModelDefault("Caption", "Record type")]
     public string ObjectType { get => _ObjectType; set => SetPropertyValue(nameof(ObjectType), ref _ObjectType, value); }
 
     private Guid _TargetOid;
@@ -84,7 +87,7 @@ public abstract class EditDraftStoreBase : BaseObject
     private string _ContextText;
     /// <summary>Short display text taken at capture: the type caption and a date. Never a person's name (design §3 S4).</summary>
     [Size(200)]
-    [ModelDefault("Caption", "対象")]
+    [ModelDefault("Caption", "Record")]
     public string ContextText { get => _ContextText; set => SetPropertyValue(nameof(ContextText), ref _ContextText, value); }
 
     private string _ViewId;

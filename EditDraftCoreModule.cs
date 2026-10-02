@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using DevExpress.ExpressApp;
+using DevExpress.ExpressApp.Model.Core;
 
 namespace Xaf.EditDraft.Core;
 
@@ -28,5 +29,12 @@ public sealed class EditDraftCoreModule : ModuleBase
         base.Setup(application);
         // Logging default: the application's ILogger, unless the host chose a sink (EditDraftLog.Sink).
         EditDraftLog.UseLoggerIfNoHostSink(application?.ServiceProvider);
+    }
+
+    /// <summary>Milestone M3: the store base's member captions come from the text set in use (<see cref="EditDraftModelCaptions"/>).</summary>
+    public override void AddGeneratorUpdaters(ModelNodesGeneratorUpdaters updaters)
+    {
+        base.AddGeneratorUpdaters(updaters);
+        updaters.Add(new EditDraftStoreCaptionUpdater());
     }
 }

@@ -23,10 +23,13 @@
     </ItemGroup>
 
     <!-- Owner decision O-3 (milestone M2): the writer is internal to Core. The Blazor part (its restore, list and
-         ListView-capture controllers) and the test project that exercises the writer may see Core internals; no
-         application assembly may (pinned by EditDraftLibraryBlazorTests). -->
+         ListView-capture controllers) and the test projects that exercise the writer may see Core internals; no
+         application assembly may (pinned by EditDraftLibraryBlazorTests). Milestone M3: the library's own test project
+         Xaf.EditDraft.Tests joins; NursingHome_Chart.Rostering.Tests stays while its writer tests on the application's
+         store remain there. -->
     <ItemGroup>
         <InternalsVisibleTo Include="Xaf.EditDraft.Blazor" />
         <InternalsVisibleTo Include="NursingHome_Chart.Rostering.Tests" />
+        <InternalsVisibleTo Include="Xaf.EditDraft.Tests" />
     </ItemGroup>
 </Project>

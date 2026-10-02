@@ -14,8 +14,9 @@ public enum EditDraftLanguage
 /// the duplicate note, the context separator). Log lines are not texts: they stay as they are.
 /// A host may supply its own set (all properties are init-only); a null property falls back to English.
 /// Milestone M2: also every word the Blazor part (Xaf.EditDraft.Blazor) shows — action captions, popup captions and
-/// lead lines, the 入力控 list and the messages — so one choice of set covers the whole library. Model captions
-/// (class and member display names) are not texts here; they are localised in M3.
+/// lead lines, the 入力控 list and the messages — so one choice of set covers the whole library. Milestone M3: also the
+/// model captions (class and member display names) of the popup/list classes and the store base, which the modules
+/// write into the application model from the set in use (<see cref="EditDraftModelCaptions"/>).
 /// </summary>
 public sealed class EditDraftTextSet
 {
@@ -113,6 +114,31 @@ public sealed class EditDraftTextSet
     public string RowHasNoDraft { get; init; }
     public string OpenFailed { get; init; }
 
+    // ---- Model captions (milestone M3): class and member captions of the popup/list classes and the store base. ----
+    public string CaptionRestorePlan { get; init; }
+    public string CaptionRestorePlanItems { get; init; }
+    public string CaptionReadOnlyView { get; init; }
+    public string CaptionReadOnlyText { get; init; }
+    public string CaptionRestoreItem { get; init; }
+    public string CaptionItemSelected { get; init; }
+    public string CaptionItemLabel { get; init; }
+    public string CaptionItemChange { get; init; }
+    public string CaptionItemCurrent { get; init; }
+    public string CaptionItemStatus { get; init; }
+    public string CaptionList { get; init; }
+    public string CaptionListItems { get; init; }
+    public string CaptionListItem { get; init; }
+    public string CaptionListItemType { get; init; }
+    public string CaptionListItemTarget { get; init; }
+    public string CaptionListItemOrigin { get; init; }
+    public string CaptionListItemCapturedOn { get; init; }
+    public string CaptionListItemEntryCount { get; init; }
+    public string CaptionListItemState { get; init; }
+    public string CaptionListItemExpiresOn { get; init; }
+    public string CaptionStoreOwner { get; init; }
+    public string CaptionStoreObjectType { get; init; }
+    public string CaptionStoreContext { get; init; }
+
     /// <summary>Today's CareCrew strings, byte for byte (the golden snapshot and the wave tests pin them).</summary>
     public static EditDraftTextSet Japanese { get; } = new()
     {
@@ -189,7 +215,30 @@ public sealed class EditDraftTextSet
         FinishRowEditFirst = "行の編集を確定（✓）または取り消し（✕）してから、もう一度押してください。",
         SelectRowToOpen = "開く行を選んでください。",
         RowHasNoDraft = "この行には保存されていない入力控がありません。",
-        OpenFailed = "入力控を開けませんでした。もう一度お試しください。"
+        OpenFailed = "入力控を開けませんでした。もう一度お試しください。",
+        CaptionRestorePlan = "保存されていない入力",
+        CaptionRestorePlanItems = "内容",
+        CaptionReadOnlyView = "戻せない入力",
+        CaptionReadOnlyText = "入力した内容（表示のみ）",
+        CaptionRestoreItem = "入力控の項目",
+        CaptionItemSelected = "戻す",
+        CaptionItemLabel = "項目",
+        CaptionItemChange = "入力した内容",
+        CaptionItemCurrent = "現在の値",
+        CaptionItemStatus = "状態",
+        CaptionList = "入力控",
+        CaptionListItems = "入力控",
+        CaptionListItem = "入力控",
+        CaptionListItemType = "画面（種類）",
+        CaptionListItemTarget = "対象",
+        CaptionListItemOrigin = "由来",
+        CaptionListItemCapturedOn = "入力日時",
+        CaptionListItemEntryCount = "項目数",
+        CaptionListItemState = "状態",
+        CaptionListItemExpiresOn = "保存期限",
+        CaptionStoreOwner = "入力者",
+        CaptionStoreObjectType = "記録種別",
+        CaptionStoreContext = "対象"
     };
 
     public static EditDraftTextSet English { get; } = new()
@@ -267,7 +316,30 @@ public sealed class EditDraftTextSet
         FinishRowEditFirst = "Confirm (✓) or cancel (✕) the row edit first, then press it again.",
         SelectRowToOpen = "Select a row to open.",
         RowHasNoDraft = "This row has no unsaved draft.",
-        OpenFailed = "The draft could not be opened. Try again."
+        OpenFailed = "The draft could not be opened. Try again.",
+        CaptionRestorePlan = "Unsaved input",
+        CaptionRestorePlanItems = "Fields",
+        CaptionReadOnlyView = "Input that cannot be restored",
+        CaptionReadOnlyText = "Typed text (display only)",
+        CaptionRestoreItem = "Draft field",
+        CaptionItemSelected = "Put back",
+        CaptionItemLabel = "Field",
+        CaptionItemChange = "Typed value",
+        CaptionItemCurrent = "Current value",
+        CaptionItemStatus = "Status",
+        CaptionList = "Drafts",
+        CaptionListItems = "Drafts",
+        CaptionListItem = "Draft",
+        CaptionListItemType = "Screen (type)",
+        CaptionListItemTarget = "Record",
+        CaptionListItemOrigin = "Origin",
+        CaptionListItemCapturedOn = "Typed on",
+        CaptionListItemEntryCount = "Fields",
+        CaptionListItemState = "State",
+        CaptionListItemExpiresOn = "Kept until",
+        CaptionStoreOwner = "Owner",
+        CaptionStoreObjectType = "Record type",
+        CaptionStoreContext = "Record"
     };
 }
 
