@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Application>
+  <!-- Xaf.EditDraft: the header action "Drafts" (入力控 in the Japanese text set) is created by the library's
+       EditDraftListControllerBlazor (action id EditDraftListBlazor, category QuickAccess); the consumer does not add the
+       action. This node only asks for caption and image instead of the default paint style. It is optional. -->
+  <ActionDesign>
+    <Actions>
+      <Action Id="EditDraftListBlazor" PaintStyle="CaptionAndImage" />
+    </Actions>
+  </ActionDesign>
+  <Options UIType="TabbedMDI"
+           FormStyle="Ribbon"
+           RestoreTabbedMdiLayout="True"
+           ShowTabImage="True"
+           VirtualScrollingEnabled="True">
+  </Options>
+  <NavigationItems NavigationStyle="Accordion" />
+</Application>
