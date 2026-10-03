@@ -17,6 +17,10 @@ namespace Xaf.EditDraft.Core;
 ///   approved DetailView ids AND View.IsRoot AND an EXISTING record AND EditDraftCapture:Enabled AND
 ///   EditDraftCapture:Types:&lt;PolicyId&gt;:Enabled AND an owner (the XAF login; a GeneralUser login is
 ///   never an owner, D6). Anything else: nothing is captured, not even in memory.
+///   NEW records (design docs/edit-draft-new-records-design-2026-10-02.md, owner rulings 2026-10-03): a never-saved record
+///   is admitted too when its policy has AllowNewRecords, and captured only while EditDraftCapture:NewRecords:Enabled is on
+///   as well. Its rows are keyed by TargetOid = Guid.Empty with the screen object's Oid in the payload's prov header; its
+///   first genuine edit seeds the policy's NewRecordReconstructionOrder members; the first save deletes its row.
 ///
 /// Never commits the screen's ObjectSpace: each change is reduced to plain values on the circuit and
 /// written to a separate dbo.EditDraft row OFF the circuit, one write at a time (DraftWriteSlot).
@@ -63,6 +67,16 @@ public class EditDraftCaptureControllerBlazor : ObjectViewController<DetailView,
     public static bool IsAdmittedView(EditDraftTypePolicy policy, string viewId, bool isRoot, bool isNew) =>
         EditDraftTypePolicy.IsGeneric(policy) && isRoot && !isNew
         && policy.ApprovedViewIds != null && viewId != null && policy.ApprovedViewIds.Contains(viewId);
+
+    /// <summary>
+    /// The admission rule (view part) including a NEW record (owner D9): an EXISTING record exactly as
+    /// <see cref="IsAdmittedView"/>; a never-saved one only when its policy has AllowNewRecords and the view part is the same
+    /// (generic policy, root, approved view). The runtime key EditDraftCapture:NewRecords:Enabled is read per event, like the
+    /// per-type key. The restore offer keeps using <see cref="IsAdmittedView"/> (existing records only).
+    /// </summary>
+    public static bool IsAdmittedViewIncludingNew(EditDraftTypePolicy policy, string viewId, bool isRoot, bool isNew) =>
+        isNew ? policy != null && policy.AllowNewRecords && IsAdmittedView(policy, viewId, isRoot, false)
+              : IsAdmittedView(policy, viewId, isRoot, false);
 
     // ---------------------------------------------------------------------------------------
     // Adopt (restore claims the draft into THIS editing context before anything is applied)
@@ -120,6 +134,60 @@ public class EditDraftCaptureControllerBlazor : ObjectViewController<DetailView,
         _payloadOwner = current;
         EditDraftLog.Info($"[EditDraft] claimed draft {draftOid} attached to this screen at rev {claimedRevision}");
         return true;
+    }
+
+    /// <summary>
+    /// NEW records (design §4.4 step 9): attaches a draft that the 「入力控」 list's recreate claimed for THIS new screen under
+    /// <paramref name="claimedEditorInstanceId"/>. The screen takes that editor id as its own, so its writes supersede the
+    /// claimed row and its first save deletes it (DeleteOwn is scoped to the editor). Same refusals as the overload without it.
+    /// </summary>
+    public bool TryAttachClaimed(Guid draftOid, int claimedRevision, Guid ownerOid, string payloadJson, Guid claimedEditorInstanceId)
+    {
+        if (claimedEditorInstanceId == Guid.Empty || draftOid == Guid.Empty || ownerOid == Guid.Empty || claimedRevision <= 0 || _objectSpace == null) return false;
+        var current = EditDraftServices.CurrentOwner(Application?.ServiceProvider, _objectSpace);
+        if (current.Oid != ownerOid || _payload != null || _slot.Oid != Guid.Empty || _slot.IsWriteInFlight)
+        {
+            EditDraftLog.Warning($"[EditDraft] claimed draft {draftOid} not attached to the recreated record (owner changed or screen already holds a draft)");
+            return false;
+        }
+        var payload = EditDraftPayload.FromJson<EditDraftPayload>(payloadJson);
+        if (payload == null || !_slot.Attach(draftOid, claimedRevision)) return false;
+        _editorInstanceId = claimedEditorInstanceId;
+        _payload = payload;
+        _payloadOwner = current;
+        EditDraftLog.Info($"[EditDraft] claimed draft {draftOid} attached to the recreated record at rev {claimedRevision} editor={Short(claimedEditorInstanceId)}");
+        return true;
+    }
+
+    /// <summary>
+    /// NEW records: the draft the recreate handed to this record (EditDraftPendingAdoptions, a Core contract registered per
+    /// circuit by the host), taken once; null when there is none.
+    /// </summary>
+    private EditDraftPendingAdoption TakePendingAdoption(object record) =>
+        (Application?.ServiceProvider?.GetService(typeof(EditDraftPendingAdoptions)) as EditDraftPendingAdoptions)?.Take(record);
+
+    /// <summary>
+    /// NEW records: attaches the taken draft with the claimed editor id and acknowledges it, so the recreate can report success.
+    /// A refused attachment is not acknowledged (the recreate then closes the record unsaved).
+    /// </summary>
+    private void AttachPendingAdoption(EditDraftPendingAdoption adoption)
+    {
+        if (TryAttachClaimed(adoption.DraftOid, adoption.ClaimedRevision, adoption.OwnerOid, adoption.PayloadJson, adoption.EditorInstanceId))
+            adoption.Acknowledge();
+        else
+            EditDraftLog.Warning($"[EditDraft] recreated record: the claimed draft {adoption.DraftOid} was not attached; the recreate closes the record");
+    }
+
+    /// <summary>Whether the bound record is still never saved; null when the object space cannot tell (then no row is written, see EditDraftNewRecordRules.Key).</summary>
+    private bool? IsNewRecord()
+    {
+        try
+        {
+            var objectSpace = _objectSpace;
+            if (objectSpace == null || objectSpace.IsDisposed || _record == null) return null;
+            return objectSpace.IsNewObject(_record);
+        }
+        catch { return null; }
     }
 
     // ---------------------------------------------------------------------------------------
@@ -206,7 +274,7 @@ public class EditDraftCaptureControllerBlazor : ObjectViewController<DetailView,
 
         var policy = EditDraftServices.Registry(Application?.ServiceProvider).Find(record.GetType());
         var isNew = _objectSpace.IsNewObject(record);
-        if (!IsAdmittedView(policy, View?.Id, View?.IsRoot ?? false, isNew))
+        if (!IsAdmittedViewIncludingNew(policy, View?.Id, View?.IsRoot ?? false, isNew))
         {
             if (EditDraftTypePolicy.IsGeneric(policy) && !_refusalLogged)
             {
@@ -217,8 +285,12 @@ public class EditDraftCaptureControllerBlazor : ObjectViewController<DetailView,
         }
         _policy = policy;
         _record = record;
-        RunInitializingGetters(record);   // BEFORE the baseline (fix-529)
+        // NEW records (design §4.4 step 9): a recreated record attaches the draft its 開く claimed. Its getters already ran before
+        // the replay (ApplyNew); running them again here could overwrite a restored value (Codex diffreview D4).
+        var adoption = isNew ? TakePendingAdoption(record) : null;
+        if (adoption == null) RunInitializingGetters(record);   // BEFORE the baseline (fix-529)
         _baseline = SnapshotBaseline(record);
+        if (adoption != null) AttachPendingAdoption(adoption);
     }
 
     /// <summary>
@@ -276,6 +348,7 @@ public class EditDraftCaptureControllerBlazor : ObjectViewController<DetailView,
         var objectSpace = _objectSpace;
         if (objectSpace == null || objectSpace.IsDisposed || objectSpace.IsCommitting) return;
         if (!EditDraftSwitch.IsEnabled(Application?.ServiceProvider, _policy.PolicyId)) return;
+        if (IsNewRecord() != false && !EditDraftSwitch.IsNewRecordsEnabled(Application?.ServiceProvider, _policy.PolicyId)) return;   // NEW records: the runtime key too (D15)
 
         var path = EditDraftMembers.PathFor(_policy, _record, e.Object, e.PropertyName);
         if (path == null) return;
@@ -323,27 +396,12 @@ public class EditDraftCaptureControllerBlazor : ObjectViewController<DetailView,
         _payload = new EditDraftPayload { TypeName = _policy.TypeName };
     }
 
-    /// <summary>Records one member's CURRENT value. False when nothing changed (a bare notification).</summary>
-    private bool CaptureMember(string path)
-    {
-        var spec = _policy.Find(path);
-        if (spec == null) return false;
-        var v = EditDraftMembers.GetValue(_record, path);
-        var raw = EditDraftCodec.RawOf(v);
-
-        var existing = _payload.Get(path);
-        var baseKnown = _baseline.TryGetValue(path, out var b);
-        var baseRaw = baseKnown ? b.Raw : null;
-        var baseText = baseKnown ? b.Text : null;
-
-        if (existing == null && baseKnown && string.Equals(raw, baseRaw, StringComparison.Ordinal))
-            return false;                                                  // notification only, value unchanged
-        if (existing != null && string.Equals(existing.ValueRaw, raw, StringComparison.Ordinal))
-            return false;
-
-        _payload.Upsert(path, spec.Kind, spec.Caption, baseKnown, baseRaw, baseText, raw, EditDraftDisplay.TextOf(v));
-        return true;
-    }
+    /// <summary>
+    /// Records one member's CURRENT value. False when nothing changed (a bare notification). The decision is the pure
+    /// EditDraftCaptureRules.Capture: the genuine-edit rule and, on a NEW record, the seeding of the reconstruction members.
+    /// </summary>
+    private bool CaptureMember(string path) =>
+        EditDraftCaptureRules.Capture(_policy, _payload, _baseline, _record, path, IsNewRecord() == true);
 
     // ---------------------------------------------------------------------------------------
     // Write — off the circuit, one at a time (same shape as the chart capture)
@@ -357,6 +415,19 @@ public class EditDraftCaptureControllerBlazor : ObjectViewController<DetailView,
     {
         /// <summary>The clock of the screen that built the snapshot (null = the system clock); a retired slot's rewrite takes its "now" from it (Codex diffreview D1).</summary>
         public TimeProvider Clock { get; init; }
+
+        /// <summary>
+        /// NEW records (D15): the predicate for EditDraftCapture:NewRecords:Enabled, bound to the slot's policy, set only on a
+        /// snapshot of a never-saved record. Checked per TICKET in RunOneWrite, so a write coalesced after the save (an
+        /// existing-record snapshot, no gate) never depends on the new-record key (Codex diffreview 2026-10-03 D2).
+        /// </summary>
+        public Func<bool> NewRecordsGate { get; init; }
+
+        /// <summary>
+        /// NEW records: the policy's NewRecordReconstructionOrder, set only on a snapshot of a never-saved record, so a retired
+        /// slot's fresh start keeps the reconstruction members even when they were typed and already stored (Codex diffreview D1).
+        /// </summary>
+        public IReadOnlyList<string> Context { get; init; }
     }
 
     public sealed class StoredMark
@@ -393,15 +464,14 @@ public class EditDraftCaptureControllerBlazor : ObjectViewController<DetailView,
         _slot.AcknowledgeFreshStart();
         if (old == null || owner.IsNone || _record == null) return;
 
-        StartPayload(owner);
-        var kept = 0;
-        foreach (var e in old.Entries)
-        {
-            if (!_capturedAt.TryGetValue(e.Path, out var at) || at <= stored) continue;
-            _payload.Upsert(e.Path, e.Kind, e.Caption, e.BaseKnown, e.BaseRaw, e.BaseText, e.ValueRaw, e.ValueText);
-            kept++;
-        }
-        if (kept == 0) { _payload = null; _payloadOwner = EditDraftOwnerInfo.None; }
+        // NEW records (design §4.2.5; Codex diffreview D1): the reconstruction members (seeded, or typed even when already
+        // stored), any context member still missing (seeded now from the screen) and the Oid history stay with the
+        // never-stored typed members.
+        var isNew = IsNewRecord() == true;
+        var fresh = EditDraftCaptureRules.FreshAfterGone(old, e => _capturedAt.TryGetValue(e.Path, out var at) && at > stored, out var kept,
+                                                         isNew ? _policy?.NewRecordReconstructionOrder : null);
+        if (fresh != null && isNew) EditDraftCaptureRules.Seed(_policy, fresh, _baseline, _record);
+        if (fresh != null) { _payload = fresh; _payloadOwner = owner; }
         EditDraftLog.Info($"[EditDraft] fresh draft after expiry/破棄: kept {kept} never-stored member(s), dropped the old row's content");
     }
 
@@ -429,13 +499,11 @@ public class EditDraftCaptureControllerBlazor : ObjectViewController<DetailView,
         var old = newest == null ? null : EditDraftPayload.FromJson<EditDraftPayload>(newest.Json);
         if (old == null || newest.Seed.OwnerUserOid == Guid.Empty) return;
         var stored = mark.Value;
-        var fresh = new EditDraftPayload { TypeName = old.TypeName };
-        foreach (var e in old.Entries)
-            if (newest.CapturedAt.TryGetValue(e.Path, out var at) && at > stored)
-                fresh.Upsert(e.Path, e.Kind, e.Caption, e.BaseKnown, e.BaseRaw, e.BaseText, e.ValueRaw, e.ValueText);
-        var kept = fresh.Count;
+        // NEW records (design §4.2.5; Codex diffreview D1): the reconstruction members (seeded, or typed even when already
+        // stored) and the Oid history stay with the never-stored typed members.
+        var fresh = EditDraftCaptureRules.FreshAfterGone(old, e => newest.CapturedAt.TryGetValue(e.Path, out var at) && at > stored, out var kept, newest.Context);
         EditDraftLog.Info($"[EditDraft] fresh draft for a replaced screen context: kept {kept} never-stored member(s)");
-        if (kept == 0) return;
+        if (fresh == null) return;
         var snap = newest with { Json = fresh.ToJson(), Count = fresh.Count, Now = EditDraftClock.Now(newest.Clock) };   // the clock of the screen that built it
         if (!slot.TryBeginWrite(snap, out var ticket)) return;
         System.Threading.Tasks.Task.Run(() =>
@@ -468,19 +536,33 @@ public class EditDraftCaptureControllerBlazor : ObjectViewController<DetailView,
     /// <summary>Built ON THE CIRCUIT: reads the record; only plain values cross to the worker. No names (design §3 S4c).</summary>
     private DraftSnapshot BuildSnapshot()
     {
+        // NEW records (design §4.2.6), decided at EVERY write: while never saved, TargetOid = Guid.Empty, IsNew, and the
+        // screen object's Oid at the head of the payload's prov header; after the save, the record's Oid.
+        var key = EditDraftNewRecordRules.Key(IsNewRecord(), RecordOid());
+        if (key.IsNew) _payload.AddProvisional(RecordOid());
         var seed = new EditDraftSeed
         {
             EditorInstanceId = _editorInstanceId,
             OwnerUserOid = _payloadOwner.Oid,
             LoginIsStaffMember = _payloadOwner.LoginIsStaffMember,
             ObjectType = _policy.TypeName,
-            TargetOid = RecordOid(),
+            TargetOid = key.TargetOid,
+            IsNew = key.IsNew,
             SubSectionOid = SafeSubSection(),
             ContextText = ContextText(),
             ViewId = View?.Id
         };
-        return new DraftSnapshot(seed, _payload.ToJson(), _payload.Count, EditDraftClock.Now(_clock), _captureSeq,
-                                 new Dictionary<string, long>(_capturedAt, StringComparer.Ordinal)) { Clock = _clock };
+        var snapshot = new DraftSnapshot(seed, _payload.ToJson(), _payload.Count, EditDraftClock.Now(_clock), _captureSeq,
+                                         new Dictionary<string, long>(_capturedAt, StringComparer.Ordinal)) { Clock = _clock };
+        if (!key.IsNew) return snapshot;
+        // NEW records: the new-record key's gate (checked per ticket, Codex diffreview D2) and the reconstruction members a
+        // retired fresh start must keep (D1).
+        var services = Application?.ServiceProvider;
+        return snapshot with
+        {
+            NewRecordsGate = EditDraftWriteGate.Bind(_policy?.PolicyId, id => EditDraftSwitch.IsNewRecordsEnabled(services, id)),
+            Context = _policy?.NewRecordReconstructionOrder
+        };
     }
 
     private Guid SafeSubSection()
@@ -505,7 +587,7 @@ public class EditDraftCaptureControllerBlazor : ObjectViewController<DetailView,
 
     private void StartWrite(DraftSnapshot snapshot)
     {
-        if (snapshot.Seed.OwnerUserOid == Guid.Empty || snapshot.Seed.TargetOid == Guid.Empty) return;   // never an ownerless or targetless row
+        if (!EditDraftNewRecordRules.IsWritable(snapshot.Seed)) return;   // never an ownerless row; a targetless row only for a NEW record
         var slot = _slot;
         var mark = _mark;
         var writer = _writer;
@@ -544,7 +626,8 @@ public class EditDraftCaptureControllerBlazor : ObjectViewController<DetailView,
         Action<DraftSnapshot, DraftSnapshot> onFreshStart, Func<bool> stillEnabled = null)
     {
         var s = ticket.Snapshot;
-        if (stillEnabled != null && !stillEnabled())
+        // NEW records (D15): a never-saved record's snapshot also carries the new-record key's gate, checked per ticket.
+        if ((stillEnabled != null && !stillEnabled()) || (s.NewRecordsGate != null && !s.NewRecordsGate()))
         {
             // Capture was switched off while this write was queued: nothing is written; the ticket is
             // completed as not done so the slot is not left in flight, and the queue drains the same way.

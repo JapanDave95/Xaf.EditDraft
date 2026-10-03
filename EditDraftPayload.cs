@@ -37,7 +37,29 @@ public class EditDraftPayload
     [JsonProperty("type")] public string TypeName { get; set; }
     [JsonProperty("entries")] public List<EditDraftEntry> Entries { get; set; } = new();
 
+    /// <summary>
+    /// NEW records (design 2026-10-02 §4.1; owner D2: the payload stays version 1 with this OPTIONAL header): the Oids of every
+    /// screen object the draft was typed on or recreated into, NEWEST FIRST — the original object and each recreated one —
+    /// so that 開く can tell a record that was in fact saved (D11). Written only for a never-saved record's draft; null
+    /// everywhere else, and a null header is not serialised, so every other payload's text is unchanged and a reader
+    /// without it reads the payload as before. Wire format: "prov":["&lt;guid&gt;", …].
+    /// </summary>
+    [JsonProperty("prov", NullValueHandling = NullValueHandling.Ignore)] public List<Guid> Provisional { get; set; }
+
     [JsonIgnore] public int Count => Entries?.Count ?? 0;
+
+    /// <summary>The Oid history of <see cref="Provisional"/>, newest first; empty when the payload has no header.</summary>
+    [JsonIgnore] public IReadOnlyList<Guid> ProvisionalOids => Provisional ?? (IReadOnlyList<Guid>)Array.Empty<Guid>();
+
+    /// <summary>Puts <paramref name="oid"/> at the head of the Oid history, once; an Oid already at the head is left as it is. Guid.Empty is ignored.</summary>
+    public void AddProvisional(Guid oid)
+    {
+        if (oid == Guid.Empty) return;
+        Provisional ??= new List<Guid>();
+        if (Provisional.Count > 0 && Provisional[0] == oid) return;
+        Provisional.Remove(oid);
+        Provisional.Insert(0, oid);
+    }
 
     public EditDraftEntry Get(string path) => Entries.FirstOrDefault(e => e.Path == path);
 

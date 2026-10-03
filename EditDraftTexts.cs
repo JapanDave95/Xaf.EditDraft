@@ -114,6 +114,35 @@ public sealed class EditDraftTextSet
     public string RowHasNoDraft { get; init; }
     public string OpenFailed { get; init; }
 
+    // ---- NEW (never saved) records (owner rulings 2026-10-03; design docs/edit-draft-new-records-design-2026-10-02.md). ----
+    /// <summary>状態 of a 「入力控」 list row whose record was never saved (design §4.3 (a)).</summary>
+    public string StateNew { get; init; }
+    /// <summary>The ListView notice (owner D5). {0} = the number of new-record draft rows of the list's type.</summary>
+    public string NewRecordNotice { get; init; }
+    /// <summary>{0} = the draft's last input time (DateTime).</summary>
+    public string Recreated { get; init; }
+    /// <summary>{0} = the draft's last input time (DateTime), {1} = the number of typed entries not put back.</summary>
+    public string RecreatedPartly { get; init; }
+    /// <summary>Owner D11: appended to the recreate's success message.</summary>
+    public string RecreateWarning { get; init; }
+    public string RecreateAlreadySaved { get; init; }
+    public string RecreateAlreadySavedCaption { get; init; }
+    public string RecreateOpenSaved { get; init; }
+    public string RecreateSavedCheckFailed { get; init; }
+    public string RecreateSavedCheckFailedCaption { get; init; }
+    public string RecreateAnyway { get; init; }
+    public string RecreateCancel { get; init; }
+    public string RecreateTypeNotAllowed { get; init; }
+    public string RecreateNoPermission { get; init; }
+    public string RecreateSubSectionNotVisible { get; init; }
+    public string RecreateClaimLost { get; init; }
+    public string RecreateFailed { get; init; }
+    public string RecreateNotAttached { get; init; }
+    public string SavedRecordNotOpened { get; init; }
+    /// <summary>{0} = the number of typed entries not put back (design §4.4 step 10).</summary>
+    public string NotAppliedLead { get; init; }
+    public string NotAppliedViewCaption { get; init; }
+
     // ---- Model captions (milestone M3): class and member captions of the popup/list classes and the store base. ----
     public string CaptionRestorePlan { get; init; }
     public string CaptionRestorePlanItems { get; init; }
@@ -216,6 +245,27 @@ public sealed class EditDraftTextSet
         SelectRowToOpen = "開く行を選んでください。",
         RowHasNoDraft = "この行には保存されていない入力控がありません。",
         OpenFailed = "入力控を開けませんでした。もう一度お試しください。",
+        StateNew = "新規",
+        NewRecordNotice = "新規の入力控が {0} 件あります。上の「入力控」から開けます。",
+        Recreated = "入力控（入力 {0:yyyy/MM/dd HH:mm}）から記録を作成しました。まだ保存されていません — 内容を確認して保存してください。",
+        RecreatedPartly = "入力控（入力 {0:yyyy/MM/dd HH:mm}）から記録を作成しました（{1} 項目は戻せませんでした）。まだ保存されていません — 確認して保存してください。",
+        RecreateWarning = "元の画面がまだ開いている場合は、そちらで保存してください。",
+        RecreateAlreadySaved = "この入力控の記録はすでに保存されています。",
+        RecreateAlreadySavedCaption = "保存済みの記録があります",
+        RecreateOpenSaved = "保存済みの記録を開く",
+        RecreateSavedCheckFailed = "この入力控の記録が保存済みかどうかを確認できませんでした。記録の一覧で確認してから作成することをおすすめします。",
+        RecreateSavedCheckFailedCaption = "保存済みか確認できませんでした",
+        RecreateAnyway = "それでも作成する",
+        RecreateCancel = "やめる",
+        RecreateTypeNotAllowed = "この種類の新規の入力控からは記録を作成できません。",
+        RecreateNoPermission = "この記録を作成する権限がありません。",
+        RecreateSubSectionNotVisible = "この入力控の記録の事業所は表示できません。",
+        RecreateClaimLost = "この入力控は戻せません（ほかの画面で戻されたか、変更されたか、期限切れです）。",
+        RecreateFailed = "入力控から記録を作成できませんでした。入力控は残っています。",
+        RecreateNotAttached = "入力控を新しい画面に引き継げなかったため、作成した記録を保存せずに閉じました。入力控は残っています。もう一度開いてください。",
+        SavedRecordNotOpened = "保存済みの記録を開けませんでした。",
+        NotAppliedLead = "戻せなかった入力が {0} 件あります（表示のみ）。必要なら内容を見て入力し直してください。保存すると、この入力控は削除されます。",
+        NotAppliedViewCaption = "戻せなかった入力",
         CaptionRestorePlan = "保存されていない入力",
         CaptionRestorePlanItems = "内容",
         CaptionReadOnlyView = "戻せない入力",
@@ -317,6 +367,27 @@ public sealed class EditDraftTextSet
         SelectRowToOpen = "Select a row to open.",
         RowHasNoDraft = "This row has no unsaved draft.",
         OpenFailed = "The draft could not be opened. Try again.",
+        StateNew = "New",
+        NewRecordNotice = "There are {0} draft(s) of new records. Open them from \"Drafts\" at the top.",
+        Recreated = "A record was created from the draft (typed {0:yyyy/MM/dd HH:mm}). It is not saved yet: check it, then save.",
+        RecreatedPartly = "A record was created from the draft (typed {0:yyyy/MM/dd HH:mm}; {1} field(s) could not be put back). It is not saved yet: check it, then save.",
+        RecreateWarning = "If the original screen is still open, save there instead.",
+        RecreateAlreadySaved = "The record of this draft has already been saved.",
+        RecreateAlreadySavedCaption = "The record has been saved",
+        RecreateOpenSaved = "Open the saved record",
+        RecreateSavedCheckFailed = "It could not be checked whether the record of this draft was already saved. Check the record list before creating it.",
+        RecreateSavedCheckFailedCaption = "Could not check for a saved record",
+        RecreateAnyway = "Create it anyway",
+        RecreateCancel = "Cancel",
+        RecreateTypeNotAllowed = "A record of this type cannot be created from a draft.",
+        RecreateNoPermission = "You do not have permission to create this record.",
+        RecreateSubSectionNotVisible = "The office (事業所) of this draft's record cannot be shown.",
+        RecreateClaimLost = "This draft cannot be put back (it was restored or changed on another screen, or it has expired).",
+        RecreateFailed = "The record could not be created from the draft. The draft has been kept.",
+        RecreateNotAttached = "The draft could not be handed to the new screen, so the created record was closed without saving. The draft has been kept; open it again.",
+        SavedRecordNotOpened = "The saved record could not be opened.",
+        NotAppliedLead = "{0} field(s) could not be put back (display only). Read the text and type it again if needed. Saving deletes this draft.",
+        NotAppliedViewCaption = "Input that could not be put back",
         CaptionRestorePlan = "Unsaved input",
         CaptionRestorePlanItems = "Fields",
         CaptionReadOnlyView = "Input that cannot be restored",
