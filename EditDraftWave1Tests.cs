@@ -179,18 +179,21 @@ namespace Xaf.EditDraft.Tests
         private const string Writer = "Xaf.EditDraft.Core/EditDraftWriter.cs";
 
         [Test]
-        public void W38b_the_four_mutations_each_name_the_owner_including_the_multi_line_supersede()
+        public void W38b_the_five_mutations_each_name_the_owner_including_the_multi_line_supersede()
         {
             // W38 above is RED on its statement COUNT: the supersede statement is assigned to a variable and ends
             // in ';', which its regex (the chart C28 shape) does not match — a test defect, escalated, not revised.
-            // Each mutation is asserted here by its own text.
+            // Each mutation is asserted here by its own text. Owner ruling 2026-10-03 (new-record capture): the
+            // new-record claim TryClaimNew is the fifth statement, fenced on Oid, Revision, Owner, ExpiresOn and
+            // TargetOid = Empty like the others.
             var writer = Wave1.Source(Writer);
             writer.Should().Contain("WHERE [Oid] = @p5 AND [Revision] = @p6 AND [OwnerUserOid] = @p7 AND [DeletedOn] IS NULL AND [ExpiresOn] > @p2", "supersede");
             writer.Should().Contain("WHERE [Oid] = @p2 AND [Revision] = @p3 AND [OwnerUserOid] = @p4 AND [ExpiresOn] > @p1", "claim");
+            writer.Should().Contain("WHERE [Oid] = @p4 AND [Revision] = @p5 AND [OwnerUserOid] = @p6 AND [ExpiresOn] > @p1 AND [TargetOid] = @p7", "new-record claim (TryClaimNew)");
             writer.Should().Contain("DELETE FROM [{Table}] WHERE [Oid] = @p0 AND [OwnerUserOid] = @p1 AND [EditorInstanceId] = @p2", "delete on save");
             writer.Should().Contain("SET [DeletedOn] = @p2 WHERE [Oid] = @p0 AND [OwnerUserOid] = @p1 AND [DeletedOn] IS NULL", "discard");
-            Regex.Matches(writer, @"\b(UPDATE|DELETE FROM) \[\{Table\}\]").Count.Should().Be(4, "exactly these four mutations exist");
-            Regex.Matches(writer, @"\[OwnerUserOid\] = @p\d").Count.Should().Be(4, "and each names the owner once");
+            Regex.Matches(writer, @"\b(UPDATE|DELETE FROM) \[\{Table\}\]").Count.Should().Be(5, "exactly these five mutations exist");
+            Regex.Matches(writer, @"\[OwnerUserOid\] = @p\d").Count.Should().Be(5, "and each names the owner once");
         }
 
         /// <summary>
