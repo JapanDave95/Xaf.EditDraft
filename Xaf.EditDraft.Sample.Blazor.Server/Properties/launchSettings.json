@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "Xaf.EditDraft.Sample.Blazor.Server": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "applicationUrl": "http://localhost:5006",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

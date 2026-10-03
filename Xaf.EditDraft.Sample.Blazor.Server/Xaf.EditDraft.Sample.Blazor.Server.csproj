@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <!-- Xaf.EditDraft.Sample.Blazor.Server: the XAF Blazor application of the sample consumer of the Xaf.EditDraft library
+       (docs/xaf-editdraft-sample-consumer-2026-10-03.md). Shape: the DevExpress 26.1.4 "dx.xaf" template. It registers the
+       library's two modules, its store, one policy and its Blazor services, links the row-badge stylesheet, and uses every
+       library default seam (owner, record access, clock, log sink, texts, switch section). References the sample Module,
+       Xaf.EditDraft.Blazor (which brings Xaf.EditDraft.Core) and DevExpress packages only: never CareCrew.*,
+       NursingHome_Chart.*, Progress.* or Llamachant* (pinned by Xaf.EditDraft.Sample.Tests). Package versions come from the
+       repository's Directory.Packages.props; no package is added there. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>Xaf.EditDraft.Sample.Blazor.Server</RootNamespace>
+    <AssemblyName>Xaf.EditDraft.Sample.Blazor.Server</AssemblyName>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <IsPackable>false</IsPackable>
+    <!-- Not CareCrew's ChartApplicationVersion (stamped by the repository's Directory.Packages.props). -->
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <InformationalVersion>1.0.0</InformationalVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Model.xafml" />
+    <Content Include="Model.xafml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DevExpress.Drawing.Skia" />
+    <PackageReference Include="DevExpress.ExpressApp.Blazor" />
+    <PackageReference Include="DevExpress.ExpressApp.Security.Xpo" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Xaf.EditDraft.Sample.Module\Xaf.EditDraft.Sample.Module.csproj" />
+    <!-- The library's Blazor part: EditDraftBlazorModule, AddEditDraftBlazor and the row-badge stylesheet (static web asset). -->
+    <ProjectReference Include="..\..\..\Xaf.EditDraft.Blazor\Xaf.EditDraft.Blazor.csproj" />
+  </ItemGroup>
+</Project>

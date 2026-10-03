@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Xaf.EditDraft.Sample.Tests: executable checks that the sample consumer uses the Xaf.EditDraft library with its default
+       seams and nothing from CareCrew (docs/xaf-editdraft-sample-consumer-2026-10-03.md). Expectations come from the Codex
+       requirement-only list of run 2026-10-03-editdraft-sample-e817ca (tests a1, C1-C32). Packages: the centrally pinned
+       NUnit, NUnit3TestAdapter and Microsoft.NET.Test.Sdk versions (Directory.Packages.props); none is added. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <RootNamespace>Xaf.EditDraft.Sample.Tests</RootNamespace>
+    <AssemblyName>Xaf.EditDraft.Sample.Tests</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NUnit" />
+    <PackageReference Include="NUnit3TestAdapter" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Xaf.EditDraft.Sample.Module\Xaf.EditDraft.Sample.Module.csproj" />
+    <ProjectReference Include="..\Xaf.EditDraft.Sample.Blazor.Server\Xaf.EditDraft.Sample.Blazor.Server.csproj" />
+  </ItemGroup>
+</Project>

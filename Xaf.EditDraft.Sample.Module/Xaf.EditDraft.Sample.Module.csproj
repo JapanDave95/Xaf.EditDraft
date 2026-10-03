@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Xaf.EditDraft.Sample.Module: the platform-agnostic XAF module of the sample consumer of the Xaf.EditDraft library
+       (docs/xaf-editdraft-sample-consumer-2026-10-03.md). It holds the sample's own business class (Note), its own draft
+       store class (SampleEditDraft : EditDraftStoreBase), the Note policy, the template's security user classes and the
+       database updater. Shape: the DevExpress 26.1.4 "dx.xaf" template (XPO, SQL Server, Blazor, password security).
+       References Xaf.EditDraft.Core and DevExpress packages only: never CareCrew.*, NursingHome_Chart.*, Progress.* or
+       Llamachant* (pinned by Xaf.EditDraft.Sample.Tests). Package versions come from the repository's
+       Directory.Packages.props (central package management); no package is added there. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>Xaf.EditDraft.Sample.Module</RootNamespace>
+    <AssemblyName>Xaf.EditDraft.Sample.Module</AssemblyName>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <IsPackable>false</IsPackable>
+    <!-- The repository's Directory.Packages.props stamps CareCrew's ChartApplicationVersion on every assembly. The sample
+         is not CareCrew and keeps its own version. -->
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <InformationalVersion>1.0.0</InformationalVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Model.DesignedDiffs.xafml" />
+    <EmbeddedResource Include="Model.DesignedDiffs.xafml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DevExpress.ExpressApp" />
+    <PackageReference Include="DevExpress.ExpressApp.Security" />
+    <PackageReference Include="DevExpress.ExpressApp.Security.Xpo" />
+    <PackageReference Include="DevExpress.ExpressApp.Xpo" />
+    <PackageReference Include="DevExpress.Persistent.Base" />
+    <PackageReference Include="DevExpress.Persistent.BaseImpl.Xpo" />
+    <!-- The XPO SQL Server provider loads Microsoft.Data.SqlClient at run time (the template references it here too). -->
+    <PackageReference Include="Microsoft.Data.SqlClient" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The library's engine: EditDraftStoreBase (the store's base class) and EditDraftTypePolicy (the Note policy). -->
+    <ProjectReference Include="..\..\..\Xaf.EditDraft.Core\Xaf.EditDraft.Core.csproj" />
+  </ItemGroup>
+</Project>
