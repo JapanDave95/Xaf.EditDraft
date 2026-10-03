@@ -209,7 +209,7 @@ namespace Xaf.EditDraft.Tests
                 var code = string.Join("\n", Code(file).Split('\n').Where(l => !l.Contains("XafDisplayName(")));
                 code.Should().NotContain("DateTime.Now", Path.GetFileName(file) + ": 'now' comes from the host clock");
                 code.Should().NotContain("EditDraftOwner.").And.NotContain("EditDraftAccess.").And.NotContain("EditDraftWavePolicies", Path.GetFileName(file));
-                foreach (var ui in new[] { "この記録は表示できません。", "入力控を開く", "\"破棄\"", "はい（選択した項目を戻す）", "保存されていない入力が見つかりました", "\"閉じる\"", "\"入力控\"" })
+                foreach (var ui in new[] { "この入力控はこのログインでは戻せません（事業所の権限）。", "入力控を開く", "\"破棄\"", "はい（選択した項目を戻す）", "保存されていない入力が見つかりました", "\"閉じる\"", "\"入力控\"" })
                     code.Should().NotContain(ui, Path.GetFileName(file) + ": UI text comes from EditDraftTexts");
             }
         }
@@ -219,7 +219,8 @@ namespace Xaf.EditDraft.Tests
         {
             var ja = EditDraftTextSet.Japanese;
             new[] { ja.ListCaption, ja.ActionOpen, ja.ActionDiscard, ja.ActionSelectAll, ja.RowOpenAction, ja.OfferOk, ja.OfferLater, ja.Close, ja.RecordNotVisible }
-                .Should().Equal("入力控", "開く", "破棄", "すべて選択", "入力控を開く", "はい（選択した項目を戻す）", "あとで", "閉じる", "この記録は表示できません。");
+                .Should().Equal("入力控", "開く", "破棄", "すべて選択", "入力控を開く", "はい（選択した項目を戻す）", "あとで", "閉じる",
+                    "この入力控はこのログインでは戻せません（事業所の権限）。");   // expectation changed by owner ruling 2026-10-02 (E22b)
             ja.OfferLeadCount.Should().Be("前回この記録に入力され、保存されていない内容が {0} 件あります。");
             ja.OfferProvenance.Should().Be("{0} {1}／入力 {2:yyyy/MM/dd HH:mm}（{3} 項目）／{4}");
             ja.AppliedPartly.Should().Be("{0} 件を戻しました。{1} 件は戻せませんでした（その後に変更されたか、参照先がありません）。内容を確認してください。");
@@ -232,6 +233,23 @@ namespace Xaf.EditDraft.Tests
                 EditDraftListBridge.Caption.Should().Be("入力控");
             }
             finally { EditDraftTexts.Use(current); }
+        }
+
+        [Test]
+        public void E22b_RecordNotVisible_says_the_draft_cannot_be_restored_for_this_login_and_the_refusal_log_line_is_unchanged()
+        {
+            // Expectation changed by owner ruling 2026-10-02 ("the refusal toast reworded to say the draft cannot be restored
+            // for this login (事業所)"); run 2026-10-02-time-editor-o3s-impl-3ad204, Codex tests a1 T23-T25.
+            EditDraftTextSet.Japanese.RecordNotVisible.Should().Be("この入力控はこのログインでは戻せません（事業所の権限）。");
+            EditDraftTextSet.English.RecordNotVisible.Should().Be("This draft cannot be restored for this login (事業所 permission).");
+            Wave1.Source("Xaf.EditDraft.Blazor/EditDraftRestoreControllerBlazor.cs").Should().Contain(
+                "EditDraftLog.Info($\"[EditDraft] offer refused at '{trigger}': record {S(recordOid)} of {_policy.TypeName} is not visible to this login (事業所 rule)\");",
+                "T25: the log line text is unchanged");
+            // T24: the list open, the badge open, the offer and the apply all show the text through EditDraftTexts. Counted per
+            // file (diffreview a1 C5): losing one of the two restore-controller sites must fail, not only losing both.
+            const string call = "Message(EditDraftTexts.Of(t => t.RecordNotVisible), InformationType.Warning);";
+            foreach (var (file, sites) in new[] { ("Xaf.EditDraft.Blazor/EditDraftRestoreControllerBlazor.cs", 2), ("Xaf.EditDraft.Blazor/EditDraftListControllerBlazor.cs", 1), ("Xaf.EditDraft.Blazor/EditDraftListBadgeControllerBlazor.cs", 1) })
+                (Wave1.Source(file).Split(call).Length - 1).Should().Be(sites, file);
         }
     }
 }
