@@ -247,8 +247,10 @@ namespace Xaf.EditDraft.Tests
                 "T25: the log line text is unchanged");
             // T24: the list open, the badge open, the offer and the apply all show the text through EditDraftTexts. Counted per
             // file (diffreview a1 C5): losing one of the two restore-controller sites must fail, not only losing both.
+            // The list controller has two sites since new-record capture: the 開く path and the 「新規」 recreate path
+            // (owner ruling 2026-10-03: pin updated to 2, naming the recreate path).
             const string call = "Message(EditDraftTexts.Of(t => t.RecordNotVisible), InformationType.Warning);";
-            foreach (var (file, sites) in new[] { ("Xaf.EditDraft.Blazor/EditDraftRestoreControllerBlazor.cs", 2), ("Xaf.EditDraft.Blazor/EditDraftListControllerBlazor.cs", 1), ("Xaf.EditDraft.Blazor/EditDraftListBadgeControllerBlazor.cs", 1) })
+            foreach (var (file, sites) in new[] { ("Xaf.EditDraft.Blazor/EditDraftRestoreControllerBlazor.cs", 2), ("Xaf.EditDraft.Blazor/EditDraftListControllerBlazor.cs", 2), ("Xaf.EditDraft.Blazor/EditDraftListBadgeControllerBlazor.cs", 1) })
                 (Wave1.Source(file).Split(call).Length - 1).Should().Be(sites, file);
         }
     }

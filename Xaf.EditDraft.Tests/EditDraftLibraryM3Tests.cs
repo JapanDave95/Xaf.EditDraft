@@ -430,7 +430,9 @@ namespace Xaf.EditDraft.Tests
         {
             var root = Wave1.Root();
             var mine = File.ReadAllText(Path.Combine(root, "Xaf.EditDraft.Tests", "Xaf.EditDraft.Tests.csproj"));
-            var theirs = File.ReadAllText(Path.Combine(root, "NursingHome_Chart.Rostering.Tests", "NursingHome_Chart.Rostering.Tests.csproj"));
+            // The application's test project and solution exist only in the CareCrew repository; outside it this test
+            // is skipped (owner ruling 2026-10-03), the same way the other host-file comparisons are.
+            var theirs = Wave1.Source("NursingHome_Chart.Rostering.Tests/NursingHome_Chart.Rostering.Tests.csproj");
             static Dictionary<string, string> Packages(string csproj) => Regex.Matches(Regex.Replace(csproj, "<!--.*?-->", string.Empty, RegexOptions.Singleline),
                     "<PackageReference Include=\"([^\"]+)\" Version=\"([^\"]+)\"").ToDictionary(m => m.Groups[1].Value, m => m.Groups[2].Value);
             var pinned = Packages(theirs);
@@ -445,7 +447,7 @@ namespace Xaf.EditDraft.Tests
             Regex.Matches(mine, "<ProjectReference Include=\"([^\"]+)\"").Select(m => m.Groups[1].Value)
                 .Should().Equal(@"..\Xaf.EditDraft.Core\Xaf.EditDraft.Core.csproj", @"..\Xaf.EditDraft.Blazor\Xaf.EditDraft.Blazor.csproj");
             mine.Should().NotContain("<Compile Include").And.NotContain("Link=");
-            var sln = File.ReadAllText(Path.Combine(root, "CareCrew.sln"));
+            var sln = Wave1.Source("CareCrew.sln");
             Regex.Matches(sln, "\"Xaf\\.EditDraft\\.Tests\", \"Xaf\\.EditDraft\\.Tests\\\\Xaf\\.EditDraft\\.Tests\\.csproj\"").Count.Should().Be(1);
         }
     }
