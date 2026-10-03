@@ -1,0 +1,7 @@
+<Project>
+  <!-- Same build settings the library had inside the CareCrew solution (2026-10-03). -->
+  <PropertyGroup>
+    <Deterministic>false</Deterministic>
+    <RunAnalyzersDuringBuild>False</RunAnalyzersDuringBuild>
+  </PropertyGroup>
+</Project>

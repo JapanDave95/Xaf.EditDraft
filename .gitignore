@@ -1,0 +1,25 @@
+## .NET build output
+[Bb]in/
+[Oo]bj/
+artifacts/
+TestResults/
+*.binlog
+
+## Visual Studio / Rider / VS Code
+.vs/
+.idea/
+*.user
+*.suo
+*.vsidx
+.vscode/
+*.swp
+
+## Local configuration that must never be committed
+appsettings.*.local.json
+secrets.json
+*.pfx
+*.snk
+
+## OS
+Thumbs.db
+.DS_Store
