@@ -20,6 +20,12 @@ public sealed class EditDraftSeed
     public Guid SubSectionOid { get; set; }
     public string ContextText { get; set; }
     public string ViewId { get; set; }
+
+    /// <summary>
+    /// NEW records (design 2026-10-02 §4.2.6): the draft is of a never-saved record — plain data, not a column. Exactly then
+    /// <see cref="TargetOid"/> is Guid.Empty (EditDraftNewRecordRules.IsWritable); a targetless existing-record row stays impossible.
+    /// </summary>
+    public bool IsNew { get; set; }
 }
 
 /// <summary>What a failed supersede found when it looked (for the capture's "row gone" recovery).</summary>
@@ -37,6 +43,7 @@ internal interface IEditDraftWriter
     bool TrySupersede(Guid oid, int expectedRevision, Guid ownerOid, string payloadJson, int entryCount, Guid subSectionOid, string contextText, DateTime now);
     EditDraftRowState ReadRowState(Guid oid, int expectedRevision, Guid ownerOid, DateTime now);
     int TryClaim(Guid oid, int expectedRevision, Guid ownerOid, Guid editorInstanceId, DateTime now);
+    int TryClaimNew(Guid oid, int expectedRevision, Guid ownerOid, Guid editorInstanceId, string payloadJson, int entryCount, DateTime now);
     int DeleteOwn(Guid oid, Guid ownerOid, Guid editorInstanceId);
     bool TableExists();
     bool TrySoftDiscard(Guid oid, Guid ownerOid, DateTime now);
@@ -73,6 +80,8 @@ internal sealed class EditDraftWriter : IEditDraftWriter
         _store.TrySupersede(oid, expectedRevision, ownerOid, payloadJson, entryCount, subSectionOid, contextText, now);
     public EditDraftRowState ReadRowState(Guid oid, int expectedRevision, Guid ownerOid, DateTime now) => _store.ReadRowState(oid, expectedRevision, ownerOid, now);
     public int TryClaim(Guid oid, int expectedRevision, Guid ownerOid, Guid editorInstanceId, DateTime now) => _store.TryClaim(oid, expectedRevision, ownerOid, editorInstanceId, now);
+    public int TryClaimNew(Guid oid, int expectedRevision, Guid ownerOid, Guid editorInstanceId, string payloadJson, int entryCount, DateTime now) =>
+        _store.TryClaimNew(oid, expectedRevision, ownerOid, editorInstanceId, payloadJson, entryCount, now);
     public int DeleteOwn(Guid oid, Guid ownerOid, Guid editorInstanceId) => _store.DeleteOwn(oid, ownerOid, editorInstanceId);
     public bool TableExists() => _store.TableExists();
     public bool TrySoftDiscard(Guid oid, Guid ownerOid, DateTime now) => _store.TrySoftDiscard(oid, ownerOid, now);
@@ -101,6 +110,7 @@ internal sealed class EditDraftWriter : IEditDraftWriter
         public bool TrySupersede(Guid oid, int expectedRevision, Guid ownerOid, string payloadJson, int entryCount, Guid subSectionOid, string contextText, DateTime now) { Refused(); return false; }
         public EditDraftRowState ReadRowState(Guid oid, int expectedRevision, Guid ownerOid, DateTime now) { Refused(); return EditDraftRowState.ReadFailed; }
         public int TryClaim(Guid oid, int expectedRevision, Guid ownerOid, Guid editorInstanceId, DateTime now) { Refused(); return 0; }
+        public int TryClaimNew(Guid oid, int expectedRevision, Guid ownerOid, Guid editorInstanceId, string payloadJson, int entryCount, DateTime now) { Refused(); return 0; }
         public int DeleteOwn(Guid oid, Guid ownerOid, Guid editorInstanceId) { Refused(); return -1; }
         public bool TableExists() { Refused(); return false; }
         public bool TrySoftDiscard(Guid oid, Guid ownerOid, DateTime now) { Refused(); return false; }
@@ -159,7 +169,8 @@ internal sealed class EditDraftWriter<TStore> : IEditDraftWriter where TStore : 
     /// <summary>Creates a draft at revision 1; Guid.Empty on failure. Never called without an owner.</summary>
     public Guid Create(EditDraftSeed seed, string payloadJson, int entryCount, DateTime now)
     {
-        if (seed == null || seed.OwnerUserOid == Guid.Empty || seed.TargetOid == Guid.Empty) return Guid.Empty;
+        // An owner always; TargetOid = Guid.Empty exactly for a NEW-record draft (seed.IsNew), never for an existing record.
+        if (!EditDraftNewRecordRules.IsWritable(seed)) return Guid.Empty;
         try
         {
             using var scope = CreateScope();
@@ -246,6 +257,24 @@ internal sealed class EditDraftWriter<TStore> : IEditDraftWriter where TStore : 
             $"UPDATE [{Table}] SET [EditorInstanceId] = @p0, [Revision] = [Revision] + 1, [DeletedOn] = NULL, [LastCapturedOn] = @p1 " +
             $"WHERE [Oid] = @p2 AND [Revision] = @p3 AND [OwnerUserOid] = @p4 AND [ExpiresOn] > @p1",
             new object[] { editorInstanceId, now, oid, expectedRevision, ownerOid }, "claim");
+        return n == 1 ? expectedRevision + 1 : 0;
+    }
+
+    /// <summary>
+    /// NEW records — RECREATE CLAIM WITH THE HEADER (design 2026-10-02 §4.4 step 6; owner D11 safeguard): hands this owner's
+    /// NEW-record draft (TargetOid = Guid.Empty) to the screen that will show the recreated record AND stores the payload
+    /// whose prov header carries the recreated object's Oid, in ONE statement fenced on the row's Oid, the revision the
+    /// recreate read, the owner, liveness and the new-record marker. Of two screens recreating the same draft exactly one
+    /// wins; the loser applies, shows and saves nothing. Un-discards like <see cref="TryClaim"/> (a 破棄'd row opened from
+    /// the list's search). ExpiresOn is not touched. Returns the new revision, or 0 when the claim lost (or failed).
+    /// </summary>
+    public int TryClaimNew(Guid oid, int expectedRevision, Guid ownerOid, Guid editorInstanceId, string payloadJson, int entryCount, DateTime now)
+    {
+        if (oid == Guid.Empty || ownerOid == Guid.Empty || editorInstanceId == Guid.Empty || string.IsNullOrEmpty(payloadJson)) return 0;
+        var n = Execute(
+            $"UPDATE [{Table}] SET [EditorInstanceId] = @p0, [Revision] = [Revision] + 1, [DeletedOn] = NULL, [LastCapturedOn] = @p1, [Payload] = @p2, [EntryCount] = @p3 " +
+            $"WHERE [Oid] = @p4 AND [Revision] = @p5 AND [OwnerUserOid] = @p6 AND [ExpiresOn] > @p1 AND [TargetOid] = @p7",
+            new object[] { editorInstanceId, now, payloadJson, entryCount, oid, expectedRevision, ownerOid, Guid.Empty }, "claim new");
         return n == 1 ? expectedRevision + 1 : 0;
     }
 

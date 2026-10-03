@@ -58,6 +58,28 @@ public static class EditDraftSwitch
         return section + key.Substring(DefaultSection.Length);
     }
 
+    /// <summary>
+    /// NEW records (owner D15, 2026-10-03): ONE global key for the capture of never-saved records. A NEW record is captured
+    /// only when this key AND both keys of <see cref="Decide"/> are true and its policy has AllowNewRecords. Existing-record
+    /// capture, restore, recreate and the 「入力控」 list never read it (drafts stay available while the table exists).
+    /// </summary>
+    public const string NewRecordsKey = "EditDraftCapture:NewRecords:Enabled";
+
+    /// <summary>Pure decision for NEW-record capture: the two DetailView keys and the new-record key must all parse as true.</summary>
+    public static bool DecideNewRecords(string globalRaw, string typeRaw, string newRaw) =>
+        Decide(globalRaw, typeRaw) && IsOn(newRaw);
+
+    public static bool IsNewRecordsEnabled(IServiceProvider services, string policyId)
+    {
+        if (string.IsNullOrEmpty(policyId)) return false;
+        try
+        {
+            var configuration = services?.GetService<IConfiguration>();
+            return configuration != null && DecideNewRecords(configuration[In(services, EnabledKey)], configuration[In(services, TypeKey(policyId))], configuration[In(services, NewRecordsKey)]);
+        }
+        catch { return false; }
+    }
+
     public static bool IsListEnabled(IServiceProvider services, string policyId)
     {
         if (string.IsNullOrEmpty(policyId)) return false;

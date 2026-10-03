@@ -97,9 +97,12 @@ public static class EditDraftRestorer
     /// Assigns the chosen entries through the SAME public setters a person's edit uses. References
     /// are resolved in <paramref name="objectSpace"/> (the destination, secured); a reference that no
     /// longer resolves is NOT replaced by null — it is reported as failed.
+    /// <paramref name="leading"/> (NEW records, <see cref="ApplyNew"/>): paths applied FIRST, in this order, before
+    /// <see cref="ApplyOrder"/>; null (every existing caller) leaves the order exactly as it was.
     /// </summary>
     public static (int Applied, int Failed, List<string> AppliedPaths) Apply(
-        EditDraftTypePolicy policy, IObjectSpace objectSpace, object record, EditDraftPayload payload, ICollection<string> chosenPaths)
+        EditDraftTypePolicy policy, IObjectSpace objectSpace, object record, EditDraftPayload payload, ICollection<string> chosenPaths,
+        IReadOnlyList<string> leading = null)
     {
         var applied = new List<string>();
         var failed = 0;
@@ -124,7 +127,7 @@ public static class EditDraftRestorer
             }
         }
 
-        foreach (var path in ApplyOrder(policy, expanded))
+        foreach (var path in LeadingFirst(leading, ApplyOrder(policy, expanded), expanded))
         {
             var e = payload.Get(path);
             var spec = policy?.Find(path);
@@ -224,5 +227,87 @@ public static class EditDraftRestorer
         var assignable = AssignableOnExisting(policy, chosenPaths, payload);
         if (assignable.Count == 0) return (0, 0, new List<string>());
         return Apply(policy, objectSpace, record, payload, assignable);
+    }
+
+    /// <summary>
+    /// <paramref name="ordered"/> with the paths of <paramref name="leading"/> that are in <paramref name="set"/> moved to the
+    /// front, in <paramref name="leading"/>'s order (only their FIRST occurrence moves; a group's final-value repeat stays at the
+    /// end). Null or empty <paramref name="leading"/> returns <paramref name="ordered"/> unchanged.
+    /// </summary>
+    internal static List<string> LeadingFirst(IReadOnlyList<string> leading, List<string> ordered, ICollection<string> set)
+    {
+        if (leading == null || leading.Count == 0) return ordered;
+        var front = leading.Where(p => p != null && set.Contains(p)).Distinct(StringComparer.Ordinal).ToList();
+        var rest = new List<string>(ordered);
+        foreach (var p in front) rest.Remove(p);
+        front.AddRange(rest);
+        return front;
+    }
+
+    /// <summary>
+    /// NEW records (design docs/edit-draft-new-records-design-2026-10-02.md §4.4 step 7; owner ruling D7 "apply directly"): puts
+    /// a NEW-record draft onto a FRESH, unsaved record. First the policy's InitializingGetters on the fresh object (its own fill,
+    /// KB fix-529), then every entry that may be assigned: a member spec, not 戻せません (NotRestorableOnExisting applies to new
+    /// records too and is enforced HERE, whatever the caller passes — Codex SEC2; a group holding a drafted 戻せません member is
+    /// dropped whole, as for an existing record), and writable for this login (<paramref name="canWrite"/>; a group with a
+    /// non-writable drafted member is dropped whole; null = no member rule). Seeded context first in the policy's
+    /// NewRecordReconstructionOrder (日付 before the times), then <see cref="ApplyOrder"/>. References resolve in
+    /// <paramref name="objectSpace"/> (the destination, secured): one that does not resolve is not nulled, it is not applied.
+    /// Undrafted group members keep the fresh object's value. Nothing is saved; the caller holds EditDraftRestoreGuard open.
+    /// </summary>
+    public static EditDraftNewApplyResult ApplyNew(EditDraftTypePolicy policy, IObjectSpace objectSpace, object record, EditDraftPayload payload, Func<string, bool> canWrite)
+    {
+        if (policy == null || objectSpace == null || record == null || payload == null) return EditDraftNewApplyResult.From(payload, new List<string>(), 0);
+        EditDraftMembers.RunInitializingGetters(policy, record);
+        var drafted = payload.Entries.Select(e => e.Path).ToList();
+        var notWritable = new HashSet<string>(StringComparer.Ordinal);
+        if (canWrite != null)
+            foreach (var p in drafted.Where(p => policy.Find(p) != null))
+            {
+                bool ok;
+                try { ok = canWrite(p); } catch { ok = false; }
+                if (!ok) notWritable.Add(p);
+            }
+        var assignable = AssignableOnExisting(policy, drafted, payload)
+            .Where(p => !notWritable.Contains(p))
+            .Where(p => !policy.Groups.Any(g => g.Members.Contains(p) && g.Members.Any(notWritable.Contains)))   // Apply re-expands groups
+            .ToList();
+        if (assignable.Count == 0) return EditDraftNewApplyResult.From(payload, new List<string>(), 0);
+        var (_, failed, appliedPaths) = Apply(policy, objectSpace, record, payload, assignable, policy.NewRecordReconstructionOrder);
+        return EditDraftNewApplyResult.From(payload, appliedPaths, failed);
+    }
+}
+
+/// <summary>NEW records: what <see cref="EditDraftRestorer.ApplyNew"/> put on the fresh record (design §4.4 steps 7 and 10).</summary>
+public sealed class EditDraftNewApplyResult
+{
+    /// <summary>Entries assigned.</summary>
+    public int Applied => AppliedPaths.Count;
+
+    /// <summary>Assignments that were tried and failed (a reference that does not resolve, a setter that threw, a missing member).</summary>
+    public int Failed { get; private init; }
+
+    public IReadOnlyList<string> AppliedPaths { get; private init; } = Array.Empty<string>();
+
+    /// <summary>
+    /// TYPED entries that are not on the record (no member spec, 戻せません, not writable, failed): the person is told how many
+    /// and sees their full text read-only, to retype them before the save retires the whole draft (design §4.4 step 10).
+    /// </summary>
+    public IReadOnlyList<string> NotAppliedTyped { get; private init; } = Array.Empty<string>();
+
+    /// <summary>SEEDED entries that are not on the record: the fresh object's own value stays (logged, not shown as typed input).</summary>
+    public IReadOnlyList<string> NotAppliedSeeded { get; private init; } = Array.Empty<string>();
+
+    internal static EditDraftNewApplyResult From(EditDraftPayload payload, List<string> appliedPaths, int failed)
+    {
+        var applied = new HashSet<string>(appliedPaths ?? new List<string>(), StringComparer.Ordinal);
+        var entries = payload?.Entries ?? new List<EditDraftEntry>();
+        return new EditDraftNewApplyResult
+        {
+            Failed = failed,
+            AppliedPaths = (appliedPaths ?? new List<string>()).ToList(),
+            NotAppliedTyped = entries.Where(e => !e.Seeded && !applied.Contains(e.Path)).Select(e => e.Path).ToList(),
+            NotAppliedSeeded = entries.Where(e => e.Seeded && !applied.Contains(e.Path)).Select(e => e.Path).ToList()
+        };
     }
 }

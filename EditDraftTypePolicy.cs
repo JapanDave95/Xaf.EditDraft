@@ -137,6 +137,24 @@ public sealed class EditDraftTypePolicy
     /// </summary>
     public IReadOnlyList<string> InitializingGetters { get; init; } = Array.Empty<string>();
 
+    // ---- NEW (never saved) records: design docs/edit-draft-new-records-design-2026-10-02.md, owner rulings 2026-10-03 ----
+
+    /// <summary>
+    /// NEW records (owner D9): when true, a never-saved record of this type is captured in its approved root DetailView too
+    /// (while EditDraftCapture:NewRecords:Enabled is on) and can be recreated from the 「入力控」 list. Default false: no
+    /// type takes part unless its policy opts in. Read for generic (login-owned) policies only.
+    /// </summary>
+    public bool AllowNewRecords { get; init; }
+
+    /// <summary>
+    /// NEW records (design §4.2.3): the members seeded (Seeded = true) at a new record's FIRST genuine edit and applied first,
+    /// in this order, when the draft is recreated (EditDraftRestorer.ApplyNew) — the context the record's construction
+    /// defaults depend on (残業・有給: 職員, 日付, 開始時刻, 終了時刻; 日付 before the times). Kept apart from
+    /// <see cref="ReconstructionOrder"/> (the chart types' list), which also orders the EXISTING-record apply and admits
+    /// non-browsable members: this list changes neither. Only members the policy admits are seeded. Empty = no seed.
+    /// </summary>
+    public IReadOnlyList<string> NewRecordReconstructionOrder { get; init; } = Array.Empty<string>();
+
     /// <summary>Every capturable member, reconstruction context first. Discovered once.</summary>
     public IReadOnlyList<EditDraftMemberSpec> Members => _members.Value;
 
