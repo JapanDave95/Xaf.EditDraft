@@ -17,7 +17,9 @@ namespace Xaf.EditDraft.Blazor;
 /// main-header action 「入力控」 FILTERED to the type whose ListView is the active tab (owner D14; the
 /// pattern of TenantChartDraftListControllerBlazor:34-246). Opening a draft opens the EXISTING record in
 /// its approved DetailView and its screen offers exactly that draft (D16: alone, even when siblings are
-/// live). Wave 1 restores no NEW records. Every read is owner-scoped (single-model predicates in EditDraftWriter).
+/// live). NEW records (owner D4 (a), 2026-10-03): a draft of a never-saved record is listed as 「新規」 and its 開く recreates
+/// the record from the draft (EditDraftRecreate, Core; design docs/edit-draft-new-records-design-2026-10-02.md §4.4).
+/// Every read is owner-scoped (single-model predicates in EditDraftWriter).
 /// Library milestone M2: owner and record access through the Core seams, "now" from the host clock, texts from
 /// EditDraftTexts, log lines through EditDraftLog (same text).
 /// </summary>
@@ -294,7 +296,7 @@ public class EditDraftListControllerBlazor : WindowController
                         Origin = EditDraftProvenance.Resolve(Application.Model, d.ViewId),   // owner B8 (wave 1b)
                         LastCapturedOn = d.LastCapturedOn,
                         EntryCount = d.EntryCount,
-                        StateText = EditDraftTexts.Of(t => t.StateExisting) + (d.DeletedOn != null ? EditDraftTexts.Of(t => t.DiscardedSuffix) : ""),
+                        StateText = EditDraftNewRecordRules.StateText(d.TargetOid, d.DeletedOn != null),   // 「新規」 / 「既存」 (NEW records, D4)
                         ExpiresOn = d.ExpiresOn,
                         IsDiscarded = d.DeletedOn != null
                     });
@@ -347,6 +349,8 @@ public class EditDraftListControllerBlazor : WindowController
             if (!draft.IsPayloadReadable) { Message(EditDraftTexts.Of(t => t.DraftUnreadable), InformationType.Warning); return; }
             objectType = draft.ObjectType; targetOid = draft.TargetOid;
         }
+        // NEW records (owner D4 (a)): a 「新規」 row has no record to open; its 開く recreates one from the draft.
+        if (EditDraftNewRecordRules.IsNewRecordDraft(targetOid)) { Recreate(draftOid, proceedWhenSavedCheckFails: false); return; }
         var policy = EditDraftServices.Registry(Application?.ServiceProvider).Find(objectType);
         if (!EditDraftTypePolicy.IsGeneric(policy)) { Message(EditDraftTexts.Of(t => t.DraftTypeUnknown), InformationType.Warning); return; }
 
@@ -361,9 +365,142 @@ public class EditDraftListControllerBlazor : WindowController
         Application.ShowViewStrategy.ShowView(parameters, new ShowViewSource(Frame, null));
     }
 
-    internal void Message(string text, InformationType type)
+    // ---------------------------------------------------------------------------------------
+    // NEW records: 開く on a 「新規」 row recreates the record (design §4.4; owner D6 modal, D7 apply directly, D11 warning)
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Runs the recreate (EditDraftRecreate.Run in Core decides the order of the checks) and shows its outcome: the unsaved
+    /// record in a modal window with the D11 warning and, read-only, the typed entries it could not put back; or the D9
+    /// read-only display, the already-saved notice, the question when the saved check failed, or a refusal message.
+    /// </summary>
+    internal void Recreate(Guid draftOid, bool proceedWhenSavedCheckFails)
+    {
+        var circuit = System.Threading.SynchronizationContext.Current ?? _circuit;
+        var host = new EditDraftRecreateHostBlazor(Application, Frame, circuit, (text, type) => Message(text, type));
+        var r = EditDraftRecreate.Run(host, draftOid, proceedWhenSavedCheckFails);
+        switch (r.Outcome)
+        {
+            case EditDraftRecreateOutcome.Created:
+            {
+                var notApplied = r.Fill?.NotAppliedTyped ?? Array.Empty<string>();
+                var text = notApplied.Count == 0
+                    ? string.Format(EditDraftTexts.Of(t => t.Recreated), r.Draft.LastCapturedOn)
+                    : string.Format(EditDraftTexts.Of(t => t.RecreatedPartly), r.Draft.LastCapturedOn, notApplied.Count);
+                // A cancelled save/rollback during the fill or the screen's activation is never reported as a full success (Codex diffreview D5).
+                if (r.GuardViolated) text += " " + EditDraftTexts.Of(t => t.ApplyGuardStopped);
+                var full = notApplied.Count == 0 && !r.GuardViolated;
+                Message(text + " " + EditDraftTexts.Of(t => t.RecreateWarning), full ? InformationType.Success : InformationType.Warning, 15000);
+                if (notApplied.Count > 0)
+                    ShowDraftEntries(r, notApplied, EditDraftTexts.Of(t => t.NotAppliedViewCaption),
+                        string.Format(EditDraftTexts.Of(t => t.NotAppliedLead), notApplied.Count), notRestorableSuffix: true, allowDiscard: false);
+                return;
+            }
+            case EditDraftRecreateOutcome.NothingRestorable:
+            {
+                var unavailable = EditDraftNewRecordRules.UnavailableTyped(r.Policy, r.Payload).Select(e => e.Path).ToList();
+                ShowDraftEntries(r, unavailable, EditDraftTexts.Of(t => t.ReadOnlyViewCaption),
+                    string.Format(EditDraftTexts.Of(t => t.ReadOnlyLead), unavailable.Count), notRestorableSuffix: true, allowDiscard: true);
+                return;
+            }
+            case EditDraftRecreateOutcome.AlreadySaved:
+                ShowDraftEntries(r, TypedPaths(r), EditDraftTexts.Of(t => t.RecreateAlreadySavedCaption), EditDraftTexts.Of(t => t.RecreateAlreadySaved),
+                    notRestorableSuffix: false, allowDiscard: true, okCaption: EditDraftTexts.Of(t => t.RecreateOpenSaved),
+                    ok: shown => { if (!shown.Answered) Defer(() => OpenSaved(r.Policy, r.SavedOid)); }, cancelCaption: EditDraftTexts.Of(t => t.Close));
+                return;
+            case EditDraftRecreateOutcome.SavedCheckFailed:
+                // Design §4.4 step 3: a failed check asks and never creates silently. Only the explicit OK creates; closing,
+                // やめる and 破棄 create nothing.
+                ShowDraftEntries(r, TypedPaths(r), EditDraftTexts.Of(t => t.RecreateSavedCheckFailedCaption), EditDraftTexts.Of(t => t.RecreateSavedCheckFailed),
+                    notRestorableSuffix: false, allowDiscard: true, okCaption: EditDraftTexts.Of(t => t.RecreateAnyway),
+                    ok: shown => { if (!shown.Answered) Defer(() => Recreate(draftOid, proceedWhenSavedCheckFails: true)); }, cancelCaption: EditDraftTexts.Of(t => t.RecreateCancel));
+                return;
+            case EditDraftRecreateOutcome.NoOwner: Message(EditDraftTexts.Of(t => t.PersonalLoginOnly), InformationType.Warning); return;
+            case EditDraftRecreateOutcome.NotLive: Message(EditDraftTexts.Of(t => t.DraftCannotOpen), InformationType.Warning); return;
+            case EditDraftRecreateOutcome.Unreadable: Message(EditDraftTexts.Of(t => t.DraftUnreadable), InformationType.Warning); return;
+            case EditDraftRecreateOutcome.NotNewRecord:
+            case EditDraftRecreateOutcome.TypeNotAllowed: Message(EditDraftTexts.Of(t => t.RecreateTypeNotAllowed), InformationType.Warning); return;
+            case EditDraftRecreateOutcome.NotPermitted: Message(EditDraftTexts.Of(t => t.RecreateNoPermission), InformationType.Warning); return;
+            case EditDraftRecreateOutcome.SubSectionNotVisible:
+            case EditDraftRecreateOutcome.FilledNotVisible: Message(EditDraftTexts.Of(t => t.RecreateSubSectionNotVisible), InformationType.Warning); return;
+            case EditDraftRecreateOutcome.ClaimLost: Message(EditDraftTexts.Of(t => t.RecreateClaimLost), InformationType.Warning); return;
+            case EditDraftRecreateOutcome.NotAcknowledged: Message(EditDraftTexts.Of(t => t.RecreateNotAttached), InformationType.Warning); return;
+            default: Message(EditDraftTexts.Of(t => t.RecreateFailed), InformationType.Error); return;
+        }
+    }
+
+    private static List<string> TypedPaths(EditDraftRecreateResult r) =>
+        EditDraftNewRecordRules.TypedEntries(r.Payload).Select(e => e.Path).ToList();
+
+    /// <summary>
+    /// The full typed text of <paramref name="paths"/> of the draft, read-only (EditDraftReadOnlyView, the D9 shape). 破棄 is
+    /// offered only when <paramref name="allowDiscard"/> (never while a recreated screen holds the draft). OK runs
+    /// <paramref name="ok"/> unless 破棄 answered the display first.
+    /// </summary>
+    private void ShowDraftEntries(EditDraftRecreateResult r, IReadOnlyCollection<string> paths, string caption, string lead, bool notRestorableSuffix,
+        bool allowDiscard, string okCaption = null, Action<EditDraftReadOnlyView> ok = null, string cancelCaption = null)
+    {
+        var text = new System.Text.StringBuilder();
+        foreach (var path in paths)
+        {
+            var entry = r.Payload?.Get(path);
+            if (entry == null) continue;
+            if (text.Length > 0) text.AppendLine().AppendLine();
+            text.Append(entry.Caption ?? entry.Path).Append(notRestorableSuffix ? EditDraftTexts.Of(t => t.ReadOnlyEntrySuffix) : string.Empty).AppendLine();
+            text.Append(string.IsNullOrEmpty(entry.ValueText) ? EditDraftTexts.Of(t => t.Empty) : entry.ValueText);   // FULL value, never Short()
+        }
+        var typeCaption = r.Policy == null ? r.Draft?.ObjectType : CaptionHelper.GetClassCaption(r.Policy.Type.FullName);
+        var display = new EditDraftReadOnlyView
+        {
+            OwnerOid = r.OwnerOid,
+            Lead = lead,
+            Provenance = string.Format(EditDraftTexts.Of(t => t.OfferProvenance), string.Empty, typeCaption, r.Draft?.LastCapturedOn ?? default,
+                r.Draft?.EntryCount ?? 0, EditDraftProvenance.Resolve(Application?.Model, r.Draft?.ViewId)).Trim(),
+            Text = text.ToString(),
+            HideDiscard = !allowDiscard
+        };
+        if (allowDiscard && r.Draft != null) display.DraftOids.Add(r.Draft.DraftOid);
+        var space = Application.CreateObjectSpace(typeof(EditDraftReadOnlyView));
+        var detail = Application.CreateDetailView(space, display);
+        detail.Caption = caption;
+        Application.ShowViewStrategy.ShowViewInPopupWindow(detail,
+            okDelegate: ok == null ? null : () => ok(display),
+            cancelDelegate: null,
+            okButtonCaption: okCaption ?? EditDraftTexts.Of(t => t.Close),
+            cancelButtonCaption: cancelCaption);
+    }
+
+    /// <summary>Opens the record the "already saved?" check found, in its approved DetailView (modal), through a SECURED object space.</summary>
+    private void OpenSaved(EditDraftTypePolicy policy, Guid oid)
+    {
+        var detailViewId = policy?.ApprovedViewIds?.FirstOrDefault();
+        if (policy == null || oid == Guid.Empty || string.IsNullOrEmpty(detailViewId)) { Message(EditDraftTexts.Of(t => t.SavedRecordNotOpened), InformationType.Warning); return; }
+        var os = Application.CreateObjectSpace(policy.Type);
+        var target = os.GetObjectByKey(policy.Type, oid);
+        if (target == null) { os.Dispose(); Message(EditDraftTexts.Of(t => t.SavedRecordNotOpened), InformationType.Warning); return; }
+        if (!EditDraftServices.RecordAccess(Application?.ServiceProvider).IsRecordVisible(Application, policy, target)) { os.Dispose(); Message(EditDraftTexts.Of(t => t.RecordNotVisible), InformationType.Warning); return; }
+        EditDraftLog.Info($"[EditDraft] list 開く: opening the saved {policy.TypeName} the already-saved check found");
+        var view = Application.CreateDetailView(os, detailViewId, true, target);
+        Application.ShowViewStrategy.ShowView(new ShowViewParameters(view) { TargetWindow = TargetWindow.NewModalWindow }, new ShowViewSource(Frame, null));
+    }
+
+    /// <summary>Runs <paramref name="action"/> on the circuit after the current popup has closed (as OpenDraftDeferred does).</summary>
+    private void Defer(Action action)
+    {
+        void Run()
+        {
+            try { action(); }
+            catch (Exception ex) { ReportFailure("recreate follow-up", ex); }
+        }
+        var context = System.Threading.SynchronizationContext.Current ?? _circuit;
+        if (context != null) context.Post(_ => Run(), null); else Run();
+    }
+
+    internal void Message(string text, InformationType type) => Message(text, type, 8000);
+
+    private void Message(string text, InformationType type, int duration)
     {
         EditDraftLog.Info($"[EditDraft] list message ({type}): {text}");
-        try { Application?.ShowViewStrategy?.ShowMessage(text, type, 8000); } catch { }
+        try { Application?.ShowViewStrategy?.ShowMessage(text, type, duration); } catch { }
     }
 }

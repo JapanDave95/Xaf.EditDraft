@@ -102,6 +102,7 @@ public class EditDraftListBadgeControllerBlazor : ObjectViewController<ListView,
         WatchMdi();
         ReloadSet("activated", rerender: false);   // before the first render: no re-render needed
         HookGrid();
+        PostNewRecordNotice();
     }
 
     protected override void OnViewControlsCreated()
@@ -252,6 +253,41 @@ public class EditDraftListBadgeControllerBlazor : ObjectViewController<ListView,
         EditDraftLog.Info($"[EditDraft] row badges view={View?.Id} type={_policy.TypeName} records={_set.Count} at '{why}'");   // counts only (S7)
         UpdateActionState();
         if (rerender) Rerender();
+    }
+
+    /// <summary>
+    /// NEW records (owner D4 (b), D5; design docs/edit-draft-new-records-design-2026-10-02.md §4.3): once per activation of
+    /// the type's list, a notice when the login has live, readable new-record draft ROWS of the type — 「新規の入力控が n 件
+    /// あります。」 with the pointer to 「入力控」. Read through ListOwn (owner and type in the query): the badge projection
+    /// (ListOwnTargets) cannot tell readability. Only for a type whose policy allows new records. Posted, not raised inside the
+    /// activation. Counts only in the log (S7).
+    /// </summary>
+    private void PostNewRecordNotice()
+    {
+        if (_policy == null || !_policy.AllowNewRecords) return;
+        Post(() =>
+        {
+            try
+            {
+                var owner = EditDraftServices.CurrentOwner(Application?.ServiceProvider, Application);
+                if (owner.IsNone) return;
+                var writer = new EditDraftWriter(Application.ServiceProvider);
+                using var readSpace = writer.CreateReadSpace(out var scope);
+                using (scope)
+                {
+                    var now = Now();
+                    var rows = writer.ListOwn(readSpace, owner.Oid, _policy.TypeName, false, now, out var readFailed);
+                    if (readFailed) { EditDraftLog.Warning($"[EditDraft] new-record notice view={View?.Id}: read failed; no notice"); return; }
+                    var count = EditDraftNewRecordRules.NoticeCount(rows.Select(d => (d.TargetOid, d.PayloadSchemaVersion, d.DeletedOn != null, d.ExpiresOn)), now);
+                    EditDraftLog.Info($"[EditDraft] new-record notice view={View?.Id} type={_policy.TypeName} rows={count}");
+                    if (count > 0) Message(EditDraftNewRecordRules.NoticeText(count), InformationType.Info);
+                }
+            }
+            catch (Exception ex)
+            {
+                EditDraftLog.Warning($"[EditDraft] new-record notice failed view={View?.Id}: {ex.GetType().Name}");
+            }
+        });
     }
 
     private void OnDraftWritten(string objectType, Guid targetOid)

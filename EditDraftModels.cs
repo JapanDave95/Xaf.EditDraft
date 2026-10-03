@@ -98,6 +98,9 @@ public class EditDraftReadOnlyView : NonPersistentBaseObject
     [Browsable(false)] public List<Guid> DraftOids { get; } = new();
     [Browsable(false)] public Guid OwnerOid { get; set; }
     [Browsable(false)] public bool Answered { get; set; }
+
+    /// <summary>NEW records: the display of entries a recreate could not put back — the draft now belongs to the recreated screen, so 破棄 is not offered.</summary>
+    [Browsable(false)] public bool HideDiscard { get; set; }
 }
 
 /// <summary>One row of the 「入力控」 list (the login's own drafts only).</summary>

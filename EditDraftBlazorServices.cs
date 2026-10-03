@@ -18,6 +18,7 @@ public static class EditDraftBlazorServiceCollectionExtensions
         services.AddScoped<EditDraftListBridge>();
         services.AddScoped<EditDraftOfferRequests>();
         services.AddScoped<EditDraftBadgeNotifier>();   // wave 1b row badges, per circuit (B6)
+        services.AddScoped<EditDraftPendingAdoptions>();   // NEW records: the recreate hands its claimed draft to the record's screen (Core contract)
         return services;
     }
 }

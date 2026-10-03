@@ -134,5 +134,6 @@ public class EditDraftReadOnlyViewControllerBlazor : ObjectViewController<Detail
         if (diagnostics != null) diagnostics.Active["EditDraftReadOnly"] = false;
         var modifications = Frame?.GetController<ModificationsController>();
         if (modifications != null) modifications.Active["EditDraftReadOnly"] = false;
+        DiscardAction.Active["EditDraftHideDiscard"] = !(ViewCurrentObject?.HideDiscard ?? false);   // NEW records: the recreated screen holds the draft
     }
 }
