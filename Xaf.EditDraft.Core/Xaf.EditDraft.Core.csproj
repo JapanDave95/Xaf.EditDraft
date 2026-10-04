@@ -11,7 +11,9 @@
         <AssemblyName>Xaf.EditDraft.Core</AssemblyName>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>disable</Nullable>
-        <IsPackable>false</IsPackable>
+        <IsPackable>true</IsPackable>
+        <PackageId>Xaf.EditDraft.Core</PackageId>
+        <Description>Edit-draft (unsaved-input) capture and restore engine for DevExpress XAF applications on XPO: policies, server-side capture on ObjectChanged, owner-fenced SQL Server store, restore and new-record recreation. Platform-independent part; pair with Xaf.EditDraft.Blazor.</Description>
     </PropertyGroup>
 
     <ItemGroup>

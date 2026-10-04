@@ -4,4 +4,31 @@
     <Deterministic>false</Deterministic>
     <RunAnalyzersDuringBuild>False</RunAnalyzersDuringBuild>
   </PropertyGroup>
+
+  <!-- NuGet package metadata shared by Xaf.EditDraft.Core and Xaf.EditDraft.Blazor. Only those two projects set
+       IsPackable=true; tests and the sample stay unpackable. The version is the single place to bump; the publish
+       workflow (.github/workflows/publish-package.yml) runs on a tag v<Version>. -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <Version>0.1.0-preview.1</Version>
+    <Authors>Dave Bates</Authors>
+    <Company>JapanDave95</Company>
+    <Copyright>Copyright © 2026 Dave Bates</Copyright>
+    <Product>Xaf.EditDraft</Product>
+    <RepositoryUrl>https://github.com/JapanDave95/Xaf.EditDraft</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/JapanDave95/Xaf.EditDraft</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>xaf;devexpress;blazor;xpo;draft;autosave;recovery</PackageTags>
+    <PackageReleaseNotes>Preview: extracted from the CareCrew application on 2026-10-03. Known gaps are listed in the README.</PackageReleaseNotes>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+  </PropertyGroup>
+
+  <!-- The repository README is the package README for both packages. -->
+  <ItemGroup Condition="'$(IsPackable)' == 'true'">
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
 </Project>

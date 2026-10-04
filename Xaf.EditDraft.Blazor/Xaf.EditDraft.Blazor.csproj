@@ -11,7 +11,9 @@
         <AssemblyName>Xaf.EditDraft.Blazor</AssemblyName>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>disable</Nullable>
-        <IsPackable>false</IsPackable>
+        <IsPackable>true</IsPackable>
+        <PackageId>Xaf.EditDraft.Blazor</PackageId>
+        <Description>XAF Blazor UI for Xaf.EditDraft: capture, offer and restore controllers, the drafts list and header action, ListView row badges, new-record recreation, and the row-badge stylesheet served at _content/Xaf.EditDraft.Blazor/.</Description>
     </PropertyGroup>
 
     <ItemGroup>
