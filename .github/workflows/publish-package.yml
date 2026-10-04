@@ -4,11 +4,16 @@
 #   The tag must equal "v" + <Version> in Directory.Build.props (e.g. v0.1.0-preview.1); the job fails otherwise,
 #   so a package version can never be published from a mismatched source.
 #
+# DevExpress 25.1+ packages come from nuget.org; what licenses the build is the DevExpress licence key, read by the
+# DevExpress build analyzers from the environment variable DevExpress_License (case-sensitive) — see
+# docs.devexpress.com/GeneralInformation/400604 ("Use DevExpress .NET Products in Popular Continuous Integration
+# Systems") and /GeneralInformation/405494 ("License Key for DevExpress Products"). Nothing of DevExpress's is
+# included in the published packages.
+#
 # Secrets (repository Settings → Secrets and variables → Actions):
-#   DEVEXPRESS_NUGET_KEY  the DevExpress NuGet feed authorization key (nuget.devexpress.com → "Obtain Feed URL").
-#                         Needed only to restore the DevExpress packages the library depends on; nothing of
-#                         DevExpress's is included in the published packages.
-#   GITHUB_TOKEN          provided automatically; "packages: write" below is what lets it push to the feed.
+#   DEVEXPRESS_LICENSE  the contents of the DevExpress_License.txt file from the DevExpress.com Download Manager
+#                       ("DOWNLOAD LICENSE KEY"). Personal to the licence holder; never committed.
+#   GITHUB_TOKEN        provided automatically; "packages: write" below is what lets it push to the feed.
 name: Publish NuGet package
 
 # Only a tag publishes: there is deliberately no manual trigger, so the tag-equals-version check below always runs.
@@ -24,6 +29,8 @@ permissions:
 jobs:
   publish:
     runs-on: windows-latest
+    env:
+      DevExpress_License: ${{ secrets.DEVEXPRESS_LICENSE }}
     steps:
       - name: Check out
         uses: actions/checkout@v4
@@ -43,19 +50,19 @@ jobs:
           if ($tag -ne $version) { throw "Tag v$tag does not match <Version>$version</Version>" }
           "Publishing version $version"
 
-      - name: Add the DevExpress NuGet feed
+      - name: Check that the DevExpress licence key is present
         shell: pwsh
-        env:
-          DEVEXPRESS_NUGET_KEY: ${{ secrets.DEVEXPRESS_NUGET_KEY }}
         run: |
-          if (-not $env:DEVEXPRESS_NUGET_KEY) { throw 'Secret DEVEXPRESS_NUGET_KEY is not set' }
-          dotnet nuget add source "https://nuget.devexpress.com/$env:DEVEXPRESS_NUGET_KEY/api" --name DevExpress
+          if (-not $env:DevExpress_License) { throw 'Secret DEVEXPRESS_LICENSE is not set (DevExpress_License.txt contents)' }
+          "DevExpress licence key present (" + $env:DevExpress_License.Length + " characters)"
 
       - name: Restore
         run: dotnet restore Xaf.EditDraft.sln
 
+      # --disable-build-servers: the DevExpress docs recommend it so that the licence check is not served by a cached
+      # build process that started without the variable.
       - name: Build
-        run: dotnet build Xaf.EditDraft.sln -c Release --no-restore
+        run: dotnet build Xaf.EditDraft.sln -c Release --no-restore --disable-build-servers
 
       - name: Test (library)
         run: dotnet test Xaf.EditDraft.Tests/Xaf.EditDraft.Tests.csproj -c Release --no-build

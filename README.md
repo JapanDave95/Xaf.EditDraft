@@ -41,8 +41,10 @@ GitHub personal access token with the `read:packages` scope.
    <PackageReference Include="Xaf.EditDraft.Blazor" Version="0.1.0-preview.1" />
    ```
 
-3. The packages declare the DevExpress packages they need (26.1.4) as dependencies and do not contain them; restore
-   takes them from your own DevExpress NuGet feed with your licence.
+3. The packages declare the DevExpress packages they need (26.1.4) as dependencies and do not contain them. DevExpress
+   25.1+ packages are on nuget.org; building against them requires your own DevExpress licence key registered on the
+   machine (`%AppData%\DevExpress\DevExpress_License.txt`, written by the DevExpress installer, or the
+   `DevExpress_License` environment variable — see docs.devexpress.com/GeneralInformation/405494).
 
 Current version: see `<Version>` in `Directory.Build.props`. Versions before 1.0 are previews; see "Known gaps".
 
@@ -75,9 +77,10 @@ produce the two packages (and symbol packages) locally. The
 `.github/workflows/publish-package.yml` workflow builds, tests, packs and pushes them to GitHub Packages when a tag
 `v<Version>` is pushed, where `<Version>` is the value in `Directory.Build.props`; the job refuses a tag that does
 not match, and a tag is the only trigger (no manual run). Symbol packages are kept as a workflow artifact only,
-because GitHub Packages does not accept them. It needs one repository secret, `DEVEXPRESS_NUGET_KEY` (the DevExpress feed authorization key), to
-restore the DevExpress dependencies in CI. To release: bump `<Version>`, commit, `git tag v<Version>`, `git push
---tags`.
+because GitHub Packages does not accept them. It needs one repository secret, `DEVEXPRESS_LICENSE`: the contents of
+the licence-holder's `DevExpress_License.txt` (DevExpress.com Download Manager → "Download License Key"), which the
+job exposes as the `DevExpress_License` environment variable so the DevExpress build analyzers can license the build.
+To release: bump `<Version>`, commit, `git tag v<Version>`, `git push --tags`.
 
 ## Design and history
 
