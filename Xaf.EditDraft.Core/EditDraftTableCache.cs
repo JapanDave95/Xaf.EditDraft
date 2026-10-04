@@ -6,14 +6,21 @@ using DevExpress.Xpo;
 namespace Xaf.EditDraft.Core;
 
 /// <summary>
-/// "Does the store table exist?" answers, cached for <see cref="Lifetime"/> PER DATABASE (library design §4.12
-/// rule 2: table availability belongs to the configured database, never to the process — two databases in one
-/// process never share an answer). A probe that throws counts as absent (and is cached like any answer).
+/// "Does the store table exist?" answers, cached PER DATABASE (library design §4.12 rule 2: table availability belongs
+/// to the configured database, never to the process — two databases in one process never share an answer). A "present"
+/// answer is kept for <see cref="Lifetime"/>; an "absent" answer for the absent lifetime given to the constructor
+/// (default: also <see cref="Lifetime"/>). A probe that throws counts as absent (and is cached like any absent answer).
 /// A call without a database identity is probed every time and never cached.
+///
+/// Gap G7 (2026-10-04): the writer uses <see cref="AbsentRecheck"/> (30 seconds) for "absent", so an application started
+/// before its first database update shows restore and the drafts list at most 30 seconds after the table appears.
 /// </summary>
 public sealed class EditDraftTableCache
 {
     public static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(5);
+
+    /// <summary>How long the writer keeps an "absent" answer (gap G7).</summary>
+    public static readonly TimeSpan AbsentRecheck = TimeSpan.FromSeconds(30);
 
     private sealed class Entry
     {
@@ -24,6 +31,13 @@ public sealed class EditDraftTableCache
     private readonly object _gate = new();
     private readonly Dictionary<string, Entry> _byConnection = new(StringComparer.Ordinal);
     private readonly ConditionalWeakTable<object, Entry> _byLayer = new();
+    private readonly TimeSpan _absentLifetime;
+
+    /// <summary>Both answers are kept for <see cref="Lifetime"/>.</summary>
+    public EditDraftTableCache() : this(Lifetime) { }
+
+    /// <summary>"Present" is kept for <see cref="Lifetime"/>, "absent" for <paramref name="absentLifetime"/>.</summary>
+    public EditDraftTableCache(TimeSpan absentLifetime) => _absentLifetime = absentLifetime;
 
     /// <param name="databaseKey">A connection string, or the data-layer object bound to one database; null = unknown.</param>
     public bool Get(object databaseKey, DateTime utcNow, Func<bool> probe)
@@ -32,7 +46,7 @@ public sealed class EditDraftTableCache
         lock (_gate)
         {
             var entry = Find(databaseKey);
-            if (entry != null && utcNow - entry.CheckedAtUtc < Lifetime) return entry.Exists;
+            if (entry != null && utcNow - entry.CheckedAtUtc < (entry.Exists ? Lifetime : _absentLifetime)) return entry.Exists;
             bool exists;
             try { exists = probe(); }
             catch { exists = false; }

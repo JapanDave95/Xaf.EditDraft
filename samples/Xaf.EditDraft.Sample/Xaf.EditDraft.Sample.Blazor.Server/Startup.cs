@@ -55,7 +55,8 @@ public class Startup
                     options.UseSharedDataStoreProvider = true;
                 })
                 // Template line, and a Xaf.EditDraft prerequisite: the library's restore popup and drafts list are
-                // non-persistent objects and need the non-persistent object space provider.
+                // non-persistent objects and need the non-persistent object space provider. (XAF 26.1 also adds one itself
+                // when none is registered; EditDraftBlazorModule checks at setup that one is present.)
                 .AddNonPersistent();
             builder.Security
                 .UseIntegratedMode(options =>
@@ -86,20 +87,25 @@ public class Startup
     }
 
     /// <summary>
-    /// Xaf.EditDraft: the three registrations a consumer must make. Nothing else is registered, so every other seam is the
-    /// library default:
+    /// Xaf.EditDraft: the three registrations a consumer must make, plus two optional ones. Nothing else is registered, so
+    /// every other seam is the library default:
     /// - owner: the XAF login's Guid (XafLoginEditDraftOwnerResolver), no owner without a Guid login;
     /// - record access: XAF security only (XafSecurityEditDraftRecordAccess); records are always loaded through a secured
     ///   object space first;
     /// - switches: the configuration section "EditDraftCapture" (appsettings.json);
+    /// - store table schema: "dbo" (EditDraftStoreOptions.Schema not set);
     /// - clock: TimeProvider.System; log sink: the application's ILogger, category "Xaf.EditDraft"; texts: English.
+    /// Optional, used here: the header action "Drafts" on every view, so the all-types drafts list has an entry point
+    /// (EditDraftBlazorOptions.HeaderActionOnEveryView), and the retention hosted service (AddEditDraftRetention), which
+    /// deletes expired drafts only while EditDraftCapture:Retention:Enabled is true (not set in appsettings.json: off).
     /// Public and static so Xaf.EditDraft.Sample.Tests checks this exact composition.
     /// </summary>
     public static IServiceCollection AddEditDrafts(IServiceCollection services)
     {
         services.AddEditDraftStore<SampleEditDraft>();
         services.AddEditDraftRegistry(NoteEditDraftPolicy.Register);
-        services.AddEditDraftBlazor();
+        services.AddEditDraftBlazor(options => options.HeaderActionOnEveryView = true);
+        services.AddEditDraftRetention();
         return services;
     }
 

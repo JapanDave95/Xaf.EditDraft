@@ -180,13 +180,17 @@ namespace Xaf.EditDraft.Tests
         }
 
         [Test]
-        public void C16_selecting_an_unbadged_row_disables_the_toolbar_but_the_icons_on_badged_rows_stay_usable()
+        public void C16_selecting_an_unbadged_row_disables_the_toolbar_and_the_icons_on_badged_rows_fail_closed()
         {
+            // Expectation changed by owner ruling O-11 ("Keep for the merge; fail closed before NuGet"; M3 §12 option (b),
+            // applied in run 2026-10-04-editdraft-close-gaps-08c338): the rule no longer turns a badged row's icon on, so with an
+            // unbadged row selected every badged row's icon is disabled, like the toolbar button. Name changed with it (was
+            // C16_..._but_the_icons_on_badged_rows_stay_usable).
             // The action's own state with an unbadged row selected: the row reason is false (the toolbar button follows it).
             var actionState = Enabled(("Admitted", true), ("HasDrafts", true), (RowKey, false));
             var badged = Row(enabled: false);                                    // XAF passes the action's enabled state to every row
             EditDraftRowOpenRule.Apply(badged, badged: true, actionState, RowKey);
-            badged.Enabled.Should().BeTrue("the icon acts on its own row, which has a draft");
+            badged.Enabled.Should().BeFalse("O-11 fail closed: the rule never turns an icon on");
             EditDraftRowOpenRule.OnlySelectedRowReasonDisables(actionState, RowKey).Should().BeTrue();
 
             var otherReason = Enabled(("Admitted", true), ("Security", false), (RowKey, false));

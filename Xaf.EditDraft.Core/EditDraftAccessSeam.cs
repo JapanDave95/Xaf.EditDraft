@@ -16,11 +16,12 @@ public interface IEditDraftRecordAccess
     bool IsRecordVisible(XafApplication application, EditDraftTypePolicy policy, object record);
 
     /// <summary>
-    /// NEW records (design docs/edit-draft-new-records-design-2026-10-02.md §5 S5 i): may the login see records of this 事業所
-    /// (a SubSection Oid) — asked before a record is recreated from a draft whose stored SubSectionOid is not empty, when no
-    /// record exists yet to ask <see cref="IsRecordVisible"/> about. A host that does not implement it refuses (fail closed).
+    /// NEW records (design docs/edit-draft-new-records-design-2026-10-02.md §5 S5 i): may the login see records of this
+    /// access scope (the Guid the policy's ScopeOf returned at capture) — asked before a record is recreated from a draft
+    /// whose stored ScopeOid is not empty, when no record exists yet to ask <see cref="IsRecordVisible"/> about. A host that
+    /// does not implement it refuses (fail closed).
     /// </summary>
-    bool IsSubSectionVisible(XafApplication application, EditDraftTypePolicy policy, Guid subSectionOid) => false;
+    bool IsScopeVisible(XafApplication application, EditDraftTypePolicy policy, Guid scopeOid) => false;
 }
 
 public static partial class EditDraftServices
@@ -43,8 +44,8 @@ public sealed class XafSecurityEditDraftRecordAccess : IEditDraftRecordAccess
     public bool IsRecordVisible(XafApplication application, EditDraftTypePolicy policy, object record) =>
         application != null && policy != null && record != null;
 
-    /// <summary>NEW records: no 事業所 rule in the library default; the filled record is still asked <see cref="IsRecordVisible"/> before it is shown.</summary>
-    public bool IsSubSectionVisible(XafApplication application, EditDraftTypePolicy policy, Guid subSectionOid) =>
+    /// <summary>NEW records: no scope rule in the library default; the filled record is still asked <see cref="IsRecordVisible"/> before it is shown.</summary>
+    public bool IsScopeVisible(XafApplication application, EditDraftTypePolicy policy, Guid scopeOid) =>
         application != null && policy != null;
 }
 

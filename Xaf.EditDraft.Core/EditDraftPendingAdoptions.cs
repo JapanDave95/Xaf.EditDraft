@@ -8,7 +8,7 @@ namespace Xaf.EditDraft.Core;
 /// NEW records (design docs/edit-draft-new-records-design-2026-10-02.md §4.4 step 9; Codex review C6): one draft the 「入力控」
 /// list's recreate has CLAIMED for the record it is about to show — the draft row, the revision the claim produced, the owner,
 /// the EXACT editor id the claim wrote and the payload it stored. The new screen's capture takes it and attaches with that editor
-/// id (EditDraftCaptureControllerBlazor.TryAttachClaimed), so its writes supersede the claimed row and the first save deletes it
+/// id (EditDraftCaptureController.TryAttachClaimed), so its writes supersede the claimed row and the first save deletes it
 /// (DeleteOwn is scoped to the editor). The capture acknowledges the attachment; the recreate reports success only after that.
 /// Plain data plus a one-way acknowledgement flag (thread-safe).
 /// </summary>

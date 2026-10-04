@@ -15,9 +15,14 @@ namespace Xaf.EditDraft.Core;
 /// a table. No library type is named <c>EditDraft</c> (a type of that name under the Xaf namespace tree
 /// collides with the namespace Xaf.EditDraft, CS0118).
 ///
-/// The 19 members, their sizes and the four named indexes are the ones CareCrew's
-/// NursingHome_Chart.Module.BusinessObjects.EditDraft declared before the extraction (milestone M1), so the
-/// table, columns and indexes of an existing database stay valid (no migration).
+/// The 19 members, their sizes and the four named indexes are the ones the library's first host declared before the
+/// extraction (milestone M1), so the table, columns and indexes of an existing database stay valid (no migration).
+/// Two members were renamed on 2026-10-04 (gap G8) and keep their column names through [Persistent]:
+/// <see cref="OwnerFlag"/> (column LoginIsStaffMember) and <see cref="ScopeOid"/> (column SubSectionOid).
+///
+/// SECURITY: the payload is the typed text in readable JSON. Deny the store class to every role
+/// (EditDraftSecurity.DenyStoreToAllRoles in the ModuleUpdater), exclude it from the audit trail if the application
+/// uses one, and turn on a retention sweep (EditDraftRetention) — see docs/consumer-guide.md.
 ///
 /// OWNER = <see cref="OwnerUserOid"/>, a Guid (supported contract v1: Guid user keys). A row is never written
 /// without an owner, and every read, update and delete filters on it IN THE QUERY (EditDraftWriter).
@@ -63,9 +68,14 @@ public abstract class EditDraftStoreBase : BaseObject
     [ModelDefault("Caption", "Owner")]
     public Guid OwnerUserOid { get => _OwnerUserOid; set => SetPropertyValue(nameof(OwnerUserOid), ref _OwnerUserOid, value); }
 
-    private bool _LoginIsStaffMember;
-    /// <summary>A flag recorded with the owner by the consumer's owner resolver (CareCrew: the login was a StaffMember). Record only; never used for access.</summary>
-    public bool LoginIsStaffMember { get => _LoginIsStaffMember; set => SetPropertyValue(nameof(LoginIsStaffMember), ref _LoginIsStaffMember, value); }
+    private bool _OwnerFlag;
+    /// <summary>
+    /// A host-defined flag recorded with the owner by the host's owner resolver (EditDraftOwnerInfo.OwnerFlag; the library
+    /// default resolver records false). Record only; never used for access. Column "LoginIsStaffMember" (gap G8: the member
+    /// was renamed, the column was not, so an existing store table needs no migration).
+    /// </summary>
+    [Persistent("LoginIsStaffMember")]
+    public bool OwnerFlag { get => _OwnerFlag; set => SetPropertyValue(nameof(OwnerFlag), ref _OwnerFlag, value); }
 
     // ---- target -----------------------------------------------------------------------------
 
@@ -80,9 +90,14 @@ public abstract class EditDraftStoreBase : BaseObject
     [Indexed(Name = "iEditDraft_Target")]
     public Guid TargetOid { get => _TargetOid; set => SetPropertyValue(nameof(TargetOid), ref _TargetOid, value); }
 
-    private Guid _SubSectionOid;
-    /// <summary>The record's access scope at capture (policy.SubSectionOf), for the visibility re-check and the list. Guid.Empty = the type has none.</summary>
-    public Guid SubSectionOid { get => _SubSectionOid; set => SetPropertyValue(nameof(SubSectionOid), ref _SubSectionOid, value); }
+    private Guid _ScopeOid;
+    /// <summary>
+    /// The record's access scope at capture (EditDraftTypePolicy.ScopeOf), for the visibility re-check of a new record
+    /// (IEditDraftRecordAccess.IsScopeVisible). Guid.Empty = the type has none. Column "SubSectionOid" (gap G8: the member
+    /// was renamed, the column was not).
+    /// </summary>
+    [Persistent("SubSectionOid")]
+    public Guid ScopeOid { get => _ScopeOid; set => SetPropertyValue(nameof(ScopeOid), ref _ScopeOid, value); }
 
     private string _ContextText;
     /// <summary>Short display text taken at capture: the type caption and a date. Never a person's name (design §3 S4).</summary>
@@ -121,7 +136,10 @@ public abstract class EditDraftStoreBase : BaseObject
     public DateTime LastCapturedOn { get => _LastCapturedOn; set => SetPropertyValue(nameof(LastCapturedOn), ref _LastCapturedOn, value); }
 
     private DateTime _ExpiresOn;
-    /// <summary>FirstCapturedOn + 7 days, set once. Hidden at expiry; physically removed by the consumer's retention sweep.</summary>
+    /// <summary>
+    /// FirstCapturedOn + 7 days, set once, in the APPLICATION SERVER's local time (gap G5). Hidden at expiry; physically
+    /// removed only by a retention sweep the host turns on (EditDraftRetention).
+    /// </summary>
     [Indexed(Name = "iEditDraft_Expiry")]
     public DateTime ExpiresOn { get => _ExpiresOn; set => SetPropertyValue(nameof(ExpiresOn), ref _ExpiresOn, value); }
 

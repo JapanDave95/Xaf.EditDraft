@@ -10,7 +10,7 @@
        workflow (.github/workflows/publish-package.yml) runs on a tag v<Version>. -->
   <PropertyGroup>
     <IsPackable>false</IsPackable>
-    <Version>0.1.0-preview.1</Version>
+    <Version>0.2.0-preview.1</Version>
     <Authors>Dave Bates</Authors>
     <Company>JapanDave95</Company>
     <Copyright>Copyright © 2026 Dave Bates</Copyright>
@@ -21,7 +21,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageTags>xaf;devexpress;blazor;xpo;draft;autosave;recovery</PackageTags>
-    <PackageReleaseNotes>Preview: extracted from the CareCrew application on 2026-10-03. Known gaps are listed in the README.</PackageReleaseNotes>
+    <PackageReleaseNotes>0.2.0-preview.1 (2026-10-04): closes the 15 library gaps found by the sample consumer (docs/close-gaps-2026-10-04.md). New: startup checks that stop the application with a message naming the fix (store registered, a policy while capture is on, SQL Server, non-persistent object space provider, optional table check); EditDraftSecurity.DenyStoreToAllRoles for the ModuleUpdater and a startup warning for each role that can read the store; opt-in retention sweep (EditDraftRetention.Sweep, services.AddEditDraftRetention(), key EditDraftCapture:Retention:Enabled, application clock); EditDraftStoreOptions.Schema (default dbo) with quoted identifiers; EditDraftDecisions helpers; EditDraftBlazorOptions.HeaderActionOnEveryView; docs/consumer-guide.md. Changed: public renames LoginIsStaffMember to OwnerFlag, SubSectionOid to ScopeOid (store, seed, recreate draft), SubSectionOf to ScopeOf, IsSubSectionVisible to IsScopeVisible, EditDraftOwnerKind.F2StaffMember to HostDefined, EditDraftCaptureControllerBlazor to EditDraftCaptureController (store columns unchanged, no migration); English texts without host terms and without the promise of deletion at expiry; the header action shows caption and image; the row icon no longer re-enables an icon XAF disabled (O-11); an absent store table is re-checked after 30 seconds; Core grants InternalsVisibleTo only to Xaf.EditDraft.Blazor and Xaf.EditDraft.Tests. Unchanged: SQL Server only, XPO, Guid keys, DevExpress 26.1.4 as the tested floor, the Japanese text set.</PackageReleaseNotes>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>

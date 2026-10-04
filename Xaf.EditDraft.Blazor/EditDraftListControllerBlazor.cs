@@ -48,6 +48,8 @@ public class EditDraftListControllerBlazor : WindowController
             Caption = EditDraftListBridge.Caption,
             ToolTip = EditDraftTexts.Of(t => t.HeaderActionToolTip),
             ImageName = "Action_Open",
+            // Gap G12 (2026-10-04): caption and image without a host model node (a model node can still change it).
+            PaintStyle = DevExpress.ExpressApp.Templates.ActionItemPaintStyle.CaptionAndImage,
             SelectionDependencyType = SelectionDependencyType.Independent
         };
         HeaderListAction.Active[TabKey] = false;   // hidden until the first evaluation
@@ -180,10 +182,13 @@ public class EditDraftListControllerBlazor : WindowController
 
     private EditDraftTypePolicy ShownPolicy() => PolicyForListView(EditDraftServices.Registry(Application?.ServiceProvider), ShownView()?.Id);
 
+    /// <summary>Gap G11: the host chose to show the header action on every view (EditDraftBlazorOptions).</summary>
+    private bool OnEveryView => EditDraftBlazorOptions.HeaderActionOnEveryViewIn(Application?.ServiceProvider);
+
     private void UpdateHeaderAction()
     {
         var policy = ShownPolicy();
-        var onTab = policy != null;
+        var onTab = policy != null || OnEveryView;
         bool? available = onTab ? _bridge != null && _bridge.IsAvailable : null;
         HeaderListAction.Active[TabKey] = onTab;
         HeaderListAction.Active[AvailableKey] = available ?? true;
@@ -194,8 +199,9 @@ public class EditDraftListControllerBlazor : WindowController
     private void HeaderListAction_Execute(object sender, SimpleActionExecuteEventArgs e)
     {
         var policy = ShownPolicy();   // re-checked at the click, not taken from the last evaluation
-        EditDraftLog.Info($"[EditDraft] header list action clicked (main header → 入力控) policy={policy?.PolicyId ?? "none"}");
-        if (policy == null)
+        var everyView = OnEveryView;
+        EditDraftLog.Info($"[EditDraft] header list action clicked (main header → 入力控) policy={policy?.PolicyId ?? "none"} everyView={everyView}");
+        if (policy == null && !everyView)
         {
             UpdateHeaderAction();
             Message(EditDraftTexts.Of(t => t.OpenListTabFirst), InformationType.Warning);
@@ -207,7 +213,12 @@ public class EditDraftListControllerBlazor : WindowController
             UpdateHeaderAction();
             return;
         }
-        try { ShowList(includeDiscarded: false, objectTypeFilter: policy.TypeName); }
+        try
+        {
+            // Gap G11: off a registered ListView (host option HeaderActionOnEveryView) the list shows every registered type.
+            if (policy == null) ShowList(includeDiscarded: false, objectTypeFilter: null);
+            else ShowList(includeDiscarded: false, objectTypeFilter: policy.TypeName);
+        }
         catch (Exception ex) { ReportFailure("header list open", ex); }
     }
 
@@ -275,7 +286,7 @@ public class EditDraftListControllerBlazor : WindowController
         using (scope)
         {
             var rows = writer.ListOwn(readSpace, ownerOid, list.ObjectTypeFilter, list.IncludeDiscarded, Now(), out var readFailed);
-            EditDraftLog.Info($"[EditDraft] list: {rows.Count} row(s) read for owner {EditDraftCaptureControllerBlazor.Short(ownerOid)} filter={list.ObjectTypeFilter ?? "all"} readFailed={readFailed}");
+            EditDraftLog.Info($"[EditDraft] list: {rows.Count} row(s) read for owner {EditDraftCaptureController.Short(ownerOid)} filter={list.ObjectTypeFilter ?? "all"} readFailed={readFailed}");
             if (readFailed)
             {
                 list.Lead = EditDraftTexts.Of(t => t.ListReadFailed);

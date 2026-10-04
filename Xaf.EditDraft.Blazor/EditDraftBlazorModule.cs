@@ -19,6 +19,11 @@ namespace Xaf.EditDraft.Blazor;
 /// Milestone M3: the module's assembly also holds the read-only label editor of the popups' text lines
 /// (<see cref="EditDraftLabelEditor"/>; XAF registers [PropertyEditor] classes from each module's assembly) and the
 /// generator updaters that write the popup/list captions of the text set in use.
+///
+/// Gap G1 (2026-10-04): the popup and list classes are non-persistent, so the application needs a
+/// NonPersistentObjectSpaceProvider. When the application's setup completes, the module checks for one and stops the
+/// application with a message naming <c>.AddNonPersistent()</c> when it is missing (XAF 26.1 adds the provider itself
+/// unless the application overrides XafApplication.EnsureNonPersistentObjectSpaceProvider).
 /// </summary>
 public sealed class EditDraftBlazorModule : ModuleBase
 {
@@ -30,6 +35,19 @@ public sealed class EditDraftBlazorModule : ModuleBase
         RequiredModuleTypes.Add(typeof(EditDraftCoreModule));
         RequiredModuleTypes.Add(typeof(DevExpress.ExpressApp.Blazor.SystemModule.SystemBlazorModule));
         RequiredModuleTypes.Add(typeof(DevExpress.ExpressApp.ConditionalAppearance.ConditionalAppearanceModule));
+    }
+
+    public override void Setup(XafApplication application)
+    {
+        base.Setup(application);
+        if (application != null) application.SetupComplete += OnSetupComplete;
+    }
+
+    private static void OnSetupComplete(object sender, EventArgs e)
+    {
+        var application = (XafApplication)sender;
+        application.SetupComplete -= OnSetupComplete;
+        EditDraftStartup.RequireNonPersistentProvider(application);
     }
 
     /// <summary>The popup and list classes (non-persistent). Nothing maps to a table.</summary>

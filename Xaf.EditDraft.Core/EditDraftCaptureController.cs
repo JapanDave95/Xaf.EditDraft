@@ -33,9 +33,10 @@ namespace Xaf.EditDraft.Core;
 /// read. Nothing else is deferred: capture is live from activation, like the chart capture.
 ///
 /// Library (milestone M1): platform-agnostic, in Xaf.EditDraft.Core (owner decision D3). The registry, owner,
-/// switch section, clock and log sink come from the host (EditDraftServices); the name is kept until M2.
+/// switch section, clock and log sink come from the host (EditDraftServices). Gap G15 (2026-10-04): renamed from
+/// EditDraftCaptureControllerBlazor, since nothing in it is Blazor-specific.
 /// </summary>
-public class EditDraftCaptureControllerBlazor : ObjectViewController<DetailView, object>
+public class EditDraftCaptureController : ObjectViewController<DetailView, object>
 {
     private IObjectSpace _objectSpace;
     private EditDraftWriter _writer;
@@ -544,11 +545,11 @@ public class EditDraftCaptureControllerBlazor : ObjectViewController<DetailView,
         {
             EditorInstanceId = _editorInstanceId,
             OwnerUserOid = _payloadOwner.Oid,
-            LoginIsStaffMember = _payloadOwner.LoginIsStaffMember,
+            OwnerFlag = _payloadOwner.OwnerFlag,
             ObjectType = _policy.TypeName,
             TargetOid = key.TargetOid,
             IsNew = key.IsNew,
-            SubSectionOid = SafeSubSection(),
+            ScopeOid = SafeScope(),
             ContextText = ContextText(),
             ViewId = View?.Id
         };
@@ -565,9 +566,9 @@ public class EditDraftCaptureControllerBlazor : ObjectViewController<DetailView,
         };
     }
 
-    private Guid SafeSubSection()
+    private Guid SafeScope()
     {
-        try { return _policy.SubSectionOf?.Invoke(_record) ?? Guid.Empty; } catch { return Guid.Empty; }
+        try { return _policy.ScopeOf?.Invoke(_record) ?? Guid.Empty; } catch { return Guid.Empty; }
     }
 
     /// <summary>「苦情対応／2026/09/30」: the type caption and the policy's context date (separator from EditDraftTexts). Never a person's name.</summary>
@@ -660,7 +661,7 @@ public class EditDraftCaptureControllerBlazor : ObjectViewController<DetailView,
             {
                 what = "supersede";
                 ok = writer.TrySupersede(ticket.Oid, ticket.Revision, s.Seed.OwnerUserOid, s.Json, s.Count,
-                    s.Seed.SubSectionOid, s.Seed.ContextText, s.Now);
+                    s.Seed.ScopeOid, s.Seed.ContextText, s.Now);
                 if (ok) onStored?.Invoke(s.MaxSeq);
                 if (!ok)
                 {

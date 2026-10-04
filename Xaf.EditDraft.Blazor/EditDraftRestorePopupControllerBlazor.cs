@@ -77,7 +77,7 @@ public class EditDraftRestorePopupControllerBlazor : ObjectViewController<Detail
 
         plan.Answered = true;   // the cancel path that closes the popup must not also report あとで
         if (ok > 0) EditDraftBadgeNotifier.NotifyChanged(Application?.ServiceProvider, plan.ObjectType);   // wave 1b row badges (B6)
-        EditDraftLog.Info($"[EditDraft] drafts [{string.Join(",", plan.Drafts.Select(d => EditDraftCaptureControllerBlazor.Short(d.DraftOid)))}] discarded by user ok={ok}/{plan.Drafts.Count}");
+        EditDraftLog.Info($"[EditDraft] drafts [{string.Join(",", plan.Drafts.Select(d => EditDraftCaptureController.Short(d.DraftOid)))}] discarded by user ok={ok}/{plan.Drafts.Count}");
         try
         {
             Application?.ShowViewStrategy?.ShowMessage(
@@ -121,7 +121,7 @@ public class EditDraftReadOnlyViewControllerBlazor : ObjectViewController<Detail
             view.Answered = true;
             if (ok > 0) EditDraftBadgeNotifier.NotifyChanged(Application?.ServiceProvider, null);   // wave 1b row badges (B6)
             var all = ok == view.DraftOids.Count;
-            EditDraftLog.Info($"[EditDraft] read-only drafts [{string.Join(",", view.DraftOids.Select(EditDraftCaptureControllerBlazor.Short))}] discarded by user ok={ok}/{view.DraftOids.Count}");
+            EditDraftLog.Info($"[EditDraft] read-only drafts [{string.Join(",", view.DraftOids.Select(EditDraftCaptureController.Short))}] discarded by user ok={ok}/{view.DraftOids.Count}");
             try { Application?.ShowViewStrategy?.ShowMessage(all ? EditDraftTexts.Of(t => t.Discarded) : EditDraftTexts.Of(t => t.DiscardFailed), all ? InformationType.Info : InformationType.Warning, 8000); } catch { }
             Frame?.GetController<DialogController>()?.AcceptAction?.DoExecute();
         };

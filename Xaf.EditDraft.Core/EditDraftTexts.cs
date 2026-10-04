@@ -168,7 +168,11 @@ public sealed class EditDraftTextSet
     public string CaptionStoreObjectType { get; init; }
     public string CaptionStoreContext { get; init; }
 
-    /// <summary>Today's CareCrew strings, byte for byte (the golden snapshot and the wave tests pin them).</summary>
+    /// <summary>
+    /// The Japanese set: the first host's strings, byte for byte (its tests pin them; unchanged by the 2026-10-04 gap work).
+    /// ListLead says drafts are deleted at expiry ("保存期限を過ぎると削除されます"), which holds only when a retention sweep runs
+    /// (EditDraftRetention); a host that uses this set should turn one on, or supply its own set.
+    /// </summary>
     public static EditDraftTextSet Japanese { get; } = new()
     {
         StatusAlreadyApplied = "反映済み",
@@ -291,6 +295,10 @@ public sealed class EditDraftTextSet
         CaptionStoreContext = "対象"
     };
 
+    /// <summary>
+    /// The English set (default). Gaps G4/G9 (2026-10-04): no host vocabulary; the list lead does not promise deletion at
+    /// expiry (rows are deleted only by a retention sweep the host turns on).
+    /// </summary>
     public static EditDraftTextSet English { get; } = new()
     {
         StatusAlreadyApplied = "Already applied",
@@ -334,7 +342,7 @@ public sealed class EditDraftTextSet
         OfferProvenance = "{0} {1} / typed {2:yyyy/MM/dd HH:mm} ({3} field(s)) / {4}",
         ReadOnlyEntrySuffix = " (cannot be restored)",
         ReadOnlyLead = "{0} field(s) cannot be put back (display only). Read the text and type it again if needed.",
-        ListLead = "Unsaved input. Select a draft and press Open to put it back into its record (it is not saved until you save). Drafts are deleted when they expire.",
+        ListLead = "Unsaved input. Select a draft and press Open to put it back into its record (it is not saved until you save). A draft expires at its \"Kept until\" time and is no longer shown.",
         ListEmpty = "There are no unsaved drafts.",
         ListReadFailed = "The drafts could not be read. They have not been lost. Open the list again later.",
         StateExisting = "Existing",
@@ -344,7 +352,7 @@ public sealed class EditDraftTextSet
         DiscardFailedShownAgain = "The draft could not be discarded. It will be shown again next time.",
         DiscardFailed = "The draft could not be discarded.",
         SelectDraftToOpen = "Select a draft to open.",
-        PersonalLoginOnly = "Drafts are available to a personal login only.",
+        PersonalLoginOnly = "Drafts are not available for this login.",
         OpenListTabFirst = "Open the list tab first, then press it again.",
         ListOpenFailedReload = "The drafts could not be opened. Reload the page and try again.",
         ListOpenFailedContact = "The drafts could not be opened. Try again; if this continues, contact your administrator.",
@@ -352,7 +360,7 @@ public sealed class EditDraftTextSet
         DraftUnreadable = "This draft cannot be read.",
         DraftTypeUnknown = "The record type of this draft is not known.",
         RecordNotFound = "The original record was not found (it was deleted or cannot be shown).",
-        RecordNotVisible = "This draft cannot be restored for this login (事業所 permission).",
+        RecordNotVisible = "This draft cannot be restored for this login (no permission to see the record).",
         NothingSelected = "No field is selected.",
         ApplyScreenChanged = "This draft cannot be put back (the screen changed).",
         ApplyViewNotEditable = "This draft cannot be put back because the screen cannot be edited.",
@@ -381,7 +389,7 @@ public sealed class EditDraftTextSet
         RecreateCancel = "Cancel",
         RecreateTypeNotAllowed = "A record of this type cannot be created from a draft.",
         RecreateNoPermission = "You do not have permission to create this record.",
-        RecreateSubSectionNotVisible = "The office (事業所) of this draft's record cannot be shown.",
+        RecreateSubSectionNotVisible = "This login cannot see records in the scope of this draft's record.",
         RecreateClaimLost = "This draft cannot be put back (it was restored or changed on another screen, or it has expired).",
         RecreateFailed = "The record could not be created from the draft. The draft has been kept.",
         RecreateNotAttached = "The draft could not be handed to the new screen, so the created record was closed without saving. The draft has been kept; open it again.",

@@ -174,14 +174,14 @@ public class SampleConsumerTests
         Assert.That(policy.ApprovedViewIds, Is.EquivalentTo(new[] { "Note_DetailView" }));
         Assert.That(policy.ListViewIds, Is.EquivalentTo(new[] { "Note_ListView" }));
 
-        Assert.That(EditDraftCaptureControllerBlazor.IsAdmittedView(policy, "Note_DetailView", isRoot: true, isNew: false), Is.True, "existing Note, root DetailView");
-        Assert.That(EditDraftCaptureControllerBlazor.IsAdmittedViewIncludingNew(policy, "Note_DetailView", isRoot: true, isNew: true), Is.True, "new Note (AllowNewRecords)");
+        Assert.That(EditDraftCaptureController.IsAdmittedView(policy, "Note_DetailView", isRoot: true, isNew: false), Is.True, "existing Note, root DetailView");
+        Assert.That(EditDraftCaptureController.IsAdmittedViewIncludingNew(policy, "Note_DetailView", isRoot: true, isNew: true), Is.True, "new Note (AllowNewRecords)");
         Assert.That(EditDraftListControllerBlazor.PolicyForListView(registry, "Note_ListView"), Is.SameAs(policy), "header action and badges on the Note list");
 
         // C7 boundary: unapproved views are not admitted.
-        Assert.That(EditDraftCaptureControllerBlazor.IsAdmittedView(policy, "Note_DetailView", isRoot: false, isNew: false), Is.False, "a nested (non-root) DetailView");
-        Assert.That(EditDraftCaptureControllerBlazor.IsAdmittedView(policy, "Note_ListView", isRoot: true, isNew: false), Is.False, "a ListView id is not a DetailView id");
-        Assert.That(EditDraftCaptureControllerBlazor.IsAdmittedView(policy, "Note_DetailView_Copy", isRoot: true, isNew: false), Is.False);
+        Assert.That(EditDraftCaptureController.IsAdmittedView(policy, "Note_DetailView", isRoot: false, isNew: false), Is.False, "a nested (non-root) DetailView");
+        Assert.That(EditDraftCaptureController.IsAdmittedView(policy, "Note_ListView", isRoot: true, isNew: false), Is.False, "a ListView id is not a DetailView id");
+        Assert.That(EditDraftCaptureController.IsAdmittedView(policy, "Note_DetailView_Copy", isRoot: true, isNew: false), Is.False);
         Assert.That(EditDraftListControllerBlazor.PolicyForListView(registry, "Note_DetailView"), Is.Null);
         Assert.That(EditDraftListControllerBlazor.PolicyForListView(registry, "SampleEditDraft_ListView"), Is.Null);
     }

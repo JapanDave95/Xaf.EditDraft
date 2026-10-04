@@ -49,10 +49,11 @@ namespace Xaf.EditDraft.Tests
                 .Should().BeEquivalentTo(new[] { "DevExpress.ExpressApp", "DevExpress.ExpressApp.Xpo", "DevExpress.Persistent.Base", "DevExpress.Persistent.BaseImpl.Xpo", "Newtonsoft.Json" },
                     "design §3: the brief's list plus Persistent.Base, BaseImpl.Xpo (BaseObject) and Newtonsoft.Json, all already pinned centrally");
             // Owner decision O-3 (2026-10-02, "writer goes internal in M2"): the writer is internal, visible to the library's
-            // Blazor part and to the test projects that exercise it (library M3: this project, Xaf.EditDraft.Tests, beside
-            // NursingHome_Chart.Rostering.Tests); still no application (CareCrew.*) assembly is granted the internals.
+            // Blazor part and to this test project, which exercises it; still no application (CareCrew.*) assembly is granted
+            // the internals. Expectation changed by gap G13 (run 2026-10-04-editdraft-close-gaps-08c338): the first host's test
+            // project NursingHome_Chart.Rostering.Tests is no longer a friend.
             Core.GetCustomAttributes<InternalsVisibleToAttribute>().Select(a => a.AssemblyName)
-                .Should().BeEquivalentTo(new[] { "Xaf.EditDraft.Blazor", "NursingHome_Chart.Rostering.Tests", "Xaf.EditDraft.Tests" })
+                .Should().BeEquivalentTo(new[] { "Xaf.EditDraft.Blazor", "Xaf.EditDraft.Tests" })
                 .And.NotContain(n => n.StartsWith("CareCrew"), "no application assembly is granted the library's internals");
         }
 
@@ -66,7 +67,7 @@ namespace Xaf.EditDraft.Tests
             var controllers = ((System.Collections.Generic.IEnumerable<Type>)typeof(DevExpress.ExpressApp.ModuleBase)
                 .GetMethod("GetDeclaredControllerTypes", BindingFlags.Instance | BindingFlags.NonPublic)
                 .Invoke(new EditDraftCoreModule(), null)).ToList();
-            controllers.Should().ContainSingle(t => t == typeof(EditDraftCaptureControllerBlazor), "XAF collects the module's controllers from its assembly (one class, moved not copied)");
+            controllers.Should().ContainSingle(t => t == typeof(EditDraftCaptureController), "XAF collects the module's controllers from its assembly (one class, moved not copied)");
             controllers.Should().OnlyContain(t => t.Assembly == Core);
             typeof(EditDraftStoreBase).IsAbstract.Should().BeTrue();
             typeof(EditDraftStoreBase).GetCustomAttributes(typeof(DevExpress.Xpo.NonPersistentAttribute), false).Should().NotBeEmpty();

@@ -138,7 +138,7 @@ public class EditDraftRestoreControllerBlazor : ObjectViewController<DetailView,
             }
             var record = View?.CurrentObject;
             if (record == null || ObjectSpace.IsNewObject(record)) return;        // existing records only (wave 1)
-            if (!EditDraftCaptureControllerBlazor.IsAdmittedView(_policy, View?.Id, View.IsRoot, false))
+            if (!EditDraftCaptureController.IsAdmittedView(_policy, View?.Id, View.IsRoot, false))
             {
                 EditDraftLog.Info($"[EditDraft] offer skipped at '{trigger}': view {View?.Id} (isRoot={View.IsRoot}) is not an approved root DetailView of {_policy.TypeName}");
                 return;
@@ -160,7 +160,7 @@ public class EditDraftRestoreControllerBlazor : ObjectViewController<DetailView,
             UnwatchMdi();
 
             var recordOid = (record as BaseObject)?.Oid ?? Guid.Empty;
-            var ownInstance = Frame?.GetController<EditDraftCaptureControllerBlazor>()?.CurrentEditorInstanceId ?? Guid.Empty;
+            var ownInstance = Frame?.GetController<EditDraftCaptureController>()?.CurrentEditorInstanceId ?? Guid.Empty;
             var requested = (Application?.ServiceProvider?.GetService(typeof(EditDraftOfferRequests)) as EditDraftOfferRequests)
                 ?.TakeOfferRequest(record) ?? Guid.Empty;
 
@@ -337,7 +337,7 @@ public class EditDraftRestoreControllerBlazor : ObjectViewController<DetailView,
         var record = View?.CurrentObject;
         var recordOid = (record as BaseObject)?.Oid ?? Guid.Empty;
         var owner = EditDraftServices.CurrentOwner(Application?.ServiceProvider, ObjectSpace);
-        var capture = Frame?.GetController<EditDraftCaptureControllerBlazor>();
+        var capture = Frame?.GetController<EditDraftCaptureController>();
         if (record == null || capture == null || capture.Policy == null || capture.Policy.Type != _policy.Type)
         {
             Message(EditDraftTexts.Of(t => t.ApplyScreenChanged), InformationType.Warning);
@@ -493,7 +493,7 @@ public class EditDraftRestoreControllerBlazor : ObjectViewController<DetailView,
         return safe;
     }
 
-    private static string S(Guid g) => EditDraftCaptureControllerBlazor.Short(g);
+    private static string S(Guid g) => EditDraftCaptureController.Short(g);
 
     private void Message(string text, InformationType type)
     {

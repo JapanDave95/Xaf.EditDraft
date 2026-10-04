@@ -6,7 +6,7 @@ namespace Xaf.EditDraft.Core;
 
 /// <summary>
 /// The capture decision for ONE member notification of a DetailView capture, and the payload rebuilt after a fresh start.
-/// Pure (no XAF): EditDraftCaptureControllerBlazor calls these and the tests exercise the same code.
+/// Pure (no XAF): EditDraftCaptureController calls these and the tests exercise the same code.
 ///
 /// GENUINE-EDIT RULE (design docs/edit-draft-new-records-design-2026-10-02.md §4.2.4 and design rule 9; Codex combined C18):
 /// for a member with no entry, or only a SEEDED entry, a notification is a change only when the member's value differs from

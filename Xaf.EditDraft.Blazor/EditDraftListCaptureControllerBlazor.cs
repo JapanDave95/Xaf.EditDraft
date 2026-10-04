@@ -368,25 +368,25 @@ public class EditDraftListCaptureControllerBlazor : ObjectViewController<ListVie
         catch (Exception ex) { EditDraftLog.Error($"[EditDraft] list write start failed: {ex.GetType().Name}"); }
     }
 
-    private EditDraftCaptureControllerBlazor.DraftSnapshot BuildSnapshot(EditDraftRowContext ctx)
+    private EditDraftCaptureController.DraftSnapshot BuildSnapshot(EditDraftRowContext ctx)
     {
         var seed = new EditDraftSeed
         {
             EditorInstanceId = _editorInstanceId,
             OwnerUserOid = ctx.PayloadOwner.Oid,
-            LoginIsStaffMember = ctx.PayloadOwner.LoginIsStaffMember,
+            OwnerFlag = ctx.PayloadOwner.OwnerFlag,
             ObjectType = _policy.TypeName,
             TargetOid = ctx.TargetOid,
-            SubSectionOid = SafeSubSection(ctx.Record),
+            ScopeOid = SafeScope(ctx.Record),
             ContextText = ContextText(ctx.Record),
             ViewId = View?.Id
         };
         return ctx.BuildSnapshot(seed, EditDraftServices.Clock(Application?.ServiceProvider));
     }
 
-    private Guid SafeSubSection(object record)
+    private Guid SafeScope(object record)
     {
-        try { return _policy.SubSectionOf?.Invoke(record) ?? Guid.Empty; } catch { return Guid.Empty; }
+        try { return _policy.ScopeOf?.Invoke(record) ?? Guid.Empty; } catch { return Guid.Empty; }
     }
 
     /// <summary>Type caption + the policy's context date, never a name (same text as a DetailView draft).</summary>
@@ -396,12 +396,12 @@ public class EditDraftListCaptureControllerBlazor : ObjectViewController<ListVie
         {
             var caption = CaptionHelper.GetClassCaption(_policy.Type.FullName);
             if (string.IsNullOrWhiteSpace(caption)) caption = _policy.TypeName;
-            return EditDraftCaptureControllerBlazor.ContextTextFor(caption, _policy.ContextDateOf?.Invoke(record));
+            return EditDraftCaptureController.ContextTextFor(caption, _policy.ContextDateOf?.Invoke(record));
         }
         catch { return _policy.TypeName; }
     }
 
-    private void StartWrite(EditDraftRowContext ctx, EditDraftCaptureControllerBlazor.DraftSnapshot snapshot)
+    private void StartWrite(EditDraftRowContext ctx, EditDraftCaptureController.DraftSnapshot snapshot)
     {
         if (snapshot.Seed.OwnerUserOid == Guid.Empty || snapshot.Seed.TargetOid == Guid.Empty) return;   // never an ownerless or targetless row
         var slot = ctx.Slot;
@@ -412,22 +412,22 @@ public class EditDraftListCaptureControllerBlazor : ObjectViewController<ListVie
         var services = Application?.ServiceProvider;
         // Bound to THIS policy and the LIST switch: queued and coalesced writes re-read all three keys (T11, E3).
         var stillEnabled = EditDraftWriteGate.Bind(_policy?.PolicyId, id => EditDraftSwitch.IsListEnabled(services, id));
-        Action<EditDraftCaptureControllerBlazor.DraftSnapshot, EditDraftCaptureControllerBlazor.DraftSnapshot> onFreshStart = (dropped, s) =>
+        Action<EditDraftCaptureController.DraftSnapshot, EditDraftCaptureController.DraftSnapshot> onFreshStart = (dropped, s) =>
         {
             var newest = dropped ?? s;
-            if (circuit == null) { EditDraftCaptureControllerBlazor.RetiredFreshStart(slot, mark, newest, writer, stillEnabled); return; }
+            if (circuit == null) { EditDraftCaptureController.RetiredFreshStart(slot, mark, newest, writer, stillEnabled); return; }
             try { circuit.Post(_ => ResumeAfterFreshStart(ctx, newest, writer, stillEnabled), null); } catch { }
         };
         var badges = _badges;
         var type = _policy?.TypeName;
         System.Threading.Tasks.Task.Run(() =>
         {
-            DraftWriteSlot<EditDraftCaptureControllerBlazor.DraftSnapshot>.WriteTicket? current = ticket;
+            DraftWriteSlot<EditDraftCaptureController.DraftSnapshot>.WriteTicket? current = ticket;
             var created = false;
             while (current is { } running)
             {
                 created |= running.IsCreate;
-                current = EditDraftCaptureControllerBlazor.RunOneWrite(slot, writer, running, mark.Raise, onFreshStart, stillEnabled);
+                current = EditDraftCaptureController.RunOneWrite(slot, writer, running, mark.Raise, onFreshStart, stillEnabled);
             }
             // Codex diffreview pass 2 C5/C10/C4: a create's outcome (stored, create-then-delete after a save, failed or
             // skipped) is known only now; this circuit's badge lists of the type re-read what is stored.
@@ -436,14 +436,14 @@ public class EditDraftListCaptureControllerBlazor : ObjectViewController<ListVie
     }
 
     /// <summary>The row's draft was 破棄'd or expired while this context lived: never-stored members are written as a fresh draft.</summary>
-    private void ResumeAfterFreshStart(EditDraftRowContext ctx, EditDraftCaptureControllerBlazor.DraftSnapshot newest, EditDraftWriter writer, Func<bool> stillEnabled)
+    private void ResumeAfterFreshStart(EditDraftRowContext ctx, EditDraftCaptureController.DraftSnapshot newest, EditDraftWriter writer, Func<bool> stillEnabled)
     {
         try
         {
             if (!ctx.Slot.NeedsFreshStart) return;
             if (!_contexts.TryGetValue(ctx.TargetOid, out var live) || !ReferenceEquals(live, ctx))
             {
-                EditDraftCaptureControllerBlazor.RetiredFreshStart(ctx.Slot, ctx.Mark, newest, writer, stillEnabled);
+                EditDraftCaptureController.RetiredFreshStart(ctx.Slot, ctx.Mark, newest, writer, stillEnabled);
                 return;
             }
             var kept = ctx.RebuildAfterFreshStart();
@@ -495,5 +495,5 @@ public class EditDraftListCaptureControllerBlazor : ObjectViewController<ListVie
         });
     }
 
-    private static string Short(Guid g) => EditDraftCaptureControllerBlazor.Short(g);
+    private static string Short(Guid g) => EditDraftCaptureController.Short(g);
 }
