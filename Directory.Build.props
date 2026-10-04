@@ -19,6 +19,7 @@
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/JapanDave95/Xaf.EditDraft</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageTags>xaf;devexpress;blazor;xpo;draft;autosave;recovery</PackageTags>
     <PackageReleaseNotes>Preview: extracted from the CareCrew application on 2026-10-03. Known gaps are listed in the README.</PackageReleaseNotes>
     <IncludeSymbols>true</IncludeSymbols>

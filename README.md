@@ -24,8 +24,8 @@ the store table in `dbo`.
 ## Installing the packages
 
 The library is published as two NuGet packages, `Xaf.EditDraft.Core` and `Xaf.EditDraft.Blazor`, on this
-repository's GitHub Packages feed. The feed is private: a consumer needs read access to this repository and a
-GitHub personal access token with the `read:packages` scope.
+repository's GitHub Packages feed. The repository is public, but GitHub's NuGet registry requires authentication even
+for public packages: a consumer needs a GitHub personal access token (classic) with the `read:packages` scope.
 
 1. Add the feed once, with your own GitHub user name and token (never commit the token; the user-level
    `NuGet.Config` is the usual place):
@@ -100,5 +100,5 @@ yet confirmed lower.
 
 ## Licence
 
-Not yet decided; the repository is private. The library depends on DevExpress components, which require a DevExpress
-licence.
+MIT (see `LICENSE`). The licence covers this library's own code. It depends on DevExpress components, which are not
+included and require a DevExpress licence of your own.
