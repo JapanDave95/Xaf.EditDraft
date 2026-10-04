@@ -74,7 +74,8 @@ skipped (`Assert.Ignore`) when those files are not in the repository.
 produce the two packages (and symbol packages) locally. The
 `.github/workflows/publish-package.yml` workflow builds, tests, packs and pushes them to GitHub Packages when a tag
 `v<Version>` is pushed, where `<Version>` is the value in `Directory.Build.props`; the job refuses a tag that does
-not match. It needs one repository secret, `DEVEXPRESS_NUGET_KEY` (the DevExpress feed authorization key), to
+not match, and a tag is the only trigger (no manual run). Symbol packages are kept as a workflow artifact only,
+because GitHub Packages does not accept them. It needs one repository secret, `DEVEXPRESS_NUGET_KEY` (the DevExpress feed authorization key), to
 restore the DevExpress dependencies in CI. To release: bump `<Version>`, commit, `git tag v<Version>`, `git push
 --tags`.
 
