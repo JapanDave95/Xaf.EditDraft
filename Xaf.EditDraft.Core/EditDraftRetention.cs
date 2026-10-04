@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Numerics;
 using DevExpress.ExpressApp;
 using DevExpress.ExpressApp.Xpo;
 using Microsoft.Extensions.Configuration;
@@ -14,7 +15,8 @@ namespace Xaf.EditDraft.Core;
 ///
 /// OFF unless the host turns it on, in one of two ways:
 /// - the hosted service of the Blazor package (services.AddEditDraftRetention()), which sweeps every
-///   <see cref="IntervalMinutesKey"/> minutes while <see cref="EnabledKey"/> reads as the boolean true; or
+///   <see cref="IntervalMinutesKey"/> minutes (at most <see cref="MaxIntervalMinutes"/>; 0 or below turns it off) while
+///   <see cref="EnabledKey"/> reads as the boolean true; or
 /// - a call to <see cref="Sweep(IServiceProvider)"/> from the host's own scheduler.
 ///
 /// Owner-agnostic by design: the sweep deletes by expiry alone, across every owner, because no login asks for it. It is not
@@ -30,10 +32,20 @@ public static class EditDraftRetention
     /// <summary>Hosted-service switch (named in the default section; a custom section moves it like the other switches).</summary>
     public const string EnabledKey = "EditDraftCapture:Retention:Enabled";
 
-    /// <summary>Minutes between hosted-service sweeps; missing, malformed or below 1 = <see cref="DefaultIntervalMinutes"/>.</summary>
+    /// <summary>
+    /// Minutes between hosted-service sweeps (<see cref="IntervalMinutes"/>): missing or not a whole number =
+    /// <see cref="DefaultIntervalMinutes"/>; above <see cref="MaxIntervalMinutes"/> = <see cref="MaxIntervalMinutes"/>; 0 or
+    /// below turns the hosted sweep off (the service logs a warning and stops).
+    /// </summary>
     public const string IntervalMinutesKey = "EditDraftCapture:Retention:IntervalMinutes";
 
     public const int DefaultIntervalMinutes = 60;
+
+    /// <summary>
+    /// The longest interval, one day (Codex C3, 2026-10-04). A larger configured value is clamped to it, so the hosted
+    /// service's delay stays far below Task.Delay's limit (about 49.7 days) and cannot stop the host.
+    /// </summary>
+    public const int MaxIntervalMinutes = 1440;
 
     public const int BatchSize = 1000;
 
@@ -51,12 +63,19 @@ public static class EditDraftRetention
         catch { return false; }
     }
 
+    /// <summary>
+    /// The hosted-service interval in minutes, from 1 to <see cref="MaxIntervalMinutes"/>, or 0 when the configured value is 0
+    /// or below (the hosted sweep is off). Missing or not a whole number = <see cref="DefaultIntervalMinutes"/>; a whole number
+    /// above the maximum, however large, = <see cref="MaxIntervalMinutes"/>.
+    /// </summary>
     public static int IntervalMinutes(IServiceProvider services)
     {
         try
         {
             var raw = services?.GetService<IConfiguration>()?[EditDraftSwitch.In(services, IntervalMinutesKey)];
-            return int.TryParse(raw?.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var minutes) && minutes >= 1 ? minutes : DefaultIntervalMinutes;
+            if (!BigInteger.TryParse(raw?.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var minutes)) return DefaultIntervalMinutes;
+            if (minutes <= 0) return 0;
+            return minutes >= MaxIntervalMinutes ? MaxIntervalMinutes : (int)minutes;
         }
         catch { return DefaultIntervalMinutes; }
     }

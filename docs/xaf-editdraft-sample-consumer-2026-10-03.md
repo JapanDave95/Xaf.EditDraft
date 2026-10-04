@@ -1,7 +1,7 @@
 # Xaf.EditDraft sample consumer — samples/Xaf.EditDraft.Sample
 
-Run `2026-10-03-editdraft-sample-e817ca` (collaborator: Claude Opus 5.5 + Codex gpt-6-astra at xhigh). Worktree
-`C:\Users\owner\source\repos\CareCrew-sample`, branch `feature/edit-draft-sample-consumer`, base `04c69fdc` (master).
+Run `2026-10-03-editdraft-sample-e817ca` (collaborator: Claude Opus 5.5 + Codex gpt-6-astra at xhigh). Branch
+`feature/edit-draft-sample-consumer`, base `04c69fdc` (master).
 Not committed, not deployed.
 
 Owner (2026-10-03, verbatim): "Create the sample consumer project to prove it" — the proof of "a generic library that any
@@ -33,18 +33,18 @@ CareCrew code unchanged: `git status` shows only `CareCrew.sln` (+67 lines) and 
 
 | # | Claim | Evidence | What the check proves |
 |---|---|---|---|
-| E1 | Both sample projects build with 0 errors and 0 warnings, and no library or CareCrew file changed | `--no-incremental` builds into `artifacts/claude-test/20261003-e817ca` (logs `post-review\build-*.txt`); `git status --short` | It compiles against the unchanged library |
+| E1 | Both sample projects build with 0 errors and 0 warnings, and no library or CareCrew file changed | `--no-incremental` builds into `artifacts/claude-test/20261003-e817ca`; `git status --short` | It compiles against the unchanged library |
 | E2 | The sample references both libraries and no `CareCrew.*`, `NursingHome_Chart.*`, `Progress.*`, `Llamachant*` or `CareTree*` assembly, directly or reachably | tests B1 (reference walk), B2 (project files) | Assembly isolation |
 | E3 | The registry built by the sample's own `Startup` holds exactly the Note policy, which admits `Note_DetailView` (existing and new records) and `Note_ListView` and nothing else | tests C3, C3b (through `Startup.ConfigureServices`), C4, C5 | Registration and admission rules |
 | E4 | XAF generates `Note_DetailView` and `Note_ListView` in a real application model of `SampleModule` + `EditDraftCoreModule`; ListView `AllowNew` and DetailView `AllowEdit` are true; the store class is in the BO model | test C6 (headless `XafApplication`, in-memory XPO) | Model level, without the Blazor module |
 | E5 | Every seam the sample does not register is the library default: owner, record access, clock, switch section, texts (English), log sink (application `ILogger`); the four per-circuit services resolve | tests D1, D2, C3b | Default composition |
 | E6 | The sample's `appsettings.json` turns on existing, new and ListView capture for `Note` only; each of the four keys fails closed over true/True/false/missing/empty/"yes"/"1" | tests D3, D4 (28 cases) | Switch configuration |
 | E7 | The updater gives every role a DENY of all five operations on the store, idempotently | test E1; read-only query after three updater runs: one row per role (`Administrators`, `Default`), all states 0 (= Deny, matching E1) | Permission rows, not effective access |
-| E8 | XPO UpdateSchema created `dbo.SampleEditDraft` with 21 columns and the library's four named indexes plus the primary key | read-only queries `host\db-readonly-queries.txt` | Mapping reaches SQL Server |
-| E9 | The host (Development, :5006) answered `/` with 200, served `_content/Xaf.EditDraft.Blazor/edit-draft-row-badge.css` with 200 `text/css` and the source file's SHA-256 (`ae057675…`), linked it in the page, answered 404 for a missing asset, and logged `XAF modules loaded: …, EditDraftCoreModule, ConditionalAppearanceModule, EditDraftBlazorModule, …` | `host\` and `host-final\` (curl, stdout, stop records) | Static asset and module loading at startup |
-| E10 | The tests can fail: removing the deny line and the registry registration failed E1 and C3; removing the `AddEditDrafts(services)` call from `ConfigureServices` failed C3b; files restored byte-identical (SHA-256 checked) | `sensitivity\test-mutated.txt`, `test-mutated-2.txt` | Sensitivity of those tests |
+| E8 | XPO UpdateSchema created `dbo.SampleEditDraft` with 21 columns and the library's four named indexes plus the primary key | read-only queries | Mapping reaches SQL Server |
+| E9 | The host (Development, :5006) answered `/` with 200, served `_content/Xaf.EditDraft.Blazor/edit-draft-row-badge.css` with 200 `text/css` and the source file's SHA-256 (`ae057675…`), linked it in the page, answered 404 for a missing asset, and logged `XAF modules loaded: …, EditDraftCoreModule, ConditionalAppearanceModule, EditDraftBlazorModule, …` | curl output, host stdout and stop records of both host runs | Static asset and module loading at startup |
+| E10 | The tests can fail: removing the deny line and the registry registration failed E1 and C3; removing the `AddEditDrafts(services)` call from `ConfigureServices` failed C3b; files restored byte-identical (SHA-256 checked) | the outputs of the two mutated test runs | Sensitivity of those tests |
 
-Hosts started and stopped by this run: PID 22544 (15:09:47, first run) and PID 56196 (15:35:16, final bytes), both on
+Hosts started and stopped by this run: one at 15:09:47 (first run) and one at 15:35:16 (final bytes), both on
 port 5006, each confirmed as the listener and the recorded start time before `taskkill /PID … /T /F`; after each stop,
 no process and no listener on 5006. No other port was used. LocalDB database `XafEditDraftSample` did not exist before
 the run (`sys.databases`, 0 rows) and stays on this machine as a disposable sample database.
@@ -58,7 +58,7 @@ the run (`sys.databases`, 0 rows) and stays on this machine as a disposable samp
 | The consumer must add the 入力控 header action | Ruled out: the library creates action `EditDraftListBlazor` (category QuickAccess) | `Xaf.EditDraft.Blazor/EditDraftListControllerBlazor.cs:32,46-52`; the sample's `Model.xafml` node only sets `PaintStyle` |
 | The library's writer is subject to XAF role permissions | Ruled out: non-secured object space throughout (create with CommitChanges, owner-filtered reads, owner-filtered T-SQL updates and deletes) | `Xaf.EditDraft.Core/EditDraftWriter.cs:160-167,176-200,211-220,253-290,299-334,337-415,417-425` |
 | A type DENY keeps every role out of the store | Ruled out for `IsAdministrative` roles ("You cannot deny any rights for a role with the Administrative Permission", XAF 26.1 topic 404633) and for roles with object or member ALLOW grants on the store (Codex DR1; XAF topic 113152 shows a type Deny combined with an object Allow) | dxdocs fetched this run; Codex decompile of `PermissionSettingHelper` 26.1.4 |
-| XAF's own log lists the loaded modules | Ruled out, even at `DevExpress.ExpressApp=Debug` | `host\eXpressAppFramework-update2-debug.log` |
+| XAF's own log lists the loaded modules | Ruled out, even at `DevExpress.ExpressApp=Debug` | the host's XAF log of the second database update, at Debug level |
 | XAF's `ModuleInfo` table records the modules | Not with the template's `CheckCompatibilityType.DatabaseSchema`: no `ModuleInfo` table is created | table list query |
 | `UrlSigningKey` must be in appsettings | Ruled out: "If the property is not specified, XAF generates a random in-memory key" (XAF 26.1 topic 404691). Left out, so the sample holds no secret | dxdocs |
 | The sample's tests belong in `Xaf.EditDraft.Tests` | Ruled out: that project's M3 tests pin that it references no application or Module assembly; a sample reference would break that rule | `docs/xaf-editdraft-library-m3-2026-10-02.md` §2a |
@@ -265,14 +265,14 @@ it. No disagreement remained, so nothing went to the owner as an unresolved posi
 
 ### Codex calls
 
-| Run | Call | Attempt | Path | Started | Duration | state | validation | Exit | PID | Model / effort requested | Effective effort | reasoning_output_tokens | Search | MCP calls | Commands (non-zero) | file_change | Outside-repo paths | Prompt / output / candidate SHA-256 | Parity pack | codex-cli |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| e817ca | tests | a1 | `…\tests\a1` | 14:48:11 | 7.0 min | success | ok | 0 | 42468 | gpt-6-astra / xhigh | not observable | 5,670 | off | 0 | 5 (2) | 0 | `powershell.exe` only | `05B6A379…` / `36C0E820…` / — | requirement-only (`-Repo` = `tests\req`, `-SkipGitCheck`; isolation by convention: `out.md` cites only `REQUIREMENT.md` and says the repository was not inspected; the activity record names no repository path) | 0.153.4 |
-| e817ca | diffreview | a1 | `…\diffreview\a1` | 15:15:15 | 15.3 min | success | ok | 0 | 33960 | gpt-6-astra / xhigh | not observable | 9,385 | off (1 web lookup in the stream: Microsoft GETDATE doc) | 14 (KB 2, dxdocs 12) | 19 (3) | 0 | scratch files of this run (pasted logs), `powershell.exe` | `C1305C94…` / `2DCF533A…` / candidate `01291331…` (diff `B34AF5C4…`, 30 files) | v1 (`6C167EF4…`) | 0.153.4 |
+| Run | Call | Attempt | Started | Duration | state | validation | Exit | Model / effort requested | Effective effort | reasoning_output_tokens | Search | MCP calls | Commands (non-zero) | file_change | Outside-repo reads (count) | Parity pack | codex-cli |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| e817ca | tests | a1 | 14:48:11 | 7.0 min | success | ok | 0 | gpt-6-astra / xhigh | not observable | 5,670 | off | 0 | 5 (2) | 0 | 1 | requirement-only (isolation by convention: Codex's output cites only `REQUIREMENT.md` and says the repository was not inspected; the activity record names no repository path) | 0.153.4 |
+| e817ca | diffreview | a1 | 15:15:15 | 15.3 min | success | ok | 0 | gpt-6-astra / xhigh | not observable | 9,385 | off (1 web lookup in the stream: Microsoft GETDATE doc) | 14 (KB 2, dxdocs 12) | 19 (3) | 0 | 9 | v1 (candidate: 30 files) | 0.153.4 |
 
 Calls: 2, attempts: 2, both accepted. No retry.
 
-### Setup checks (Phase 0; outputs in `%LOCALAPPDATA%\collab\2026-10-03-editdraft-sample-e817ca\preflight\`)
+### Setup checks (Phase 0)
 
 | # | Item | Result |
 |---|---|---|
@@ -286,7 +286,7 @@ Calls: 2, attempts: 2, both accepted. No retry.
 | 8 | Tool boundary | no MCP tool can write a database, migrate, deploy, push or restart a service (KB write tools write KB files only) |
 | 9 | Tool parity | Codex has `blazor-knowledge-base` (with an `enabled_tools` key) and `dxdocs`; reading the whitelist content was denied by the classifier, so the nine-tool list is **not verified**. Codex also has `node_repl` and `cua_repl`, which Claude does not have |
 | 10 | Models | `gpt-6-astra` listed; levels low/medium/high/xhigh/max/ultra |
-| 11 | Run id, scratch, salt, binary | `e817ca`; `codex-cli 0.153.4` at `C:\Users\owner\AppData\Local\Programs\OpenAI\Codex\bin\codex.exe` |
+| 11 | Run id, salt, binary | `e817ca`; `codex-cli 0.153.4` |
 | 12 | Snapshot | `04c69fdc`, clean worktree at start |
 | 13 | Policy drift | CLAUDE.md "Precedence" says `could_not_determine` "must not be empty"; collaborator D1 (closed) allows the scoped "no additional uncertainty" line (both Codex outputs had non-empty lists). collaborator.md "Cost" still says "At `medium`", against ground rule 11 (xhigh). Reported, not edited |
 | 14 | Web search | off (`-Search` not passed) |
@@ -315,18 +315,8 @@ since the review.
 
 ### KB
 
-No `log_new_fix` in this run: the KB server writes into `repos\CareCrew`, which this run may not touch. Owed: a record for
+No `log_new_fix` in this run: the KB server writes into the CareCrew repository, which this run may not touch. Owed: a record for
 the sample consumer and the gaps G1–G15 (or an amendment to fix-537, whose "owed" list names this sample).
-
-### Run ledger
-
-Appended to `%LOCALAPPDATA%\collab\ledger.jsonl` with `tools/collab/append-ledger.ps1`. The counts are taken by hand
-from the Found-issues rows (DR1–DR8 Codex, A1–A2 Claude; S3 escalated; one hook false positive, a policy check whose
-arguments contained push text):
-
-```
-{"run":"2026-10-03-editdraft-sample-e817ca","date":"2026-10-03","topic":"xaf-editdraft-sample-consumer","attempts":[{"call":"diffreview","attempt":1,"state":"success","validation":"ok","accepted":true,"exit":0,"minutes":15.3,"commands":19,"nonzero_exits":3,"outside_repo":9,"file_changes":0,"reasoning_tokens":9385,"output_tokens":20099,"search":false},{"call":"tests","attempt":1,"state":"success","validation":"ok","accepted":true,"exit":0,"minutes":7,"commands":5,"nonzero_exits":2,"outside_repo":1,"file_changes":0,"reasoning_tokens":5670,"output_tokens":9602,"search":false}],"findings":{"claude_confirmed":2,"claude_rejected":0,"codex_confirmed":8,"codex_rejected":0,"both":0,"unverifiable":0,"open":0},"correlated_error_events":0,"escalated_to_owner":1,"passes":2,"hook_false_positives":1}
-```
 
 ## 10. Not verified / open questions
 

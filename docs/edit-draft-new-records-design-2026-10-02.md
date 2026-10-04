@@ -1,7 +1,7 @@
 # 入力控 for NEW (never saved) records — design (2026-10-02)
 
 Collaborator run `2026-10-02-edit-draft-new-records-139e0a`. Analysts: Claude (Opus 5.5) and ChatGPT (Codex CLI 0.153.4, gpt-6-astra, effort xhigh).
-Worktree `C:\Users\owner\source\repos\CareCrew-newrecord`, branch `feature/edit-draft-new-records`, HEAD `132782b1`. Design only: no code, no database, no schema.
+Branch `feature/edit-draft-new-records`, HEAD `132782b1`. Design only: no code, no database, no schema.
 Paths below are repo-relative; `Core/` = `Xaf.EditDraft.Core/`, `Blazor/` = `Xaf.EditDraft.Blazor/`, `Charts/` = `CareCrew.Blazor.Server/Controllers/Tenants/TenantCharts/`.
 
 ## 0. Combined answer
@@ -232,7 +232,7 @@ Owner decisions (recommendation first):
 ## 9. Contribution log
 
 ### What Claude did
-Phase 0 preflight (§9 setup checks); read the engine, the CareCrew policies, the chart new-record path, the five business objects and the installed DevExpress 26.1.4 `BaseObject` source; read the owner's run in the dev host log; built the parity packs v1–v3 (594/611/614 KB); wrote an independent design before reading any Codex output (`claude-diagnosis.md`); checked every Codex citation it relied on (all correct); adjudicated pass 2 against source; wrote §5 alone; wrote this write-up. Right: the gate analysis, Oid at construction, seeding need, TargetOid = Empty, the TrySupersede/K2 staleness, the editor-id attach gap, the list popup closing before 開く, the first-type choice. Wrong or incomplete (caught by Codex): missed the seeding trap and the fresh-start paths; wrote that capture keeps "only changed members" (a reverted entry stays); claimed `prov` stays current after a recreate; counted Guid.Empty targets as eligible new drafts; placed the adoption service in Blazor; did not define post-claim failures; argued for delete with "every drafted value is on the record".
+Phase 0 preflight (§9 setup checks); read the engine, the CareCrew policies, the chart new-record path, the five business objects and the installed DevExpress 26.1.4 `BaseObject` source; read the owner's run in the dev host log; built the parity packs v1–v3 (594/611/614 KB); wrote an independent design before reading any Codex output; checked every Codex citation it relied on (all correct); adjudicated pass 2 against source; wrote §5 alone; wrote this write-up. Right: the gate analysis, Oid at construction, seeding need, TargetOid = Empty, the TrySupersede/K2 staleness, the editor-id attach gap, the list popup closing before 開く, the first-type choice. Wrong or incomplete (caught by Codex): missed the seeding trap and the fresh-start paths; wrote that capture keeps "only changed members" (a reverted entry stays); claimed `prov` stays current after a recreate; counted Guid.Empty targets as eligible new drafts; placed the adoption service in Blazor; did not define post-claim failures; argued for delete with "every drafted value is on the record".
 
 ### What ChatGPT (Codex) did
 `tests` (requirement-only): 44 expectations E01–E44 before seeing any design. `diag`: an independent design with the same identity, seeding, surfaces, first types and schema answer; it alone found the seeding trap, the reverted-entry wording, the unsaved-object-graph limit, the parent-context kinds, the inline-list boundary, and raised SEC1–SEC3. `review`: confirmed the gate analysis and structure, and found C1–C8 (seeding trap again, reverted entries, `prov` after a recreate and the second-tab duplicate, fresh-start paths, post-claim failures and partial apply, adoption placement, test coverage gaps, notice count). `combined`: kept the structure and O1–O6 open, added C18–C20 and the design-rule list (§10). Read only; no `file_change`; it read KB records and fetched dxdocs pages (some returned 25.2/26.1.5 content, which it did not use as exact-version evidence).
@@ -277,24 +277,24 @@ Found independently by both: G1–G7 gates, Oid at construction, TargetOid = Emp
 
 ### Codex calls
 
-| Run | Call | Attempt | Path | Started | Duration | state | validation | Exit | PID | Model / effort requested | Effective effort | reasoning tokens | Search | MCP calls | activity (cmds / non-zero / file_change / outside-repo) | prompt / out sha256 (first 8) | Pack | CLI |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 139e0a | tests | a1 | `…\tests\a1` (cwd `tests\req`, `-SkipGitCheck`) | 18:35:18 | 3.9 min | success | ok | 0 | 44892 | gpt-6-astra / xhigh | not observable | 1,848 | off | 0 | 4 / 1 / 0 / 1 (powershell.exe) | 2328EE41 / 33E67A51 | REQUIREMENT.md (brief + runtime facts) | 0.153.4 |
-| 139e0a | diag | a1 | `…\diag\a1` | 18:35:18 | 12.8 min | success | ok | 0 | 26280 | gpt-6-astra / xhigh | not observable | 4,207 | off | 16 (KB lookup 1, dxdocs search 6, get_content 9) | 14 / 1 / 0 / 1 (powershell.exe) | AFD10924 / E93EFC5C | v1 | 0.153.4 |
-| 139e0a | review | a1 | `…\review\a1` | 18:51:13 | 18.4 min | success | ok | 0 | 47304 | gpt-6-astra / xhigh | not observable | 8,725 | off | 9 (KB 2, dxdocs 7) | 15 / 1 / 0 / 1 (powershell.exe; 3 "unc" entries are regex text, not paths) | 2BDC7D3A / 5048BDDC | v2 | 0.153.4 |
-| 139e0a | combined | a1 | `…\combined\a1` | 19:12:17 | 9.7 min | success | ok | 0 | 64164 | gpt-6-astra / xhigh | not observable | 2,240 | off | 5 (KB lookup 1, get_fix 1, dxdocs 3) | 6 / 0 / 0 / 1 (powershell.exe) | A978E609 / 2ACF1464 | v3 | 0.153.4 |
+| Run | Call | Attempt | Started | Duration | state | validation | Exit | Model / effort requested | Effective effort | reasoning tokens | Search | MCP calls | activity (cmds / non-zero / file_change / outside-repo) | Pack | CLI |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 139e0a | tests | a1 (requirement-only directory) | 18:35:18 | 3.9 min | success | ok | 0 | gpt-6-astra / xhigh | not observable | 1,848 | off | 0 | 4 / 1 / 0 / 1 | REQUIREMENT.md (brief + runtime facts) | 0.153.4 |
+| 139e0a | diag | a1 | 18:35:18 | 12.8 min | success | ok | 0 | gpt-6-astra / xhigh | not observable | 4,207 | off | 16 (KB lookup 1, dxdocs search 6, get_content 9) | 14 / 1 / 0 / 1 | v1 | 0.153.4 |
+| 139e0a | review | a1 | 18:51:13 | 18.4 min | success | ok | 0 | gpt-6-astra / xhigh | not observable | 8,725 | off | 9 (KB 2, dxdocs 7) | 15 / 1 / 0 / 1 | v2 | 0.153.4 |
+| 139e0a | combined | a1 | 19:12:17 | 9.7 min | success | ok | 0 | gpt-6-astra / xhigh | not observable | 2,240 | off | 5 (KB lookup 1, get_fix 1, dxdocs 3) | 6 / 0 / 0 / 1 | v3 | 0.153.4 |
 
 Input tokens: tests 137,875 (cached 105,216); diag 2,480,998 (cached 2,241,664); review 2,683,779 (cached 2,365,696); combined 1,444,201 (cached 1,228,928). Prompt sizes: diag 599 KB, review 634 KB, combined 709 KB.
 
 The `tests` isolation is by convention (absolute-path reads remain possible); its out.md cites only REQUIREMENT.md and its four commands read only that file.
 
-### Setup checks (Phase 0; outputs under `%LOCALAPPDATA%\collab\2026-10-02-edit-draft-new-records-139e0a\preflight\`)
+### Setup checks (Phase 0)
 
 | # | Item | Result |
 |---|---|---|
 | 1 | BASH_MAX_TIMEOUT_MS | present (2400000) |
 | 2 | Read-only query connection (HARD) | not applicable: no database used (brief: no DB) |
-| 3 | Repo trusted (HARD) | session project `repos\CareCrew` trusted (`hasTrustDialogAccepted=true`); the hook fired (item 5) |
+| 3 | Repo trusted (HARD) | session project (the CareCrew repository) trusted (`hasTrustDialogAccepted=true`); the hook fired (item 5) |
 | 4 | Manifest (HARD) | 7/7 hashes match in the worktree and in the main repo |
 | 5 | Hook fires (HARD) | `git push --dry-run origin HEAD` blocked by collab-guard; a harmless Monitor (`Get-Date`) ran unblocked |
 | 6 | collab.rules | file present; the execpolicy check was blocked by the hook (its text contains a push) and not retried (rule 13) |
@@ -302,7 +302,7 @@ The `tests` isolation is by convention (absolute-path reads remain possible); it
 | 8 | Tool boundary (HARD) | no MCP tool of this agent writes a database, migrates, deploys, pushes or restarts; KB write tools, claude-in-chrome and Claude Docs present, not used |
 | 9 | Tool parity (HARD) | KB with the 9 read tools (`enabled_tools`, `~/.codex/config.toml:127-134`), dxdocs; node_repl and cua_repl enabled for Codex (no call); code-review and codex_app listed but disabled |
 | 10 | Models (HARD) | gpt-6-astra listed, low…ultra incl. medium and xhigh |
-| 11 | Run setup | run 139e0a, scratch, salt (unused), codex.exe from PATH, codex-cli 0.153.4; doctor exit 0 (overall "warning"); login ChatGPT |
+| 11 | Run setup | run 139e0a, salt (unused), codex from PATH, codex-cli 0.153.4; doctor exit 0 (overall "warning"); login ChatGPT |
 | 12 | Snapshot | worktree HEAD 132782b1, branch feature/edit-draft-new-records, clean; NHM HEAD 7bf13f39 (master), read only |
 | 13 | Policy drift | CLAUDE.md and AGENTS.md identical to the main repo (AF56E4B3…, BEE30186…); `~/.codex/config.toml` effort medium, every call passed xhigh |
 | 14 | Web search | off in all calls |
@@ -313,21 +313,15 @@ One identifier: the 8-hex owner prefix in the dev host log line `list: 0 row(s) 
 ### Inputs Codex did not have
 - Claude's auto-memory index (session context): relied on only for "the EditDraft table is not in production", which is stated as memory, not verified.
 - The rest of the dev host log (only the 18:21 `[EditDraft]` window was pasted).
-- Claude's verdict file on the diag (`claude-verdicts-on-codex-diag.md`); its substance went to `combined` as the settled list.
+- Claude's verdict file on the diag; its substance went to `combined` as the settled list.
 - §5 (security) by design. §4.4 steps 6 and 10 and the failure outcomes were written after pass 2 and are NOT cross-reviewed.
 
 ### Passes used
 2 cross-model passes (diag ↔ review) plus `tests` and `combined`: 4 Codex calls, 4 attempts, no retries. Hook false positives: 1 (the execpolicy check text). Monitor slip: one Claude-written wait command was expanded by Bash and reported early; it was ignored and the proper watcher used.
 
-### Run ledger
-Appended to `%LOCALAPPDATA%\collab\ledger.jsonl` by `tools/collab/append-ledger.ps1`:
-```json
-{"run":"2026-10-02-edit-draft-new-records-139e0a","date":"2026-10-02","topic":"edit-draft-new-records-design","attempts":[{"call":"combined","attempt":1,"state":"success","validation":"ok","accepted":true,"exit":0,"minutes":9.7,"commands":6,"nonzero_exits":0,"outside_repo":1,"file_changes":0,"reasoning_tokens":2240,"output_tokens":13413,"search":false},{"call":"diag","attempt":1,"state":"success","validation":"ok","accepted":true,"exit":0,"minutes":12.8,"commands":14,"nonzero_exits":1,"outside_repo":1,"file_changes":0,"reasoning_tokens":4207,"output_tokens":17009,"search":false},{"call":"review","attempt":1,"state":"success","validation":"ok","accepted":true,"exit":0,"minutes":18.4,"commands":15,"nonzero_exits":1,"outside_repo":1,"file_changes":0,"reasoning_tokens":8725,"output_tokens":18718,"search":false},{"call":"tests","attempt":1,"state":"success","validation":"ok","accepted":true,"exit":0,"minutes":3.9,"commands":4,"nonzero_exits":1,"outside_repo":1,"file_changes":0,"reasoning_tokens":1848,"output_tokens":5197,"search":false}],"findings":{"claude_confirmed":3,"claude_rejected":1,"codex_confirmed":16,"codex_rejected":0,"both":7,"unverifiable":0,"open":8},"correlated_error_events":0,"escalated_to_owner":8,"passes":2,"hook_false_positives":1}
-```
-
 ## 10. Codex merge (combined/a1) and design rules
 
-Codex's combined write-up (`…\combined\a1\out.md`, 44 KB) kept this structure, put O1–O6 side by side without choosing, marked S10/S11 as Claude's unreviewed proposals, and named where the security checks sit without designing them. Its three refinements are adopted above (C18 §4.2.4, C19 §4.3, C20 §4.4 step 5). Its "Structural changes": (1) keep the organisation; (2) one decision register for O1–O6; (3) lifecycle subsections expanded with the review's corrections; (4) S10/S11 recorded apart from shared findings; (5) the candidate exists before the claim under S11. It also asks, for ToDo, to verify that the root route supplies no untouched `ToDoItem` association before relying on "no seeds" (added to M3).
+Codex's combined write-up (44 KB) kept this structure, put O1–O6 side by side without choosing, marked S10/S11 as Claude's unreviewed proposals, and named where the security checks sit without designing them. Its three refinements are adopted above (C18 §4.2.4, C19 §4.3, C20 §4.4 step 5). Its "Structural changes": (1) keep the organisation; (2) one decision register for O1–O6; (3) lifecycle subsections expanded with the review's corrections; (4) S10/S11 recorded apart from shared findings; (5) the candidate exists before the claim under S11. It also asks, for ToDo, to verify that the root route supplies no untouched `ToDoItem` association before relying on "no seeds" (added to M3).
 
 **Design rules the next implementation must respect** (Codex combined, verbatim):
 

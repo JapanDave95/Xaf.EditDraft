@@ -22,7 +22,7 @@ the gaps").
 Target: .NET 8. DevExpress 26.1.4 (`Directory.Packages.props`) is the tested floor: the version the library is built
 and tested with; older versions are not tested. XPO only. SQL Server only: the writer and the retention sweep use T-SQL,
 and the startup check stops an application whose store is in another database. The store table's schema is `dbo`
-unless `EditDraftStoreOptions.Schema` or the store's XPO mapping names another.
+unless the store class's XPO mapping names another (`[Persistent("myschema.MyEditDraft")]`).
 
 ## Installing the packages
 

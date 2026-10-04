@@ -30,7 +30,10 @@ public sealed record EditDraftRoleExposure(string RoleName, string Reason);
 ///
 /// <see cref="FindRolesThatCanReadStore"/> reads the role ROWS (IsAdministrative, PermissionPolicy, type permissions on the
 /// store and on its base types, object and member permissions); it does not run XAF's permission evaluation for a user,
-/// and it is conservative: a base-type ALLOW without a deny on the store itself is reported.
+/// and it is conservative: a base-type ALLOW without a deny on the store itself is reported. It is best-effort (Codex C5/C6,
+/// documented 2026-10-04): roles of a class that does not derive from the scanned role type (the startup warning scans
+/// <see cref="PermissionPolicyRoleBase"/>) are not scanned, and the criteria of object and member grants are not evaluated,
+/// so a grant whose criterion never matches is still reported.
 /// XPO roles only (contract v1): the default role type is <see cref="PermissionPolicyRoleBase"/> (covers PermissionPolicyRole
 /// and subclasses); pass another role type that implements <see cref="IPermissionPolicyRole"/> if the application has one.
 /// </summary>
@@ -58,7 +61,7 @@ public static class EditDraftSecurity
             permission.NavigateState = SecurityPermissionState.Deny;
         }
         foreach (var e in Exposures(roles, storeType))
-            EditDraftLog.Warning($"[EditDraft] store {storeType.FullName}: role '{e.RoleName}' can still read it after the deny: {e.Reason}");
+            EditDraftLog.Warning($"[EditDraft] store {storeType.FullName}: role '{e.RoleName}' may still be able to read it after the deny: {e.Reason} (best-effort scan; see the consumer guide, section 5)");
         return roles.Count;
     }
 
@@ -70,13 +73,20 @@ public static class EditDraftSecurity
         return Exposures(Roles(objectSpace, roleType), storeType).ToList();
     }
 
-    /// <summary>Logs one warning per role that can read <paramref name="storeType"/>; returns their number. Never throws for a role's content.</summary>
+    /// <summary>
+    /// Logs one warning per role that may read <paramref name="storeType"/>; returns their number. Never throws for a role's
+    /// content. Best-effort (Codex C5/C6, documented 2026-10-04): it scans only roles of <paramref name="roleType"/> (default
+    /// <see cref="PermissionPolicyRoleBase"/> and its subclasses; other role classes are not scanned) and does not evaluate
+    /// the criteria of object or member grants (a grant whose criterion never matches is still reported).
+    /// </summary>
     public static int WarnRolesThatCanReadStore(IObjectSpace objectSpace, Type storeType, Type roleType = null)
     {
         var exposures = FindRolesThatCanReadStore(objectSpace, storeType, roleType);
         foreach (var e in exposures)
-            EditDraftLog.Warning($"[EditDraft] store {storeType.FullName}: role '{e.RoleName}' can read it through XAF security: {e.Reason}. " +
-                                 "Fix: run EditDraftSecurity.DenyStoreToAllRoles in the ModuleUpdater; see the consumer guide for the cases a deny cannot cover.");
+            EditDraftLog.Warning($"[EditDraft] store {storeType.FullName}: role '{e.RoleName}' may be able to read it through XAF security: {e.Reason}. " +
+                                 "Fix: run EditDraftSecurity.DenyStoreToAllRoles in the ModuleUpdater; see the consumer guide for the cases a deny cannot cover. " +
+                                 $"This scan is best-effort: it reads the rows of {(roleType ?? typeof(PermissionPolicyRoleBase)).Name} roles and their subclasses only " +
+                                 "(other role classes are not scanned) and does not evaluate the criteria of object or member grants.");
         return exposures.Count;
     }
 

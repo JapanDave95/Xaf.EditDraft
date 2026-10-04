@@ -19,7 +19,7 @@ recreated from its draft. The main header action "Drafts" (「入力控」 in th
 | DevExpress | 26.1.4 is the tested floor: the version the library is built and tested with. Older versions are not tested. |
 | ORM | XPO only |
 | Database | **SQL Server only.** The writer and the retention sweep use T-SQL. The startup check stops an application whose store is in another database. |
-| Store table schema | `dbo` by default; any schema through `EditDraftStoreOptions.Schema` or an XPO `[Persistent("Schema.Table")]` mapping |
+| Store table schema | `dbo` by default; another schema through the store class's XPO mapping, `[Persistent("myschema.MyEditDraft")]` (the only source of the schema and table name) |
 | Records | XPO classes keyed by a Guid (DevExpress `BaseObject`), properties written through `SetPropertyValue` |
 | Owner | an XAF login whose key is a Guid (library default); another owner rule through `IEditDraftOwnerResolver` |
 | Registered types | different CLR class names (the payload stores `Type.Name`) |
@@ -67,12 +67,14 @@ In this order.
 4. **Service registrations** (Startup):
 
    ```csharp
-   services.AddEditDraftStore<SampleEditDraft>();                  // options: o => o.Schema = "drafts"
+   services.AddEditDraftStore<SampleEditDraft>();                  // table: from the store class's XPO mapping
    services.AddEditDraftRegistry(NoteEditDraftPolicy.Register);
    services.AddEditDraftBlazor();                                  // options: o => o.HeaderActionOnEveryView = true
    services.AddEditDraftRetention();                               // optional: the retention hosted service (section 6)
    ```
 
+   The library reads the store table's schema and name only from the store class's XPO mapping, the same name XPO's own
+   reads and inserts use. For a schema other than `dbo`, set `[Persistent("myschema.MyEditDraft")]` on the store class.
    Sample: `Startup.AddEditDrafts` in `Xaf.EditDraft.Sample.Blazor.Server/Startup.cs`.
 
 5. **Two modules** in the XAF module list: `.Add<EditDraftCoreModule>()` and `.Add<EditDraftBlazorModule>()`.
@@ -93,7 +95,7 @@ In this order.
    | `EditDraftCapture:ListViews:Enabled` | capture in the policy's ListViews |
    | `EditDraftCapture:NewRecords:Enabled` | capture of never-saved records of policies with `AllowNewRecords` |
    | `EditDraftCapture:Retention:Enabled` | deletion of expired drafts by the hosted service (section 6) |
-   | `EditDraftCapture:Retention:IntervalMinutes` | minutes between sweeps (default 60) |
+   | `EditDraftCapture:Retention:IntervalMinutes` | minutes between sweeps (default 60, at most 1440; 0 or below turns the hosted sweep off) |
    | `EditDraftCapture:StartupChecks:Table` | the optional startup check that the store table exists (section 4) |
 
    Restore, the drafts list and recreating new records work while the store table exists, whatever the capture switches
@@ -117,19 +119,27 @@ When the application's setup completes, the modules check the configuration and 
 | Check | Fails when | Fix named in the message |
 |---|---|---|
 | Store registered | no `AddEditDraftStore<TStore>()` | register your store subclass |
-| Schema | `EditDraftStoreOptions.Schema` contradicts the store's `[Persistent("Schema.Table")]` mapping | remove the option or make it match |
 | Policies | `EditDraftCapture:Enabled` is true and no policy is registered | `AddEditDraftRegistry(...)` with a policy, or switch capture off |
 | SQL Server | the store's XPO data store is another provider (decided by its type; no statement is run) | keep the store in SQL Server |
+| Schema and table name | XPO's SQL Server provider names the store table differently from the store class's mapping, for example because of a changed `ObjectsOwner` or table prefixes (no statement is run) | name schema and table in `[Persistent("schema.table")]` on the store class |
 | Non-persistent provider (Blazor module) | no `NonPersistentObjectSpaceProvider` | `.AddNonPersistent()` |
-| Table (optional, `EditDraftCapture:StartupChecks:Table` = true) | the table is not found or the database cannot be read | run the XAF database update, or set the schema |
+| Table (optional, `EditDraftCapture:StartupChecks:Table` = true) | after the XAF database update's schema update, the table is still not found (the update stops). At setup a missing or unreadable table is only a warning. | run the XAF database update, or map the store class to the schema and table the table is in |
 
-The database checks run once per process. A data store the check cannot identify (a pool or cache wrapper) is logged
-as a warning and not stopped. An application without a service provider (a headless or design-time application) is not
-checked. Not checked: the stylesheet link, the two module lines, `AddEditDraftBlazor()`; leaving one out shows as a
-missing feature, not as a startup error.
+The table check does not stop a fresh database's first update: at setup the table may not exist yet, because the XAF
+database update that creates it runs after setup, so a missing table is logged as a warning there. The check runs again
+after the update's schema update, where a missing table stops the update with the message above. It can therefore stay
+on from the first run. The blocking form of the check runs only during a database update: an application that starts
+without one gets the setup warning for a missing table, not a stop.
 
-At the same point, once per process, the library logs a warning for each role that can read the store class through XAF
-security (section 5).
+The database checks and the role warning are remembered per store class and database (its connection string) once they
+have passed, so they are not repeated for every circuit. A check that fails or cannot run, an unidentified data store, or
+a missing table is logged and checked again at the next application setup. A data store the check cannot identify (a pool
+or cache wrapper) is logged as a warning and not stopped. An application without a service provider (a headless or
+design-time application) is not checked. Not checked: the stylesheet link, the two module lines, `AddEditDraftBlazor()`;
+leaving one out shows as a missing feature, not as a startup error.
+
+At the same point the library logs a warning for each role that may be able to read the store class through XAF security
+(section 5).
 
 ## 5. Security
 
@@ -155,7 +165,12 @@ security (section 5).
   still read the store: administrative roles, roles with an object or member ALLOW on the store, roles with a type ALLOW on
   the store or a base type, and roles whose permission policy is `AllowAllByDefault` or `ReadOnlyAllByDefault` with no
   deny. It reads the role rows; it does not run XAF's permission evaluation for a user. The deny helper logs the roles it
-  could not bind, and the startup check logs every role that can read the store.
+  could not bind, and the startup check logs every role it finds.
+- **The role scan is best-effort.** It scans only roles of `PermissionPolicyRoleBase` and its subclasses: roles of a
+  class that does not derive from `PermissionPolicyRoleBase` are not scanned at startup (the helpers take another role
+  type as `roleType`; the startup warning does not). It does not evaluate the criteria of object and member grants, so a
+  grant whose criterion never matches is still reported as able to read. Read the warning as a list of roles to review;
+  no warning is not proof that no role can read the store.
 - **Audit trail.** If the application uses the XAF Audit Trail module, exclude the store class, or every capture copies
   the typed text into the audit log.
 - **Retention.** Turn on a sweep (section 6), or expired rows stay in the table.
@@ -169,6 +184,9 @@ the table until something deletes it. The library deletes nothing unless the app
   after start, then every `EditDraftCapture:Retention:IntervalMinutes` minutes (default 60), it deletes the rows with
   `ExpiresOn` at or before "now", for every owner, in batches of 1000, and logs the count
   (`[EditDraft] retention sweep: N expired draft row(s) deleted ...`). The switch is re-read before each sweep.
+  The interval is at most 1440 minutes (one day); a larger value is used as 1440. A value of 0 or below turns the hosted
+  sweep off: the service logs a warning and stops, and it starts again only when the application restarts with a
+  positive value. A value that is missing or not a whole number means 60.
 - **Your own scheduler:** call `EditDraftRetention.Sweep(serviceProvider)`; it returns the number deleted, or -1 when it
   could not run (logged).
 
@@ -184,7 +202,7 @@ server run in the same time zone; otherwise pass the application server's local 
 | Owner of a draft | the XAF login's key when it is a non-empty Guid; no login, no draft | register an `IEditDraftOwnerResolver` |
 | Record access | XAF security only (records are loaded through a secured object space first); `IsScopeVisible` allows every scope | register an `IEditDraftRecordAccess` |
 | Switch section | `EditDraftCapture` | `new EditDraftSwitchOptions { Section = "..." }` |
-| Store schema | `dbo` | `AddEditDraftStore<T>(o => o.Schema = "...")` |
+| Store schema | `dbo` | `[Persistent("myschema.MyEditDraft")]` on the store class |
 | Clock | `TimeProvider.System`, local time | register a `TimeProvider` |
 | Log | the application's `ILogger`, category `Xaf.EditDraft`, lines start with `[EditDraft]` | set `EditDraftLog.Sink` at startup |
 | Texts | English | `EditDraftTexts.Use(EditDraftLanguage.Japanese)` or your own `EditDraftTextSet` |

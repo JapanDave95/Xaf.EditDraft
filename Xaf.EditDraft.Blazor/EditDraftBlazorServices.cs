@@ -47,8 +47,8 @@ public static class EditDraftBlazorServiceCollectionExtensions
     /// <summary>
     /// Gap G4 (2026-10-04): registers the retention sweep as a hosted service (<see cref="EditDraftRetentionService"/>). It
     /// deletes expired drafts only while EditDraftCapture:Retention:Enabled reads as the boolean true, every
-    /// EditDraftCapture:Retention:IntervalMinutes minutes (default 60). Without this call, or with the key off, no draft row
-    /// is deleted by the library.
+    /// EditDraftCapture:Retention:IntervalMinutes minutes (default 60, at most 1440; 0 or below turns the service off with a
+    /// warning). Without this call, or with the key off, no draft row is deleted by the library.
     /// </summary>
     public static IServiceCollection AddEditDraftRetention(this IServiceCollection services)
     {
@@ -63,7 +63,9 @@ public static class EditDraftBlazorServiceCollectionExtensions
 /// EditDraftCapture:Retention:IntervalMinutes minutes, it re-reads EditDraftCapture:Retention:Enabled and, when it is the
 /// boolean true, runs <see cref="EditDraftRetention.Sweep(IServiceProvider)"/> (owner-agnostic delete of expired rows, the
 /// application clock as the cutoff, logged count). A failed sweep is logged and retried at the next interval; it never
-/// stops the host.
+/// stops the host. Codex C3 (2026-10-04): the interval is read through <see cref="EditDraftRetention.IntervalMinutes"/>, so
+/// it is at most <see cref="EditDraftRetention.MaxIntervalMinutes"/> (one day); when it is 0 or below the service logs a
+/// warning and stops (no sweep until the application restarts with a positive interval).
 /// </summary>
 public sealed class EditDraftRetentionService : BackgroundService
 {
@@ -79,12 +81,19 @@ public sealed class EditDraftRetentionService : BackgroundService
             await Task.Delay(FirstDelay, stoppingToken).ConfigureAwait(false);
             while (!stoppingToken.IsCancellationRequested)
             {
+                var minutes = EditDraftRetention.IntervalMinutes(_services);
+                if (minutes <= 0)
+                {
+                    EditDraftLog.Warning($"[EditDraft] retention: {EditDraftSwitch.In(_services, EditDraftRetention.IntervalMinutesKey)} is 0 or below, so the hosted retention sweep is off " +
+                                         $"and has stopped. Set a whole number of minutes from 1 to {EditDraftRetention.MaxIntervalMinutes} and restart the application to turn it on.");
+                    return;
+                }
                 if (EditDraftRetention.IsEnabled(_services))
                 {
                     try { EditDraftRetention.Sweep(_services); }
                     catch (Exception ex) { EditDraftLog.Error($"[EditDraft] retention sweep failed: {ex.GetType().Name}"); }
                 }
-                await Task.Delay(TimeSpan.FromMinutes(EditDraftRetention.IntervalMinutes(_services)), stoppingToken).ConfigureAwait(false);
+                await Task.Delay(TimeSpan.FromMinutes(minutes), stoppingToken).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { }

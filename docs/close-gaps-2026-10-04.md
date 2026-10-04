@@ -1,8 +1,7 @@
 # Xaf.EditDraft: closing the 15 library gaps (0.2.0-preview.1)
 
 Run `2026-10-04-editdraft-close-gaps-08c338` (collaborator: Claude Opus 5.5 implements; Codex gpt-6-astra at xhigh, read-only).
-Worktree `C:\Users\owner\source\repos\Xaf.EditDraft-gaps`, branch `feature/close-gaps`, base `main` 9725721. Not committed,
-not tagged, not published, not deployed. Scratch: `%LOCALAPPDATA%\collab\2026-10-04-editdraft-close-gaps-08c338\`.
+Branch `feature/close-gaps`, base `main` 9725721. Not committed, not tagged, not published, not deployed.
 
 Owner (2026-10-04, verbatim): "Close the gaps". The requirement is `docs/xaf-editdraft-sample-consumer-2026-10-03.md` §5
 (G1–G15) plus the main session's scope per gap. Where the main session's memory and the documents differed, the documents
@@ -26,7 +25,7 @@ two tables. That, and the column names kept for the first host, are owner decisi
 ## 1. Status
 
 Implemented, uncommitted, 2026-10-04.
-- `dotnet build Xaf.EditDraft.sln -c Release --no-incremental`: 0 warnings, 0 errors (`final\build.txt`).
+- `dotnet build Xaf.EditDraft.sln -c Release --no-incremental`: 0 warnings, 0 errors.
 - Xaf.EditDraft.Tests: 239 passed, 2 failed, 1 skipped, 242 in total (baseline on main: 185 passed, 1 skipped). The 2 failures are §6. The skip
   is C25_C31 (reads the first host's project files; skipped outside CareCrew, unchanged).
 - Xaf.EditDraft.Sample.Tests: 51 passed (baseline 42), including 6 SQL Server tests on a LocalDB database that each run
@@ -146,7 +145,7 @@ only after `C6` has registered `SampleEditDraft` in `XafTypesInfo.Instance`, so 
 
 ## 7. Browser and host proof (Development, 127.0.0.1:5006, LocalDB `XafEditDraftSample`, login `User`)
 
-Logs are under `host\` in the scratch folder. Chrome screenshots timed out (the tab was hidden), so the checks used the
+Chrome screenshots timed out (the tab was hidden), so the checks used the
 page's text, element references and the host log.
 1. Database update (`--updateDatabase --forceUpdate --silent`): `startup checks passed: store SampleEditDraft at
    [dbo].[SampleEditDraft]`; the helper's warning names only `Administrators`. On the first run the data store was a
@@ -206,7 +205,7 @@ test or database step.
 - **O-5** Security review (§5), including C6's wording.
 - Follow-ups: C2, C3, C5, A1; the names left out of G8 (§3); sample E1 order dependence; the package README links
   `docs/consumer-guide.md` relatively, which does not resolve on a package page; the KB record for this run (the KB server
-  writes into `repos\CareCrew`, which this run may not touch); the CareCrew in-solution copy now differs from the library.
+  writes into the CareCrew repository, which this run may not touch); the CareCrew in-solution copy now differs from the library.
 
 ## 11. Contribution log
 
@@ -261,14 +260,14 @@ Found independently by both: none (Codex's review saw Claude's decisions first).
 
 ### Codex calls
 
-| Run | Call | Attempt | Path | Started | Duration | state | validation | Exit | PID | Model / effort requested | Effective effort | reasoning_output_tokens | Search | MCP calls | Commands (non-zero) | file_change | Outside-repo paths | Prompt / output / candidate SHA-256 | Pack | codex-cli |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 08c338 | tests | a1 | `…\tests\a1` | 15:13:05 | 10.3 min | success | ok | 0 | 13520 | gpt-6-astra / xhigh | not observable | 8,727 | off | 0 | 2 (0) | 0 | `powershell.exe` only | `C7576F5D…` / `9782D2D3…` / — | requirement-only (`tests\req`, `-SkipGitCheck`; isolation by convention: out.md cites only REQUIREMENT.md) | 0.153.4 |
-| 08c338 | diffreview | a1 | `…\diffreview\a1` | 16:07:53 | 12.4 min | success | ok | 0 | 41812 | gpt-6-astra / xhigh | not observable | 7,518 | off (4 web lookups in the stream: cached mode) | 18 (KB 1, dxdocs 17) | 13 (3) | 0 | AGENTS/CLAUDE candidates, CareCrew guardrails doc, powershell.exe | `727D9397…` / `82033741…` / candidate `E907A8E7…` (diff `A78B47F2…`, 48 files, unchanged during review) | v1 | 0.153.4 |
+| Run | Call | Attempt | Started | Duration | state | validation | Exit | Model / effort requested | Effective effort | reasoning_output_tokens | Search | MCP calls | Commands (non-zero) | file_change | Outside-repo reads (count) | Pack | codex-cli |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 08c338 | tests | a1 | 15:13:05 | 10.3 min | success | ok | 0 | gpt-6-astra / xhigh | not observable | 8,727 | off | 0 | 2 (0) | 0 | 1 | requirement-only (`-SkipGitCheck`; isolation by convention: out.md cites only REQUIREMENT.md) | 0.153.4 |
+| 08c338 | diffreview | a1 | 16:07:53 | 12.4 min | success | ok | 0 | gpt-6-astra / xhigh | not observable | 7,518 | off (4 web lookups in the stream: cached mode) | 18 (KB 1, dxdocs 17) | 13 (3) | 0 | 8 | v1 (candidate: 48 files, unchanged during review) | 0.153.4 |
 
 Calls: 2, attempts: 2, both accepted. No retry. Passes used: 2 (requirement-only expectations; diff review).
 
-### Setup checks (Phase 0; outputs in `preflight\`)
+### Setup checks (Phase 0)
 
 | # | Item | Result |
 |---|---|---|
@@ -282,7 +281,7 @@ Calls: 2, attempts: 2, both accepted. No retry. Passes used: 2 (requirement-only
 | 8 | Tool boundary | no MCP tool can write a database, migrate, deploy, push or restart a service |
 | 9 | Tool parity | Codex: blazor-knowledge-base with `enabled_tools` = the 9 read tools, dxdocs; also node_repl, cua_repl (Claude has neither) |
 | 10 | Models | gpt-6-astra supports xhigh |
-| 11 | Run id / scratch / salt / binary | 08c338; codex-cli 0.153.4 at `C:\Users\owner\AppData\Local\Programs\OpenAI\Codex\bin\codex.exe` |
+| 11 | Run id / salt / binary | 08c338; codex-cli 0.153.4 |
 | 12 | Snapshot | 9725721, clean worktree at start |
 | 13 | Policy drift | collaborator.md "Cost" still says medium (ground rule 11: xhigh); CLAUDE.md "must not be empty" vs D1 (scoped line allowed). Reported, not edited |
 | 14 | Web search | off (`-Search` not passed); the diff review still made 4 lookups (cached mode) |
@@ -301,15 +300,6 @@ are LocalDB with integrated security (no credential), and no appsettings file wa
   cross-reviewed. No candidate file changed after the freeze (launcher check), and the conclusions above rest on Claude's
   source reads.
 
-### Run ledger
-Appended to `%LOCALAPPDATA%\collab\ledger.jsonl` with `tools/collab/append-ledger.ps1` (counts by hand from the table above:
-A1–A7 Claude, C1–C6 Codex; open = C1–C6 + A1; escalated = O-1..O-5; hook false positives = the wrapped execpolicy check and
-a Select-String over the hook file):
-
-```
-{"run":"2026-10-04-editdraft-close-gaps-08c338","date":"2026-10-04","topic":"xaf-editdraft-close-gaps","attempts":[{"call":"diffreview","attempt":1,"state":"success","validation":"ok","accepted":true,"exit":0,"minutes":12.4,"commands":13,"nonzero_exits":3,"outside_repo":8,"file_changes":0,"reasoning_tokens":7518,"output_tokens":15862,"search":false},{"call":"tests","attempt":1,"state":"success","validation":"ok","accepted":true,"exit":0,"minutes":10.3,"commands":2,"nonzero_exits":0,"outside_repo":1,"file_changes":0,"reasoning_tokens":8727,"output_tokens":15060,"search":false}],"findings":{"claude_confirmed":7,"claude_rejected":0,"codex_confirmed":6,"codex_rejected":0,"both":0,"unverifiable":0,"open":7},"correlated_error_events":0,"escalated_to_owner":5,"passes":2,"hook_false_positives":2}
-```
-
 ## 12. Not verified / open questions
 
 - C1–C6 and A1 were not reproduced (source reads only).
@@ -322,3 +312,54 @@ a Select-String over the hook file):
 - The Japanese list lead's deletion statement in an application without a sweep (kept by the brief; documented).
 - CI (GitHub, no LocalDB): the six SQL Server tests skip there; the CI run was not executed.
 - Release configuration of the sample (no test logins).
+
+## 13. Status 2026-10-04: bounded fix pass (run 3b8147)
+
+Owner rulings 2026-10-04 (verbatim): "Yes: C1 derive schema from XPO (drop the option), C2, C3, A1, the two test fixes;
+C5/C6 documented; Codex re-check; then merge + tag"; O-1 "Keep LoginIsStaffMember / SubSectionOid as column names"; O-3
+"Warn and continue" (unknown data-store wrapper). Claude (Opus 5.5) implemented; Codex (gpt-6-astra, xhigh, read-only) wrote
+requirement-only expectations first (T1–T41) and then reviewed the frozen diff. Uncommitted at the time of writing.
+Sections 0–12 describe the state before this pass; where they mention `EditDraftStoreOptions.Schema`, this section replaces
+them.
+
+| F | Ruling | Change | Executed check | Status |
+|---|---|---|---|---|
+| F1 | C1: derive schema from XPO, drop the option | `EditDraftStoreOptions` removed; `AddEditDraftStore<TStore>()` and `EditDraftStoreRegistration(Type)` as in 0.1.0; schema and table come only from `XPClassInfo.TableName` (`[Persistent("schema.table")]`, else the class name in `dbo`). The startup check also compares that name with the name XPO's SQL Server provider composes (`ComposeSafeSchemaName` / `ComposeSafeTableName`, `ObjectsOwner` included) and stops when they differ. Guide, READMEs and release notes say `[Persistent("myschema.MyEditDraft")]`. | F1_T1 (red on 748f2f9); L1 (LocalDB: create, supersede, discard, claim and delete through the real writer and the retention sweep all hit `[drafts].[FixPassDraft]`; a `dbo` table of the same name keeps its rows); L2 (non-default and null `ObjectsOwner` rejected; red on 748f2f9) | Done; Codex D1 open |
+| F2 | C2 | Only a passed check is remembered, per store class and database (connection string of XPO's SQL provider, else the data store object, else the data layer: XPO 26.1.4's `ThreadSafeDataLayer.Connection` is null). A failure, an unidentified data store, a missing table at setup and a failed role scan are logged and run again at the next setup. | F2_T11 (memory; red on 748f2f9); L3 (two connections; one remembered across circuits; red on 748f2f9); L4 (missing table not remembered; red on 748f2f9); sample host: three circuits, one "startup checks passed" line | Done; Codex D1 open |
+| F3 | C3 | `EditDraftRetention.MaxIntervalMinutes` = 1440; a larger value is used as 1440; 0 or below turns the hosted sweep off (warning, the service stops, restart to turn it on); missing or not a whole number = 60. | F3 interval cases (13 red on 748f2f9); F3_T19_T20 hosted service (interval 0 stops without a sweep; 72000 keeps running); sample host with 72000 ran past the first pass; host with 0 logged the warning and swept nothing | Done |
+| F4 | A1 | At setup the optional table check only warns. After the XAF database update's schema update, a new module updater runs the check again and stops the update when the table is still missing. Cost (owner: accepted): an application that runs no update gets only the warning for a missing table. | L5 (fresh database: setup warns, XAF `DatabaseUpdater` creates the table, the after-update check finds it; red on 748f2f9); L6 (still missing: the update stops; check off: nothing; red on 748f2f9); sample `--updateDatabase --forceUpdate --silent` on a fresh database with the check on: exit 0, "table check after the database update: store table [dbo].[SampleEditDraft] found" | Done; Codex D2 = the accepted cost |
+| F5 | the two test fixes | SEC_G2 filters by `TargetTypeFullName`; G1_T25 expects "DataSetDataStore". | both green | Done |
+| F6 | C5/C6 documented | Guide section 5 and both warning texts say the role scan is best-effort: only `PermissionPolicyRoleBase` roles and subclasses are scanned, and grant criteria are not evaluated. No code change beyond the text. | F6_T38, F6_T39_T41; host warning text | Done |
+| F7 | public-repo hygiene | Local paths, scratch folders, PIDs, prompt/output hashes, codex.exe paths and Run-ledger lines removed from the nine documents in docs/ (this file included); technical content kept. README.md, the sample README and consumer-guide.md had none (the README's generic DevExpress licence location stays). BOM: no change (owner): no file in the repository has a BOM, and `EditDraftCaptureController.cs` never had one. | grep of all docs; every changed file CRLF, no BOM | Done; Codex D4 open (scope) |
+
+Post-review edits (owner rulings 2026-10-04, made after the Codex review, so not cross-reviewed): "F3 test: fix its
+assertion (StartsWith the sweep line, not Contains 'retention sweep')" — `F3_T19_T20` now checks
+`l.StartsWith("[EditDraft] retention sweep")`; and the ruling to remove a login name from the two status notes in the
+public docs — removed from the M2 and M3 status notes.
+
+Existing test lines changed by the rulings: F5 (two lines); F1 (`EditDraftCloseGapsApiTests`: the options parameter, three
+option assertions in `G6_T21_T22_T23`, and the option-conflict test removed); F3 (two TestCase rows of
+`G4_the_interval_defaults_to_sixty_minutes`: 0 and -5 now give 0); `SampleCloseGapsTests.S3` message text only.
+
+Counts after the post-review edits: `dotnet build Xaf.EditDraft.sln -c Release` 0 warnings, 0 errors.
+Xaf.EditDraft.Tests 266 passed, 0 failed, 1 skipped (C25_C31, unchanged), 267 in total (before this pass: 239 / 2 / 1 of
+242). Xaf.EditDraft.Sample.Tests 59 passed (before: 51). `dotnet pack` of Core and Blazor (on the reviewed bytes):
+0.2.0-preview.1, exit 0, no NU or warning line; dependencies unchanged.
+
+Codex review (pass 2 of 2): state success, validation ok, exit 0, 8.0 min; the candidate (diff SHA-256 0E872D4D…, 26
+files) did not change during the review. Five defects, none fixed (the brief: reported, not fixed), each checked by Claude
+against the candidate:
+
+| ID | Defect | Claude's check | Outcome |
+|---|---|---|---|
+| D1 | A remembered pass skips the new XPO-name comparison: the key is store class plus connection, so a second provider on the same connection with another `ObjectsOwner` is not checked (`EditDraftStartup.cs` CheckDatabase returns on `DatabasePassed`). Related, from its could_not_determine: a table check switched on later in the same process is skipped the same way. | Confirmed by source; not reproduced. Needs one process with one store class and one connection under two provider mappings, or a configuration change at run time. | Open (follow-up) |
+| D2 | F4: at setup the table check only warns on every run, not only the first; without an update a missing table never stops the application. The guide does not say that the later check runs only during an update. | Confirmed by source; this is the cost the owner accepted. The guide's missing sentence is confirmed (§4 table row and the paragraph after it). | Behaviour accepted (owner); guide wording open |
+| D3 | The new hosted-service test rejected its own warning and never reached the large-interval assertions. | Confirmed (it was escalated before the review). | Fixed after the review by owner ruling; green, both halves run |
+| D4 | F7 incomplete: `~/.codex/config.toml` references remain in six design documents, and launcher telemetry (timings, token and command counts, validation states, preflight details) remains in the Codex-call and setup-check tables. | Confirmed present. They were kept under the F7 rules used (paths with a user or machine name, scratch folders, PIDs, hashes, ledger lines). | Open, owner decision on F7's scope |
+| D5 | The requested BOM on `EditDraftCaptureController.cs` is absent. | Confirmed. | Closed by owner ruling "BOM: no change" |
+
+Codex could_not_determine: the DevExpress 26.1.4 internals from installed source (it read the 26.1 documentation); D1 and
+D2 were not reproduced; whether any production consumer reaches them (none runs these packages); the cache policy when
+the table check is switched on during a process.
+
+Found independently by both: none (Codex's review saw Claude's account first).

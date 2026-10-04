@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using DevExpress.ExpressApp;
 using DevExpress.ExpressApp.Model.Core;
+using DevExpress.ExpressApp.Updating;
 
 namespace Xaf.EditDraft.Core;
 
@@ -16,9 +18,11 @@ namespace Xaf.EditDraft.Core;
 /// exclusion from the audit trail, and a retention sweep (<see cref="EditDraftRetention"/>). See docs/consumer-guide.md.
 ///
 /// Gaps G1/G2/G6 (2026-10-04): when the application's setup completes, the module runs the startup checks
-/// (<see cref="EditDraftStartup.Run"/>): a registered store, a policy while capture is on, a SQL Server database, the
-/// optional table check; a problem stops the application with a message naming the fix. It also logs, once, each role
-/// that can read the store through XAF security.
+/// (<see cref="EditDraftStartup.Run"/>): a registered store, a policy while capture is on, a SQL Server database that names
+/// the store table as the library does, the optional table check (a warning at setup); a problem stops the application with
+/// a message naming the fix. It also logs each role that can read the store through XAF security. Codex A1 (2026-10-04): its
+/// module updater runs the optional table check again after the XAF database update's schema update, where a missing table
+/// stops the update.
 /// </summary>
 public sealed class EditDraftCoreModule : ModuleBase
 {
@@ -45,10 +49,37 @@ public sealed class EditDraftCoreModule : ModuleBase
         EditDraftStartup.Run(application);
     }
 
+    /// <summary>
+    /// Codex A1 (2026-10-04): adds the updater that runs the optional table check after the database update's schema update
+    /// (XPO has created the store table by then). XAF collects it when this module is new or newer in the database, when the
+    /// update is forced, or always under CheckCompatibilityType.DatabaseSchema.
+    /// </summary>
+    public override IEnumerable<ModuleUpdater> GetModuleUpdaters(IObjectSpace objectSpace, Version versionFromDB) =>
+        base.GetModuleUpdaters(objectSpace, versionFromDB)
+            .Concat(new ModuleUpdater[] { new EditDraftTableCheckUpdater(objectSpace, versionFromDB, Application?.ServiceProvider) });
+
     /// <summary>Milestone M3: the store base's member captions come from the text set in use (<see cref="EditDraftModelCaptions"/>).</summary>
     public override void AddGeneratorUpdaters(ModelNodesGeneratorUpdaters updaters)
     {
         base.AddGeneratorUpdaters(updaters);
         updaters.Add(new EditDraftStoreCaptionUpdater());
+    }
+}
+
+/// <summary>
+/// Codex A1 (2026-10-04): after the XAF database update's schema update, runs the optional table check
+/// (EditDraftStartup.RequireTableAfterSchemaUpdate); a store table that is still missing stops the update.
+/// </summary>
+internal sealed class EditDraftTableCheckUpdater : ModuleUpdater
+{
+    private readonly IServiceProvider _services;
+
+    public EditDraftTableCheckUpdater(IObjectSpace objectSpace, Version currentDBVersion, IServiceProvider services)
+        : base(objectSpace, currentDBVersion) => _services = services;
+
+    public override void UpdateDatabaseAfterUpdateSchema()
+    {
+        base.UpdateDatabaseAfterUpdateSchema();
+        EditDraftStartup.RequireTableAfterSchemaUpdate(_services, ObjectSpace);
     }
 }

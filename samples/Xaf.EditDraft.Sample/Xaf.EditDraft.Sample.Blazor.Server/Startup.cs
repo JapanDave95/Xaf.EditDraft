@@ -93,7 +93,7 @@ public class Startup
     /// - record access: XAF security only (XafSecurityEditDraftRecordAccess); records are always loaded through a secured
     ///   object space first;
     /// - switches: the configuration section "EditDraftCapture" (appsettings.json);
-    /// - store table schema: "dbo" (EditDraftStoreOptions.Schema not set);
+    /// - store table schema: "dbo" (SampleEditDraft has no [Persistent("schema.table")] mapping);
     /// - clock: TimeProvider.System; log sink: the application's ILogger, category "Xaf.EditDraft"; texts: English.
     /// Optional, used here: the header action "Drafts" on every view, so the all-types drafts list has an entry point
     /// (EditDraftBlazorOptions.HeaderActionOnEveryView), and the retention hosted service (AddEditDraftRetention), which

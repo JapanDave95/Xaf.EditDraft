@@ -67,15 +67,11 @@ namespace Xaf.EditDraft.Tests
         private static XPObjectSpaceProvider XpoProvider() =>
             new((IXpoDataStoreProvider)new MemoryDataStoreProvider(), XafTypesInfo.Instance, XpoTypesInfoHelper.GetXpoTypeInfoSource(), true, false);
 
-        private static ServiceProvider Services(Dictionary<string, string> config, bool store = true, Action<EditDraftRegistry> registry = null, Action<EditDraftStoreOptions> options = null, Type storeType = null)
+        private static ServiceProvider Services(Dictionary<string, string> config, bool store = true, Action<EditDraftRegistry> registry = null)
         {
             var services = new ServiceCollection();
             services.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(config ?? new Dictionary<string, string>()).Build());
-            if (store)
-            {
-                if (storeType == typeof(EditDraftSchemaStore)) services.AddEditDraftStore<EditDraftSchemaStore>(options);
-                else services.AddEditDraftStore<EditDraftTestStore>(options);
-            }
+            if (store) services.AddEditDraftStore<EditDraftTestStore>();
             if (registry != null) services.AddEditDraftRegistry(registry);
             return services.BuildServiceProvider();
         }
@@ -149,7 +145,7 @@ namespace Xaf.EditDraft.Tests
 
             using var space = (XPObjectSpace)new InMemoryNonSecuredFactory(typeof(EditDraftTestStore)).CreateNonSecuredObjectSpace(typeof(EditDraftTestStore));
             EditDraftSqlServer.Classify(space.Session, out var provider).Should().Be(EditDraftDatabaseKind.NotSqlServer);
-            provider.Should().Be("InMemoryDataStore");
+            provider.Should().Be("DataSetDataStore");
         }
 
         [Test]
@@ -169,7 +165,7 @@ namespace Xaf.EditDraft.Tests
             FluentActions.Invoking(() => app.Setup("close-gaps", XpoProvider())).Should().NotThrow("a headless application has no service provider to read the registrations from");
         }
 
-        // ---- G6 schema option, quoting --------------------------------------------------------------------------------
+        // ---- G6 schema from the XPO mapping, quoting --------------------------------------------------------------------------------
 
         [Test]
         public void G6_T21_T22_T23_the_store_name_is_schema_qualified_and_quoted()
@@ -178,25 +174,12 @@ namespace Xaf.EditDraft.Tests
             (plain.Schema, plain.Table, plain.QualifiedName).Should().Be(("dbo", "EditDraftTestStore", "[dbo].[EditDraftTestStore]"));
             plain.TableName.Should().Be("EditDraftTestStore", "the XPO table name is unchanged");
 
-            var named = new EditDraftStoreRegistration(typeof(EditDraftTestStore), new EditDraftStoreOptions { Schema = "edit drafts" });
-            named.QualifiedName.Should().Be("[edit drafts].[EditDraftTestStore]");
-            new EditDraftStoreRegistration(typeof(EditDraftTestStore), new EditDraftStoreOptions { Schema = "  " }).Schema.Should().Be("dbo", "blank = the default");
-
             var mapped = new EditDraftStoreRegistration(typeof(EditDraftSchemaStore));
             (mapped.Schema, mapped.Table, mapped.QualifiedName).Should().Be(("sales", "Order", "[sales].[Order]"), "XPO's own Schema.Table mapping");
 
             EditDraftSql.QuoteIdentifier("a]b").Should().Be("[a]]b]");
             EditDraftSql.QuoteIdentifier("Select").Should().Be("[Select]");
             FluentActions.Invoking(() => EditDraftSql.QuoteIdentifier(" ")).Should().Throw<ArgumentException>();
-        }
-
-        [Test]
-        public void G6_a_schema_option_that_contradicts_the_XPO_mapping_is_a_problem()
-        {
-            using var conflict = Services(null, registry: OnePolicy, options: o => o.Schema = "other", storeType: typeof(EditDraftSchemaStore));
-            EditDraftStartup.ConfigurationProblems(conflict).Should().ContainSingle(p => p.Contains("sales") && p.Contains("other"));
-            using var same = Services(null, registry: OnePolicy, options: o => o.Schema = "sales", storeType: typeof(EditDraftSchemaStore));
-            EditDraftStartup.ConfigurationProblems(same).Should().BeEmpty();
         }
 
         [Test]
@@ -315,8 +298,8 @@ namespace Xaf.EditDraft.Tests
         [TestCase(null, 60)]
         [TestCase("15", 15)]
         [TestCase("1", 1)]
-        [TestCase("0", 60)]
-        [TestCase("-5", 60)]
+        [TestCase("0", 0)]
+        [TestCase("-5", 0)]
         [TestCase("ten", 60)]
         public void G4_the_interval_defaults_to_sixty_minutes(string raw, int expected)
         {

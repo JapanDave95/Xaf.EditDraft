@@ -75,7 +75,7 @@ namespace Xaf.EditDraft.Tests
 
             foreach (var role in roles)
             {
-                var rows = role.TypePermissions.Where(p => p.TargetType == typeof(EditDraftTestStore)).ToList();
+                var rows = role.TypePermissions.Where(p => ((PermissionPolicyTypePermissionObject)p).TargetTypeFullName == typeof(EditDraftTestStore).FullName).ToList();
                 rows.Should().ContainSingle($"{role.Name}: one row after two runs");
                 new[] { rows[0].ReadState, rows[0].WriteState, rows[0].CreateState, rows[0].DeleteState, rows[0].NavigateState }
                     .Should().AllBeEquivalentTo(SecurityPermissionState.Deny, role.Name);

@@ -31,7 +31,7 @@ public class SampleCloseGapsTests
     {
         var readme = Read("README.md");
         Assert.That(readme, Does.Contain("docs/consumer-guide.md"));
-        Assert.That(readme, Does.Not.Contain("the store table must be in `dbo`"), "G6: the schema is an option now");
+        Assert.That(readme, Does.Not.Contain("the store table must be in `dbo`"), "G6: another schema comes from the store class's mapping now");
     }
 
     private static string Read(params string[] parts)

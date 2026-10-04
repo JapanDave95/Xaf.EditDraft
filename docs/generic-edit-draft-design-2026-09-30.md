@@ -1,6 +1,6 @@
 # Generic edit-draft restore (入力控): Phase A design (2026-09-30)
 
-Run `2026-09-30-generic-edit-draft-7faa17`, collaborator agent (Claude + Codex). Design only. No production code, no schema, no database access, no commit. Worktree `C:\Users\owner\source\repos\CareCrew-editdraft`, branch `feature/generic-edit-draft` from `7907169`. The census it builds on sits beside it (`docs/generic-edit-draft-setter-census-2026-09-30.md` and `.csv`, uncommitted).
+Run `2026-09-30-generic-edit-draft-7faa17`, collaborator agent (Claude + Codex). Design only. No production code, no schema, no database access, no commit. Branch `feature/generic-edit-draft` from `7907169`. The census it builds on sits beside it (`docs/generic-edit-draft-setter-census-2026-09-30.md` and `.csv`, uncommitted).
 
 **Assumption (main-session reading, stated as instructed):** "Lets continue with the generic implimentation" starts with this design pass, because the table, security and ownership parts need owner review before code (CLAUDE.md single-model carve-outs), the same way カルテ入力控 went design run (2026-09-27) → owner decisions → Phase 0/1. The first build milestone after Phase A is the generic engine + カルテ入力控 moved onto it with no behaviour change (its existing tests are the check) + the Q3 accident groups. Wave-1 types come after that milestone.
 
@@ -343,7 +343,7 @@ StartOn is already applied first (ReconstructionOrder, `TenantChartDraftPolicy.c
 
 ## 9. Test plan
 
-**Source of the expectations.** The Codex `tests` call ran in a requirement-only directory: exactly one file, `REQUIREMENT.md`, holding the owner's words and rulings verbatim, with no source, no git and no AGENTS.md (`%LOCALAPPDATA%\collab\2026-09-30-generic-edit-draft-7faa17\tests\a1\out.md`, SHA-256 428B3793…0E8C). It returned 36 expectations, E1–E36, before Codex saw Claude's design. The isolation is by convention only: absolute-path reads remain possible. Its out.md cites only REQUIREMENT.md. Codex reported that some Japanese in REQUIREMENT.md came out garbled in its PowerShell read, so the exact UI strings in the tests come from the source, not from Codex.
+**Source of the expectations.** The Codex `tests` call ran in a requirement-only directory: exactly one file, `REQUIREMENT.md`, holding the owner's words and rulings verbatim, with no source, no git and no AGENTS.md. It returned 36 expectations, E1–E36, before Codex saw Claude's design. The isolation is by convention only: absolute-path reads remain possible. Its out.md cites only REQUIREMENT.md. Codex reported that some Japanese in REQUIREMENT.md came out garbled in its PowerShell read, so the exact UI strings in the tests come from the source, not from Codex.
 
 Phase B writes the tests from this list. The owner rulings for red tests apply: a red test is escalated, never revised; one isolated rerun is allowed and both results go to the owner. Test type: **L** = logic (pure or in-memory XPO object space, as in `ChartSpace`, `TenantChartDraftTests.cs:30-47`); **S** = source/config scan; **B** = Dev2 browser script (behaviour).
 
@@ -476,12 +476,12 @@ Found independently by both: F1, F2, F3, F7, and the separate 「入力控」 li
 
 ### Codex calls
 
-| Run | Call | Attempt | Path | Started | Duration | state | validation | exit | PID | Model / effort requested | Effective effort | reasoning_output_tokens | Search | MCP tools called | activity: commands / non-zero / file_change / outside-repo | prompt SHA-256 | out SHA-256 | Parity pack | codex-cli |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 2026-09-30-generic-edit-draft-7faa17 | diag | a1 | %LOCALAPPDATA%\collab\2026-09-30-generic-edit-draft-7faa17\diag\a1 | 19:39:51 | 5.2 min | success | ok | 0 | 23580 | gpt-6-astra / medium | not observable | 304 | off | lookup_known_fix, dxdocs search, dxdocs get_content | 7 / 0 / 0 / 2 (powershell.exe, plugin cache skill file) | FC17F0F4…9E89 | 916F00E7…06FF | v1 | 0.153.4 |
-| same | tests | a1 | …\tests\a1 (Repo = requirement-only `tests\req`, -SkipGitCheck) | 19:42:10 | 2.0 min | success | ok | 0 | 36448 | gpt-6-astra / medium | not observable | 71 | off | none | 3 / 0 / 0 / 1 (powershell.exe) | A6569597…F14D | 428B3793…0E8C | none (requirement only) | 0.153.4 |
-| same | review | a1 | …\review\a1 | 19:46:27 | 3.6 min | success | ok | 0 | 35960 | gpt-6-astra / medium | not observable | 552 | off | lookup_known_fix, dxdocs search ×2, get_content ×2 | 7 / 0 / 0 / 1 | 21FCBCBF…06C4 | 02F4DC13…F63E | v2 | 0.153.4 |
-| same | combined | a1 | …\combined\a1 | 19:50:59 | 3.7 min | success | ok | 0 | 32700 | gpt-6-astra / medium | not observable | 75 | off | lookup_known_fix, dxdocs search, get_content ×2 | 3 / 0 / 0 / 1 | 34140D10…9810 | F09E9C85…BEF | v3 | 0.153.4 |
+| Run | Call | Attempt | Started | Duration | state | validation | exit | Model / effort requested | Effective effort | reasoning_output_tokens | Search | MCP tools called | activity: commands / non-zero / file_change / outside-repo | Parity pack | codex-cli |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-09-30-generic-edit-draft-7faa17 | diag | a1 | 19:39:51 | 5.2 min | success | ok | 0 | gpt-6-astra / medium | not observable | 304 | off | lookup_known_fix, dxdocs search, dxdocs get_content | 7 / 0 / 0 / 2 | v1 | 0.153.4 |
+| same | tests | a1 (requirement-only directory) | 19:42:10 | 2.0 min | success | ok | 0 | gpt-6-astra / medium | not observable | 71 | off | none | 3 / 0 / 0 / 1 | none (requirement only) | 0.153.4 |
+| same | review | a1 | 19:46:27 | 3.6 min | success | ok | 0 | gpt-6-astra / medium | not observable | 552 | off | lookup_known_fix, dxdocs search ×2, get_content ×2 | 7 / 0 / 0 / 1 | v2 | 0.153.4 |
+| same | combined | a1 | 19:50:59 | 3.7 min | success | ok | 0 | gpt-6-astra / medium | not observable | 75 | off | lookup_known_fix, dxdocs search, get_content ×2 | 3 / 0 / 0 / 1 | v3 | 0.153.4 |
 
 No failed attempts, no retries. Isolation of the `tests` call is by convention: absolute-path reads remain possible. Its out.md cites only REQUIREMENT.md.
 
@@ -497,12 +497,10 @@ No failed attempts, no retries. Isolation of the `tests` call is by convention: 
 8. Tool boundary: no DB, deploy or push MCP tool is exposed. The KB write tools were not used.
 9. Tool parity: Codex has blazor-knowledge-base (`enabled_tools` = the 9 read tools) and dxdocs.
 10. Models: gpt-6-astra is listed and supports medium.
-11. Run id 7faa17; scratch and salt.txt created; binary `C:\Users\owner\AppData\Local\Programs\OpenAI\Codex\bin\codex.exe`, 0.153.4.
+11. Run id 7faa17; codex-cli 0.153.4.
 12. Snapshot 7907169 (main repo and worktree). Status: the 2 untracked census files (+ this design doc in the worktree).
 13. Drift: `~/.codex/config.toml` has `model_reasoning_effort = "max"` against the owner rule of medium. The launcher overrides it per call. The owner edits the config if wanted.
 14. Web search off.
-
-Outputs: `%LOCALAPPDATA%\collab\2026-09-30-generic-edit-draft-7faa17\preflight\`.
 
 ### Redaction
 
@@ -518,12 +516,6 @@ None needed. Only source, model files, the census and one KB lookup were read. N
 ### Passes used
 
 2 cross-model passes (diag, then review), plus `combined` and `tests`, which adjudicate nothing. 4 Codex calls, 4 attempts, all success/ok.
-
-### Run ledger
-
-```
-{"run":"2026-09-30-generic-edit-draft-7faa17","date":"2026-09-30","topic":"generic-edit-draft-design","attempts":[{"call":"combined","attempt":1,"state":"success","validation":"ok","accepted":true,"exit":0,"minutes":3.7,"commands":3,"nonzero_exits":0,"outside_repo":1,"file_changes":0,"reasoning_tokens":75,"output_tokens":6717,"search":false},{"call":"diag","attempt":1,"state":"success","validation":"ok","accepted":true,"exit":0,"minutes":5.2,"commands":7,"nonzero_exits":0,"outside_repo":2,"file_changes":0,"reasoning_tokens":304,"output_tokens":8349,"search":false},{"call":"review","attempt":1,"state":"success","validation":"ok","accepted":true,"exit":0,"minutes":3.6,"commands":7,"nonzero_exits":0,"outside_repo":1,"file_changes":0,"reasoning_tokens":552,"output_tokens":5960,"search":false},{"call":"tests","attempt":1,"state":"success","validation":"ok","accepted":true,"exit":0,"minutes":2,"commands":3,"nonzero_exits":0,"outside_repo":1,"file_changes":0,"reasoning_tokens":71,"output_tokens":3420,"search":false}],"findings":{"claude_confirmed":7,"claude_rejected":1,"codex_confirmed":12,"codex_rejected":3,"both":4,"unverifiable":0,"open":1},"correlated_error_events":0,"escalated_to_owner":1,"passes":2,"hook_false_positives":1}
-```
 
 ## 13. Not verified / open questions
 

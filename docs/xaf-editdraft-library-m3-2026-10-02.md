@@ -1,14 +1,14 @@
 # Xaf.EditDraft library — milestone M3 (label editor, row icon, model captions, Xaf.EditDraft.Tests)
 
 Run `2026-10-02-editdraft-m3-1b4d82` (collaborator: Claude Opus 5.5 implements; Codex gpt-6-astra at xhigh reviews, read-only).
-Worktree `C:\Users\owner\source\repos\CareCrew-library`, branch `feature/edit-draft-library`, base `34491d1bdd535b1f6abf69cd554c4fc82ac05253`
+Branch `feature/edit-draft-library`, base `34491d1bdd535b1f6abf69cd554c4fc82ac05253`
 (M1: 1fe4865 / 61f8d91 / 40405d1; M2: ed1c8b9 / 07d56ee / 34491d1). Everything below is UNCOMMITTED. No commit, no deploy, no database, no
-schema change, no NursingHome_Chart.Module change, no NHM change. Scratch: `%LOCALAPPDATA%\collab\2026-10-02-editdraft-m3-1b4d82\`.
+schema change, no NursingHome_Chart.Module change, no NHM change.
 
 > **Status note, 2026-10-02 (main session, after this run):** committed as a2b6b25 (feat) / 9fc8222 (test) / ef84151 (docs)
 > and merged into master as dd0e79d, pushed. Owner rulings after the run: O-11 "Keep for the merge; fail closed before NuGet";
 > E6_E7_D9 alias expectation, InternalsVisibleTo Xaf.EditDraft.Tests and the omitted Google.OrTools confirmed. The §10
-> browser items 1–3 were run on Dev2 (host from this build, login ベイツ): label editor (lead on two lines, provenance as
+> browser items 1–3 were run on Dev2 (host from this build): label editor (lead on two lines, provenance as
 > plain caption text, no box or grip), folder icon only on the badged ToDo row, Japanese popup column captions from the
 > generator updaters, chart offer still working — all pass. Codex C2 (updaters not exercised offline) is closed by that run.
 > Not deployed. KB: fix-537.
@@ -95,7 +95,7 @@ Module class), CareCrew Model.xafml, appsettings*, the writer, the owner and rec
 ## 3. Label editor (O-7)
 
 New file `Xaf.EditDraft.Blazor/EditDraftLabelEditor.cs` (written for the library; Llamachant's decompiled output was read only for the DOM
-shape of the chart popup's lines, M2 scratch `d9\LabelEditor.cs`):
+shape of the chart popup's lines, from M2's decompiled notes):
 
 | Part | What it is |
 |---|---|
@@ -159,7 +159,7 @@ Mechanism: the text set (owner decision O-4), applied to the application model b
 ## 6. Tests
 
 ### 6a. Codex expectations first
-The `tests` call ran in a requirement-only directory (`tests\req\REQUIREMENT.md`: the brief verbatim + runtime facts F1–F9, no source)
+The `tests` call ran in a requirement-only directory (one file, `REQUIREMENT.md`: the brief verbatim + runtime facts F1–F9, no source)
 before any code was written: 47 expectations C1–C47 and a could_not_determine list. The new file `Xaf.EditDraft.Tests/EditDraftLibraryM3Tests.cs`
 (20 tests) implements the offline-checkable ones (labels in the test names: C1, C2/C3, C5/C6/C9, C9/C10, C8, C11, C12, C13–C16, C23, C25–C27,
 C31, C41–C46); the browser ones (C5–C8, C10–C12, C14, C16, C20, C24, C47) are §10; C34–C40 are the gate below. Divergences from Codex's list,
@@ -171,7 +171,7 @@ independence is checked (C43 test), the model-language part needs a host (§10 C
 Baseline on the unchanged tree (HEAD 34491d1, clean) before any edit: Rostering.Tests full suite. Candidate: Rostering.Tests full suite +
 Xaf.EditDraft.Tests, on the reviewed bytes. The only reconciliation: each Xaf.EditDraft.Tests identity is compared under the namespace its class
 had in Rostering.Tests (`Xaf.EditDraft.Tests.` → `NursingHome_Chart.Rostering.Tests.`); every mapped identity is listed in
-`after\compare-full.txt` ("moved" section). No short class name was merged across namespaces (the mapping rewrites only the new project's prefix).
+the comparison report ("moved" section). No short class name was merged across namespaces (the mapping rewrites only the new project's prefix).
 
 | Run | Baseline (HEAD, clean) | Candidate | Missing | Changed outcome | Duplicated | Newly skipped | New |
 |---|---|---|---|---|---|---|---|
@@ -184,7 +184,7 @@ Moved: 94 identities (71 methods; TestCase sets W7 x9, E1_E4 x8, E2 x9). Stayed 
 114" (the summary leaves out 5 NotExecuted TRX results, as in M1/M2). Not passed in both runs, unchanged: 4 x AuditTrailExclusionWiringTests
 (repository root in a worktree), RosterTelemetryRecorderTests.MultiDepartment_CompletedGeneration_PersistsOneRecord_WithColumnsAndParseablePayload,
 CpSatIncompatibilityTests.FullMonthSolve_NeverCoSchedulesAForbiddenPair (roster solver, not in M2's list; failed in both runs here), and the 11
-NotExecuted (Explicit/diagnostic). Report: `after\compare-full.txt` (missing / changed / duplicated / skipped / new / moved lists).
+NotExecuted (Explicit/diagnostic). The comparison report has missing / changed / duplicated / skipped / new / moved lists.
 
 ### 6c. Test edits that are not pure moves (owner to confirm; Claude's classification)
 | Test (project) | Edit | Class |
@@ -199,7 +199,7 @@ the moved methods remains in Rostering.Tests (checked the same way); the 4 block
 namespace line.
 
 ### 6d. Red during development (owner rule: one solo rerun, both reported, never revised)
-New test C8 was red in the first library run and in its solo rerun (`dev\lib1.trx`, `dev\lib1-solo-C8.trx`): the component rendered the CR LF it
+New test C8 was red in the first library run and in its solo rerun (both saved as TRX): the component rendered the CR LF it
 was given (the editor normalised only in `ReadValueCore`). The test was not changed; the component now normalises CR LF / CR itself
 (`EditDraftLabel.BuildRenderTree` → `TextOf`) — an implementation change made in response to a red test, reported here as M2 reported its E6 case.
 C25_C31 was red in the same first run because the solution entry had not been added yet; it was added afterwards, test unchanged.
@@ -207,13 +207,13 @@ C25_C31 was red in the same first run because the solution entry had not been ad
 ### 6e. Regression sensitivity
 Three mutations at once (row rule without `e.Visible = false`; the Origin caption entry pointing at another text; the label style without
 `white-space: pre-line`) → 8 library tests red: C5, C8 (label), C41, C42, C43, E21 (captions), C13, C16 (icon). Restored; the three files'
-SHA-256 equal before and after (`sensitivity-before.txt` / `sensitivity-after.txt`).
+SHA-256 equal before and after.
 
 ### 6f. Golden
 `NursingHome_Chart.Rostering.Tests/Golden/TenantChartDraft.golden.txt` SHA-256 `72325EE15DD4E28A2AA4C1C19B1FCA84401E7F459332FB22B42C1C08358C3144`,
 unchanged (git: not modified); its tests stay in Rostering.Tests.
 
-## 7. Builds (all `--artifacts-path artifacts/claude-test/20261002-1b4d82`; logs in `baseline\`, `quick\`, `after\`)
+## 7. Builds (all `--artifacts-path artifacts/claude-test/20261002-1b4d82`)
 - Baseline (clean HEAD): Core exit 0 / 0 warnings; Blazor library exit 0 / 0; CareCrew.Blazor.Server exit 0 / 2209; CareCrew.Win exit 0 / 1.
 - Candidate: Core exit 0 / 0; Blazor library exit 0 / 0; Xaf.EditDraft.Tests exit 0 / 0; Rostering.Tests exit 0; CareCrew.Win exit 0 / 1;
   CareCrew.Blazor.Server `--no-incremental` exit 0 / 2209 unique warnings — the same set as the baseline (0 differences), none in an Xaf.EditDraft file.
@@ -227,7 +227,7 @@ running during the review (Codex noted it as unavailable); the quick runs, the s
 | Codex | Finding | Claude's check | Outcome |
 |---|---|---|---|
 | C1 | `EditDraftRowOpenRule.Apply` (line 24) turns a badged row's icon on when the action's only false reason is the selected-row reason; XAF's per-row pass (`InlineRowActionController.Container_SetupInlineActionButton`) also ANDs row-specific inputs (`BoundItemCreatingEventArgs.Enabled`, `TargetObjectsCriteria`) that the override cannot see, so it can enable an icon XAF disabled for that row | Confirmed in the decompiled 26.1.4 source (pack §6). Reachability in CareCrew today: no `BoundItemCreating` handler and no `TargetObjectsCriteria` for `EditDraftRowOpen` in any .cs or .xafml of the repository (grep), so not reachable now; reachable for a future host that adds either. Not a data or record-access path (the click re-reads the store and re-checks access) | Not changed; owner decision O-11 (§12) |
-| C2 | The caption tests call the helpers on mocks and check registration; they never run the three `UpdateNode` methods inside XAF model generation, nor a higher-layer override; empty `UpdateNode` bodies would still pass | Confirmed. Decisive check attempted after the review: a real model via XAF 26.1 docs 405947 "Approach 2" (XafApplication mock + module list + `ExpressApplicationSetupParameters`) with a probe module exporting the popup classes and registering the library updaters, first with a mocked entity store, then with real XPO + non-persistent object space providers — both produced an empty BOModel (0 classes); abandoned, the file removed (kept in scratch `postreview\`) | Open: the browser pass (§10 C14–C16) is the check; a real model-generation test is a follow-up (needs an XAF application setup that populates the BOModel offline) |
+| C2 | The caption tests call the helpers on mocks and check registration; they never run the three `UpdateNode` methods inside XAF model generation, nor a higher-layer override; empty `UpdateNode` bodies would still pass | Confirmed. Decisive check attempted after the review: a real model via XAF 26.1 docs 405947 "Approach 2" (XafApplication mock + module list + `ExpressApplicationSetupParameters`) with a probe module exporting the popup classes and registering the library updaters, first with a mocked entity store, then with real XPO + non-persistent object space providers — both produced an empty BOModel (0 classes); abandoned, the file removed | Open: the browser pass (§10 C14–C16) is the check; a real model-generation test is a follow-up (needs an XAF application setup that populates the BOModel offline) |
 
 Codex also stated: the S5 test-edit classifications match its reading (alias exception = O-7 change; friend-list additions = relocation;
 caption lookups = mechanism changes with the Japanese literals kept), and the saved TRXs show C8 red first and on its solo rerun, then green.
@@ -322,7 +322,7 @@ class, inline icon rule) · 10 Configuration keys · 11 Tests (Xaf.EditDraft.Tes
 - **Test project packages.** `Xaf.EditDraft.Tests` uses five of Rostering.Tests' six pinned packages at the same versions (Google.OrTools left
   out). Codex's requirement-only C25 read "the same packages" as the identical list; say if OrTools must be added.
 - Follow-ups (not decisions): a real model-generation caption test (Codex C2); the KB record owed for M2 + M3 (the KB server writes into
-  `repos\CareCrew`, which this run may not touch); O-8, O-9, O-10 from M2 not in this brief.
+  the CareCrew repository, which this run may not touch); O-8, O-9, O-10 from M2 not in this brief.
 
 ## 13. Contribution log
 
@@ -345,34 +345,34 @@ class, inline icon rule) · 10 Configuration keys · 11 Tests (Xaf.EditDraft.Tes
   new tests: an unbadged row has no icon rather than a disabled one, toolbar gating unchanged, HTML-sensitive text, thread-culture
   independence, the closure-level isolation check, the identity-gate failure modes). `diffreview` — 2 findings, both confirmed in source;
   0 code changes resulted (1 owner decision, 1 open coverage gap). Read only; no file_change; it decompiled DevExpress assemblies itself and read
-  the scratch pack.
+  the pack.
 
 ### Found issues, by tool
 | ID | Issue | Found by | Verdict | Evidence | Impact / likelihood / confidence / observed in prod | Decisive check | Outcome |
 |---|---|---|---|---|---|---|---|
-| K1 | New test C8 red: the component rendered CR LF as given | Claude (run) | correct | `dev\lib1.trx`, solo `dev\lib1-solo-C8.trx` | display / every CR LF value / executed / no | rerun after the component change | component normalises; test unchanged |
-| K2 | C25_C31 red before the solution entry existed | Claude (run) | correct (sequence) | `dev\lib1.trx` | none / — / executed / no | final run | sln entry added; test unchanged |
+| K1 | New test C8 red: the component rendered CR LF as given | Claude (run) | correct | first-run TRX, solo-rerun TRX | display / every CR LF value / executed / no | rerun after the component change | component normalises; test unchanged |
+| K2 | C25_C31 red before the solution entry existed | Claude (run) | correct (sequence) | first-run TRX | none / — / executed / no | final run | sln entry added; test unchanged |
 | K3 | E6_E7_D9 pins "no alias", reversed by O-7 | Claude | correct | `T/EditDraftLibraryBlazorTests.cs` | gate / certain / high / no | owner | edited + escalated (§12) |
 | K4 | IVT set pinned in E6/E17 | Claude | correct | Core csproj; E6, E17 | gate / certain / high / no | owner | edited + escalated (§12) |
 | K5 | Captions read from attributes in E8_D9, E21, store mapping | Claude | correct | the three tests | gate / certain / high / no | full run | mechanism updated, strings unchanged |
 | K6 | CpSat FullMonthSolve fails in this machine's runs | Claude | pre-existing, unrelated | baseline + candidate TRX | none from M3 / — / executed / no | — | unchanged, reported |
 | K7 | The design's xafml aspect depends on the XAF model language and needs a CareCrew model line as fallback | Claude | correct (static) | design §181; Module.cs:132 | wrong-language captions / per host / medium / no | browser (§10 C) | text-set updaters chosen instead |
-| K8 | Edit tool trims a trailing space at the end of new_string | Claude | correct (process) | the scratch extraction regex | none in repo files / — / executed / no | 0 matches → fixed | fixed in scratch |
+| K8 | Edit tool trims a trailing space at the end of new_string | Claude | correct (process) | the extraction script's regex | none in repo files / — / executed / no | 0 matches → fixed | fixed in the script |
 | C1 | Enable override can mask row-specific disables | Codex | correct (static); unreachable in CareCrew now | `B/EditDraftRowOpenRule.cs:24`; decompiled InlineRowActionController | wrong enabled icon / host with row criteria or BoundItemCreating / high / no | runtime pipeline with a row-disabled badged row | owner O-11 |
 | C2 | Caption tests do not run the updaters in model generation | Codex | correct (coverage) | `T/EditDraftLibraryM3Tests.cs:329–370` | English captions could pass unnoticed / if updaters do not run / high / no | real model generation — attempted, empty model | open → browser §10 C |
 
 Found independently by both: none (Codex read Claude's statements first; C1 and C2 are Codex's alone).
 
 ### Codex calls
-| Run | Call | Attempt | Path | Started | Duration | state | validation | Exit | PID | Model / effort requested | Effective effort | reasoning tokens | Search | MCP calls | activity (cmds / non-zero / file_change / outside-repo) | prompt / out sha256 (first 8) | Pack | CLI |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 1b4d82 | tests | a1 | `…\tests\a1` (cwd `tests\req`, `-SkipGitCheck`) | 11:26:11 | 5.9 min | success | ok | 0 | 52648 | gpt-6-astra / xhigh | not observable | 5,510 | off | 0 | 5 / 1 / 0 / 1 (powershell.exe) | 8297A07B / 6AD1826D | REQUIREMENT.md (brief + F1–F9) | 0.153.4 |
-| 1b4d82 | diffreview | a1 | `…\diffreview\a1` | 12:21:10 | 10.2 min | success | ok (candidate 29 files unchanged during review; manifest 4168703C) | 0 | 61052 | gpt-6-astra / xhigh | not observable | 6,616 | off | 22 (KB lookup 2, get_fix 2 incl. 1 failed, get_rule 2 incl. 1 failed, dxdocs search 10 incl. 4 failed, get_content 6) | 26 / 1 / 0 / 3 (scratch folder, pack, powershell.exe) | 634FB21C / 9911E46B | v1 (474 KB) | 0.153.4 |
+| Run | Call | Attempt | Started | Duration | state | validation | Exit | Model / effort requested | Effective effort | reasoning tokens | Search | MCP calls | activity (cmds / non-zero / file_change / outside-repo) | Pack | CLI |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1b4d82 | tests | a1 (requirement-only directory) | 11:26:11 | 5.9 min | success | ok | 0 | gpt-6-astra / xhigh | not observable | 5,510 | off | 0 | 5 / 1 / 0 / 1 | REQUIREMENT.md (brief + F1–F9) | 0.153.4 |
+| 1b4d82 | diffreview | a1 | 12:21:10 | 10.2 min | success | ok (candidate 29 files unchanged during review) | 0 | gpt-6-astra / xhigh | not observable | 6,616 | off | 22 (KB lookup 2, get_fix 2 incl. 1 failed, get_rule 2 incl. 1 failed, dxdocs search 10 incl. 4 failed, get_content 6) | 26 / 1 / 0 / 3 | v1 (474 KB) | 0.153.4 |
 
 Input tokens: tests 155,553 (cached 132,096); diffreview 3,654,289 (cached 3,207,936). The `tests` isolation is by convention; its out.md cites
 only REQUIREMENT.md and its commands read only that file.
 
-### Setup checks (Phase 0; outputs under `…\preflight\`)
+### Setup checks (Phase 0)
 | # | Item | Result |
 |---|---|---|
 | 1 | BASH_MAX_TIMEOUT_MS | present (2400000) |
@@ -385,7 +385,7 @@ only REQUIREMENT.md and its commands read only that file.
 | 8 | Tool boundary (HARD) | no MCP tool of this agent writes a database, migrates, deploys, pushes or restarts; KB write tools not used |
 | 9 | Tool parity (HARD) | KB with the 9 read tools (`enabled_tools`), dxdocs; DEVIATION as in earlier runs: node_repl and cua_repl enabled for Codex (no call to them) |
 | 10 | Models (HARD) | gpt-6-astra listed, low…ultra incl. medium and xhigh |
-| 11 | Run setup | run 1b4d82, scratch, salt (unused), codex.exe from PATH, codex-cli 0.153.4; doctor exit 0; login ChatGPT |
+| 11 | Run setup | run 1b4d82, salt (unused), codex from PATH, codex-cli 0.153.4; doctor exit 0; login ChatGPT |
 | 12 | Snapshot | worktree HEAD 34491d1, branch feature/edit-draft-library, clean at start |
 | 13 | Policy drift | CLAUDE.md and AGENTS.md identical to the main repo (AF56E4B3…, BEE30186…); `~/.codex/config.toml` effort medium, each call passes xhigh |
 | 14 | Web search | off in both calls |
@@ -401,19 +401,13 @@ The candidate full-suite results (running during the review; now in §6b). Claud
 command the hook could not parse — re-done with the Write tool).
 
 ### KB
-No `log_new_fix`: the KB server writes into `repos\CareCrew\mcp-blazor-knowledge-base\records`, and the brief forbids work in `repos\CareCrew`.
+No `log_new_fix`: the KB server writes into the CareCrew repository, and the brief forbids work in that repository.
 Owed when the owner accepts M3: one record (inline-row action visibility per row via CustomizeInlineActionButton; library label editor; model
 captions from a text set through generator updaters; the Edit tool trailing-space trim).
 
 ### Clean-up
 `artifacts/claude-test/20261002-1b4d82` deleted after the runs. Decompiled DevExpress excerpts, the extraction scripts, the abandoned
-model-generation test and all logs are in the scratch folder.
-
-### Run ledger
-Appended to `%LOCALAPPDATA%\collab\ledger.jsonl` by `tools/collab/append-ledger.ps1`:
-```json
-{"run":"2026-10-02-editdraft-m3-1b4d82","date":"2026-10-02","topic":"xaf-editdraft-library-m3","attempts":[{"call":"diffreview","attempt":1,"state":"success","validation":"ok","accepted":true,"exit":0,"minutes":10.2,"commands":26,"nonzero_exits":1,"outside_repo":3,"file_changes":0,"reasoning_tokens":6616,"output_tokens":14458,"search":false},{"call":"tests","attempt":1,"state":"success","validation":"ok","accepted":true,"exit":0,"minutes":5.9,"commands":5,"nonzero_exits":1,"outside_repo":1,"file_changes":0,"reasoning_tokens":5510,"output_tokens":10810,"search":false}],"findings":{"claude_confirmed":8,"claude_rejected":0,"codex_confirmed":2,"codex_rejected":0,"both":0,"unverifiable":0,"open":4},"correlated_error_events":0,"escalated_to_owner":4,"passes":2,"hook_false_positives":2}
-```
+model-generation test and all logs are not in the repo.
 
 ## 14. Not verified / open questions
 - Everything in a host: the label editor's look against the chart popup, wrapping on screen, focus, the conflict-line hide; the per-row icon

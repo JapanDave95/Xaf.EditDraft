@@ -1,7 +1,7 @@
 # Xaf.EditDraft library — design (generic DevExpress XAF data-restore feature)
 
 Run `2026-10-01-editdraft-library-c8ceda` (collaborator: Claude Opus 5.5 + Codex gpt-6-astra at xhigh). Branch
-`feature/edit-draft-library`, worktree `C:\Users\owner\source\repos\CareCrew-library`, snapshot `6bfbf876c4f35a6755026d1c38aa6b35cbcc6deb`
+`feature/edit-draft-library`, snapshot `6bfbf876c4f35a6755026d1c38aa6b35cbcc6deb`
 (= master 6bfbf87). Design only: no code, no build of the projects, no database, no commit. This file is uncommitted.
 
 Owner's words (verbatim): "I want to make this a generic library that any project can use. Create a separate branch and make
@@ -176,7 +176,7 @@ assembly for the base type, not the Core module.
 | Switches | IConfiguration under a configurable section, same keys `EditDraftCapture:Enabled`, `:Types:<PolicyId>:Enabled`, `:ListViews:Enabled`, re-read at every use, fail closed | default with section `EditDraftCapture` | both |
 | Store availability | per-database cache (not process-wide), same "table exists" meaning | default | B (A agrees) |
 | Clock / expiry | `TimeProvider` with LOCAL time semantics kept (today `DateTime.Now`); 7 days from first capture, never extended | default | A (TimeProvider), B (keep local time) |
-| Logging | facade with pluggable sink; message text kept including `[EditDraft]`; default sink `ILogger` | sink = `GlobalLogger` (same lines in `C:\Progress\logs`) | both |
+| Logging | facade with pluggable sink; message text kept including `[EditDraft]`; default sink `ILogger` | sink = `GlobalLogger` (same lines in the host's log folder) | both |
 | Texts | key → text table, two built-in sets (ja = today's exact strings, en), chosen explicitly by option, never by culture sniffing | ja | both |
 | Model captions | English attributes + module-level `Model.DesignedDiffs.Localization.ja.xafml` embedded in the library (XAF 26.1 docs 112580) | fallback: overrides in CareCrew's Model.xafml if the ja aspect is not applied (PreferredLanguage not established) | both |
 | Registry | decision D4 (static configured once vs DI instance) | CareCrew registers 23 chart + 5 wave policies | both (lifetime differs) |
@@ -340,7 +340,7 @@ a rule"; SD-3 non-Guid user keys unsupported in v1 (recommended) vs a string own
 
 ### What each model did
 - **Claude (Opus 5.5):** Phase 0 checks; parity packs v1-v3 (494 KB / 508 KB / 515 KB); independent design saved before reading any
-  Codex output (`claude-diagnosis.md`, sha256 A85282E8…, 19:48); dxdocs fetches (XPO inheritance mapping, PersistentAttribute,
+  Codex output (saved at 19:48); dxdocs fetches (XPO inheritance mapping, PersistentAttribute,
   DeferredDeletion, BaseObject, ModuleBase, model layers, non-persistent objects, type permissions); local nuspec read; an executed
   scratch compile (CS0118); verified every Codex citation used here; the security section alone. Got right: store-identity/deny-row
   consequence, NonPersistent-base option, CS0118, SameTableNameException rule, Llamachant NPOBase, write-slot and row-type couplings,
@@ -388,11 +388,11 @@ the DevExpress/TFM mismatch, Llamachant NPOBase, the Blazor-bound controllers, c
 
 ### Codex calls
 
-| Run | Call | Attempt | Path | Started | Duration | state | validation | Exit | PID | Model / effort requested | Effective effort | reasoning_output_tokens | Search / queries | MCP tools called | activity (commands / non-zero / file_change / outside-repo) | prompt / out sha256 (first 8) | Pack | CLI |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| c8ceda | diag | a1 | `%LOCALAPPDATA%\collab\2026-10-01-editdraft-library-c8ceda\diag\a1` | 19:39:49 | 15.7 min | success | ok | 0 | 65468 | gpt-6-astra / xhigh | not observable | 4272 | off; 3 web_search items in default mode (RCL docs, "license") | KB lookup 1, dxdocs search 15, get 9 | 17 / 1 / 0 / 2 (powershell.exe; a Codex skill file under ~/.codex) | 6786BCAE / 20A5C51C | v1 | 0.153.4 |
-| c8ceda | review | a1 | `…\review\a1` | 19:55:56 | 10.1 min | success | ok | 0 | 56456 | gpt-6-astra / xhigh | not observable | 4123 | off; 3 web_search items (C# name-lookup spec) | KB 1, dxdocs search 9, get 6 | 12 / 1 / 0 / 1 (powershell.exe) | 4B5EA461 / 3B203B73 | v2 | 0.153.4 |
-| c8ceda | combined | a1 | `…\combined\a1` | 20:07:41 | 9.9 min | success | ok | 0 | 63892 | gpt-6-astra / xhigh | not observable | 2545 | off; 1 web_search item (RCL docs) | KB lookup 1, get_fix 1, dxdocs search 9, get 6 | 9 / 0 / 0 / 1 (powershell.exe) | 887DD8C7 / DEFBE3ED | v3 | 0.153.4 |
+| Run | Call | Attempt | Started | Duration | state | validation | Exit | Model / effort requested | Effective effort | reasoning_output_tokens | Search / queries | MCP tools called | activity (commands / non-zero / file_change / outside-repo) | Pack | CLI |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| c8ceda | diag | a1 | 19:39:49 | 15.7 min | success | ok | 0 | gpt-6-astra / xhigh | not observable | 4272 | off; 3 web_search items in default mode (RCL docs, "license") | KB lookup 1, dxdocs search 15, get 9 | 17 / 1 / 0 / 2 | v1 | 0.153.4 |
+| c8ceda | review | a1 | 19:55:56 | 10.1 min | success | ok | 0 | gpt-6-astra / xhigh | not observable | 4123 | off; 3 web_search items (C# name-lookup spec) | KB 1, dxdocs search 9, get 6 | 12 / 1 / 0 / 1 | v2 | 0.153.4 |
+| c8ceda | combined | a1 | 20:07:41 | 9.9 min | success | ok | 0 | gpt-6-astra / xhigh | not observable | 2545 | off; 1 web_search item (RCL docs) | KB lookup 1, get_fix 1, dxdocs search 9, get 6 | 9 / 0 / 0 / 1 | v3 | 0.153.4 |
 
 Input tokens per call (cached share): diag 2,673,171 (2,305,408), review 2,028,686 (1,702,784), combined 2,167,986 (1,928,704). The
 parity packs were large (494-515 KB); this is the cost driver of the run. Claude's draft of this write-up was created in `docs/` during the
@@ -401,22 +401,22 @@ not cite the draft — so the merge was not informed by it.
 
 No node_repl or cua_repl call appears in any activity record. No file_change item in any call. No secrets file was opened.
 
-### Setup checks (Phase 0; outputs under `%LOCALAPPDATA%\collab\2026-10-01-editdraft-library-c8ceda\preflight\`)
+### Setup checks (Phase 0)
 
 | # | Item | Result |
 |---|---|---|
 | 1 | `BASH_MAX_TIMEOUT_MS` | present (2400000) |
 | 2 | Read-only query connection (HARD) | not run: no query connection was used (brief: "no DB"); no query was executed |
 | 3 | Repo trusted (HARD) | present: the PreToolUse hook fired in this session (item 5) |
-| 4 | Manifest (HARD) | 7/7 hashes match in the worktree and in the main repo (`manifest-worktree.txt`, `manifest-main.txt`) |
+| 4 | Manifest (HARD) | 7/7 hashes match in the worktree and in the main repo |
 | 5 | Hook fires (HARD) | `git push --dry-run origin HEAD` → blocked by collab-guard; a harmless Monitor (`Get-Date`) ran unblocked |
 | 6 | `collab.rules` | file present; the `codex execpolicy check … git push …` command was itself blocked by the hook (its text contains a push) — hook false positive, not retried (ground rule 13); last recorded result (wave-1b run): plain push forbidden, `pwsh.exe -Command "git push"` not forbidden |
-| 7 | `codex debug prompt-input` | saved (`prompt-input.txt`); AGENTS.md sections present; CLAUDE.md body absent (pasted as parity item 0) |
+| 7 | `codex debug prompt-input` | saved; AGENTS.md sections present; CLAUDE.md body absent (pasted as parity item 0) |
 | 8 | Tool boundary (HARD) | no MCP tool of this agent writes a database, migrates, deploys, pushes or restarts a service; KB write tools exist and were not used; browser and claude.ai connectors not used |
-| 9 | Tool parity (HARD) | Codex: blazor-knowledge-base with `enabled_tools` = the 9 read tools; dxdocs (26.1). DEVIATION (same as runs 065de8/8eab5b/c71e94): `node_repl` and `cua_repl` are enabled for Codex (`codex-mcp-list.json`); guard: no call to either appears in any activity record. Claude's browser/Docs/Gmail/Calendar/Drive connectors have no Codex counterpart; not knowledge sources here, not used |
-| 10 | Models (HARD) | `gpt-6-astra` listed; supported efforts low…ultra incl. medium and xhigh (`debug-models.txt`) |
-| 11 | Run setup | run id c8ceda; scratch created; `salt.txt` written (unused — no personal data handled); binary `C:\Users\owner\AppData\Local\Programs\OpenAI\Codex\bin\codex.exe` (PATH), codex-cli 0.153.4; `codex doctor` overallStatus = warning (dev drive, optional MCP config issues, endpoint protection); login: ChatGPT |
-| 12 | Snapshot | worktree `C:\Users\owner\source\repos\CareCrew-library`, branch feature/edit-draft-library, HEAD 6bfbf876c4f35a6755026d1c38aa6b35cbcc6deb, status empty at start; NHM read-only reference: master 7bf13f39 |
+| 9 | Tool parity (HARD) | Codex: blazor-knowledge-base with `enabled_tools` = the 9 read tools; dxdocs (26.1). DEVIATION (same as runs 065de8/8eab5b/c71e94): `node_repl` and `cua_repl` are enabled for Codex (`codex mcp list`); guard: no call to either appears in any activity record. Claude's browser/Docs/Gmail/Calendar/Drive connectors have no Codex counterpart; not knowledge sources here, not used |
+| 10 | Models (HARD) | `gpt-6-astra` listed; supported efforts low…ultra incl. medium and xhigh (`codex debug models`) |
+| 11 | Run setup | run id c8ceda; salt written (unused — no personal data handled); codex from PATH, codex-cli 0.153.4; `codex doctor` overallStatus = warning (dev drive, optional MCP config issues, endpoint protection); login: ChatGPT |
+| 12 | Snapshot | branch feature/edit-draft-library, HEAD 6bfbf876c4f35a6755026d1c38aa6b35cbcc6deb, status empty at start; NHM read-only reference: master 7bf13f39 |
 | 13 | Policy drift | CLAUDE.md in the worktree = main repo (sha256 AF56E4B3…); AGENTS.md carries the template's "Working with Claude (Codex)" section plus an extra "Multi-model guardrails" section not in the template (reported, not edited); `~/.codex/config.toml` top-level `model_reasoning_effort = "medium"` (each call overrides with `-c model_reasoning_effort=xhigh`) |
 | 14 | Web search | `-Search` OFF (D9); Codex still issued web_search items in its default (cached) mode — recorded in the Codex calls table |
 
@@ -432,12 +432,6 @@ context: AGENTS.md. Conclusions not cross-checked: the security section (§4.11)
 
 ### Passes used
 2 cross-model passes (diag; review) + 1 combined call = 3 Codex calls, 3 attempts, no retries.
-
-### Run ledger
-Appended to `%LOCALAPPDATA%\collab\ledger.jsonl` by `tools/collab/append-ledger.ps1`:
-```json
-{"run":"2026-10-01-editdraft-library-c8ceda","date":"2026-10-01","topic":"xaf-editdraft-library-design","attempts":[{"call":"combined","attempt":1,"state":"success","validation":"ok","accepted":true,"exit":0,"minutes":9.9,"commands":9,"nonzero_exits":0,"outside_repo":1,"file_changes":0,"reasoning_tokens":2545,"output_tokens":17880,"search":false},{"call":"diag","attempt":1,"state":"success","validation":"ok","accepted":true,"exit":0,"minutes":15.7,"commands":17,"nonzero_exits":1,"outside_repo":2,"file_changes":0,"reasoning_tokens":4272,"output_tokens":20053,"search":false},{"call":"review","attempt":1,"state":"success","validation":"ok","accepted":true,"exit":0,"minutes":10.1,"commands":12,"nonzero_exits":1,"outside_repo":1,"file_changes":0,"reasoning_tokens":4123,"output_tokens":12506,"search":false}],"findings":{"claude_confirmed":4,"claude_rejected":3,"codex_confirmed":8,"codex_rejected":1,"both":10,"unverifiable":3,"open":7},"correlated_error_events":0,"escalated_to_owner":14,"passes":2,"hook_false_positives":1}
-```
 
 ## 8. Owner decisions, not verified, open questions
 

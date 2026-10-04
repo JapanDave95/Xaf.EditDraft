@@ -68,9 +68,9 @@ internal sealed class EditDraftWriter : IEditDraftWriter
         : this(serviceProvider, (serviceProvider?.GetService(typeof(EditDraftStoreRegistration)) as EditDraftStoreRegistration)?.StoreType) { }
 
     /// <summary>
-    /// The writer of an explicit store class (null = none: fail closed). The table name and schema come from the store's
-    /// registration in <paramref name="serviceProvider"/> when it is the same class, else from the class alone (schema "dbo"
-    /// unless its XPO table name names one).
+    /// The writer of an explicit store class (null = none: fail closed). The table name and schema come from the class's XPO
+    /// mapping (<see cref="EditDraftStoreRegistration"/>: schema "dbo" unless its XPO table name names one); the registration
+    /// in <paramref name="serviceProvider"/> is reused when it is the same class.
     /// </summary>
     public EditDraftWriter(IServiceProvider serviceProvider, Type storeType)
     {
@@ -146,8 +146,8 @@ internal sealed class EditDraftWriter : IEditDraftWriter
 /// Expiry is set once at creation and never written again.
 ///
 /// Library (milestone M1): generic over the host's store class; the statements address its table by the quoted,
-/// schema-qualified name of its registration (gap G6, 2026-10-04: <c>[schema].[table]</c>, schema "dbo" unless the
-/// store's XPO table name or EditDraftStoreOptions.Schema names another). The column names are the store base's
+/// schema-qualified name of its registration (gap G6 and Codex C1, 2026-10-04: <c>[schema].[table]</c> from the store's XPO
+/// table name only, schema "dbo" unless that name carries one), the same table XPO's own reads and inserts use. The column names are the store base's
 /// (OwnerFlag and ScopeOid keep their columns LoginIsStaffMember and SubSectionOid). Supported contract v1: XPO, SQL Server.
 /// </summary>
 internal sealed class EditDraftWriter<TStore> : IEditDraftWriter where TStore : EditDraftStoreBase

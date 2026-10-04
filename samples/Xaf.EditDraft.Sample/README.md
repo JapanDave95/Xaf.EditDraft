@@ -13,7 +13,7 @@ guide is `docs/consumer-guide.md` at the repository root; this README shows how 
 - SQL Server LocalDB, instance `MSSQLLocalDB`, or another SQL Server (change `ConnectionStrings:ConnectionString` in
   `Xaf.EditDraft.Sample.Blazor.Server/appsettings.json`). The library supports SQL Server only (its writer uses T-SQL;
   the startup check stops the application otherwise). The sample's store table is `dbo.SampleEditDraft`, the default
-  schema; another schema is set with `AddEditDraftStore<SampleEditDraft>(o => o.Schema = "...")`.
+  schema; another schema is set on the store class with `[Persistent("myschema.SampleEditDraft")]`.
 - The two library projects, referenced by path: `../../Xaf.EditDraft.Core` and `../../Xaf.EditDraft.Blazor`.
   Package versions come from the repository's `Directory.Packages.props` (central package management).
 
@@ -76,7 +76,7 @@ Nothing below is registered by the sample; each is the library default.
 | Owner of a draft | The XAF login's key, when it is a non-empty Guid. No login, no draft. | Register an `IEditDraftOwnerResolver` |
 | Record access | XAF security only; records are loaded through a secured object space first | Register an `IEditDraftRecordAccess` |
 | Switch section | `EditDraftCapture` | Register `new EditDraftSwitchOptions { Section = "..." }` |
-| Store table schema | `dbo` | `AddEditDraftStore<SampleEditDraft>(o => o.Schema = "...")` |
+| Store table schema | `dbo` | `[Persistent("myschema.SampleEditDraft")]` on the store class |
 | Clock | `TimeProvider.System`, local time | Register a `TimeProvider` |
 | Log | The application's `ILogger`, category `Xaf.EditDraft`, lines start with `[EditDraft]` | Set `EditDraftLog.Sink` at startup |
 | Texts | English | `EditDraftTexts.Use(EditDraftLanguage.Japanese)` at startup |
