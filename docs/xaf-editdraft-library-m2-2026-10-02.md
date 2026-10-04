@@ -1,10 +1,10 @@
 # Xaf.EditDraft library — milestone M2 (Blazor package, Llamachant replacements, seam retargeting)
 
 Run `2026-10-02-editdraft-m2-6e2ced` (collaborator: Claude Opus 5.5 implements; Codex gpt-6-astra at xhigh reviews, read-only).
-Worktree `C:\Users\owner\source\repos\CareCrew-library`, branch `feature/edit-draft-library`, base `40405d1072ca3cc030a22e79d95f4a8dd44a8e53`
+Branch `feature/edit-draft-library`, base `40405d1072ca3cc030a22e79d95f4a8dd44a8e53`
 (M1 committed: 1fe4865 / 61f8d91 / 40405d1). Committed 2026-10-02 as ed1c8b9 (feat) / 07d56ee (test) / 34491d1 (docs); the text below
 was written before the commit and still says "uncommitted". No deploy, no database, no schema change, no
-NursingHome_Chart.Module change, no NHM change (D2-A). Scratch: `%LOCALAPPDATA%\collab\2026-10-02-editdraft-m2-6e2ced\`.
+NursingHome_Chart.Module change, no NHM change (D2-A).
 
 > Note 2026-10-02 (M3 run `2026-10-02-editdraft-m3-1b4d82`): the three red new tests of §7c were corrected in 07d56ee on the owner's
 > ruling O-6 (E2 exempts the InternalsVisibleTo entries and matches the key literal; E19 skips the XafDisplayName lines; E8 compares with
@@ -151,7 +151,7 @@ without `/XO` (KB fix-185). Not verified in M2: that a host serves the path (dev
 ## 7. Tests
 
 ### 7a. Codex expectations first
-The `tests` call ran in a requirement-only directory (`tests\req\REQUIREMENT.md`: the brief verbatim, the design without §4.11, M1 §0/§4/§8/§9,
+The `tests` call ran in a requirement-only directory (one file, `REQUIREMENT.md`: the brief verbatim, the design without §4.11, M1 §0/§4/§8/§9,
 the baseline facts) before any M2 code was shown: 34 expectations E1–E34 and a could_not_determine list (it flagged the "no appsettings key name"
 vs the Core default section and the CSS path conflict, both resolved or escalated below). The new file `EditDraftLibraryBlazorTests.cs` implements
 the offline-checkable ones (labels in the test names: E1–E4, E6–E8, E12, E14, E17, E19, E22–E24); E9–E11, E13, E16, E20, E21, E33 need M4 or are
@@ -176,7 +176,7 @@ the summary leaves out 5 of the 11 NotExecuted TRX results in both runs, as in M
 - W41 (persistent-member comparison, owner ruling 2026-10-02) passes in both runs.
 
 ### 7c. The three red new tests — escalated, NOT changed (owner rule 2026-09-24; one solo rerun each, owner rule 2026-09-30)
-First run (quick filter) and solo rerun (`after-quick\solo-rerun.trx`) both red; full run red. Classification: test defects (Claude), confirmed by
+First run (quick filter) and solo rerun both red; full run red. Classification: test defects (Claude), confirmed by
 Codex C3–C5. Proposed correction for each (owner to approve or reject):
 - `E2_the_Blazor_project_references_only_Core_and_DevExpress_...`: (1) the token scan rejects `NursingHome_Chart` in the Core csproj line
   `<InternalsVisibleTo Include="NursingHome_Chart.Rostering.Tests" />` (the friend grant the brief allows); (2) Codex C3: the second check rejects
@@ -221,7 +221,7 @@ member shape (E8_D9); row mapping and PropertyChanged (E8, red); static asset an
 empty registry (E14); O-3 internal writer, friends, no CareCrew writer use (E17); seams/clock/no literal UI text (E19, red); Japanese UI texts and
 English default (E22); CareCrew residue (E24).
 
-## 8. Builds (all `--artifacts-path artifacts/claude-test/20261002-6e2ced`; logs in `baseline\` and `after\`)
+## 8. Builds (all `--artifacts-path artifacts/claude-test/20261002-6e2ced`)
 - Baseline: Core exit 0; CareCrew.Blazor.Server exit 0; CareCrew.Win exit 0.
 - Candidate: Xaf.EditDraft.Core alone exit 0, 0 warnings; Xaf.EditDraft.Blazor alone exit 0, 0 warnings; CareCrew.Blazor.Server exit 0 (2209 unique
   warnings on a `--no-incremental` rebuild = baseline 2209, none in a touched file); CareCrew.Win exit 0 (it references no changed project);
@@ -251,7 +251,7 @@ markers) and this write-up. No code or test file changed after the review; the f
 Nothing in M2 was run in a browser or a host. Record the build id and the `[EditDraft]` / `[ChartDraft]` log lines for each item.
 
 > **Status note, 2026-10-02 (main session):** M2 committed as ed1c8b9 / 07d56ee / 34491d1 and merged with M3 as dd0e79d.
-> This checklist was run on Dev2 from the M2 build (host :5004, login ベイツ): A1 startup/discovery, A2/A3 stylesheet
+> This checklist was run on Dev2 from the M2 build (host :5004): A1 startup/discovery, A2/A3 stylesheet
 > (`_content/…` 200, old path 404), B offer→restore→保存 (`applied=2`, `delete after save: rows=1`), fresh capture, C8 badge,
 > C9 row 開く, D 入力控 list with 由来, E chart offer/restore and 破棄 prompt — all pass. B4 (O-7 look) was decided afterwards:
 > the memo-box rendering was replaced by the library label editor in M3. Owner rulings on this run: O-6 test fixes applied,
@@ -356,7 +356,7 @@ F. Owner and access (unchanged seams, now called through the Core seam)
   two registries in both orders, a type present in one registry only, two circuits never sharing services, the silently-weakened-gate checks, the
   O-3 non-friend probe); it flagged the CSS-path and config-key conflicts in could_not_determine. `diffreview` — 7 findings, all confirmed in source;
   0 code changes resulted (2 confirm red-test classifications and add one blocker, 1 new design inconsistency, 4 restate deviations the pack declared,
-  now owner decisions). Read only; no file_change; it read the scratch evidence files the pack named.
+  now owner decisions). Read only; no file_change; it read the evidence files the pack named.
 
 ### Found issues, by tool
 | ID | Issue | Found by | Verdict | Evidence | Impact / likelihood / confidence / observed in prod | Decisive check | Outcome |
@@ -376,15 +376,15 @@ F. Owner and access (unchanged seams, now called through the Core seam)
 Found independently by both: none (Codex read the pack's statements of K1–K7 before reviewing; C1 and the second E2 blocker are Codex's alone).
 
 ### Codex calls
-| Run | Call | Attempt | Path | Started | Duration | state | validation | Exit | PID | Model / effort requested | Effective effort | reasoning tokens | Search | MCP calls | activity (cmds / non-zero / file_change / outside-repo) | prompt / out sha256 (first 8) | Pack | CLI |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 6e2ced | tests | a1 | `…\tests\a1` (cwd `tests\req`, `-SkipGitCheck`) | 08:14:12 | 5.1 min | success | ok | 0 | 37572 | gpt-6-astra / xhigh | not observable | 3,338 | off | 0 | 3 / 0 / 0 / 1 (powershell.exe) | 37BA29DC / 428789BB | REQUIREMENT.md (brief + design without §4.11 + M1 excerpts) | 0.153.4 |
-| 6e2ced | diffreview | a1 | `…\diffreview\a1` | 09:04:42 | 9.3 min | success | ok (candidate unchanged during review; manifest 997C24EF) | 0 | 44776 | gpt-6-astra / xhigh | not observable | 5,590 | off | 9 (KB lookup 1, get_fix 1, dxdocs search 5, get 2) | 16 / 3 / 0 / 7 (scratch evidence named in the pack, powershell.exe, a TRX namespace string) | 62050C1D / 76F06D1A | v1 (383 KB, 3AC35CDD) | 0.153.4 |
+| Run | Call | Attempt | Started | Duration | state | validation | Exit | Model / effort requested | Effective effort | reasoning tokens | Search | MCP calls | activity (cmds / non-zero / file_change / outside-repo) | Pack | CLI |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 6e2ced | tests | a1 (requirement-only directory) | 08:14:12 | 5.1 min | success | ok | 0 | gpt-6-astra / xhigh | not observable | 3,338 | off | 0 | 3 / 0 / 0 / 1 | REQUIREMENT.md (brief + design without §4.11 + M1 excerpts) | 0.153.4 |
+| 6e2ced | diffreview | a1 | 09:04:42 | 9.3 min | success | ok (candidate unchanged during review) | 0 | gpt-6-astra / xhigh | not observable | 5,590 | off | 9 (KB lookup 1, get_fix 1, dxdocs search 5, get 2) | 16 / 3 / 0 / 7 | v1 (383 KB) | 0.153.4 |
 
 Input tokens: tests 144,424 (cached 107,904); diffreview 2,386,137 (cached 2,178,304). The `tests` isolation is by convention (absolute reads
 remained possible); its out.md cites only REQUIREMENT.md.
 
-### Setup checks (Phase 0; outputs under `…\preflight\`)
+### Setup checks (Phase 0)
 | # | Item | Result |
 |---|---|---|
 | 1 | BASH_MAX_TIMEOUT_MS | present (2400000) |
@@ -397,7 +397,7 @@ remained possible); its out.md cites only REQUIREMENT.md.
 | 8 | Tool boundary (HARD) | no MCP tool of this agent writes a database, migrates, deploys, pushes or restarts; KB write tools not used |
 | 9 | Tool parity (HARD) | KB with the 9 read tools (`enabled_tools`), dxdocs; DEVIATION as in earlier runs: node_repl and cua_repl enabled for Codex — Codex ran node scripts through powershell, no node_repl/cua_repl MCP call |
 | 10 | Models (HARD) | gpt-6-astra listed with low…ultra incl. medium and xhigh |
-| 11 | Run setup | run 6e2ced, scratch, salt (unused), codex.exe from PATH, codex-cli 0.153.4; doctor overall "warning"; login ChatGPT |
+| 11 | Run setup | run 6e2ced, salt (unused), codex from PATH, codex-cli 0.153.4; doctor overall "warning"; login ChatGPT |
 | 12 | Snapshot | worktree HEAD 40405d1, branch feature/edit-draft-library, status clean at start |
 | 13 | Policy drift | CLAUDE.md identical to the main repo (AF56E4B3…); AGENTS.md has the template section plus the guardrails section (as before); `~/.codex/config.toml` effort medium, each call overrides with xhigh |
 | 14 | Web search | off; no web_search item in either call |
@@ -415,17 +415,11 @@ review; the two filter runs were available). Claude's private context: the auto-
 2 cross-model calls (`tests`, `diffreview`), 2 attempts, no retries.
 
 ### KB
-No `log_new_fix` in this run: the KB server writes into `repos\CareCrew\mcp-blazor-knowledge-base\records`, and the brief forbids work in
-`repos\CareCrew`; owed when the owner accepts M2 (one record for the Blazor package: RCL static asset path, D9 replacement, O-2/O-3).
+No `log_new_fix` in this run: the KB server writes into the CareCrew repository, and the brief forbids work in
+that repository; owed when the owner accepts M2 (one record for the Blazor package: RCL static asset path, D9 replacement, O-2/O-3).
 
 ### Clean-up
-`artifacts/claude-test/20261002-6e2ced` deleted after the runs. The decompiled Llamachant behaviour notes are in the scratch folder (`d9\`), not in the repo.
-
-### Run ledger
-Appended to `%LOCALAPPDATA%\collab\ledger.jsonl` by `tools/collab/append-ledger.ps1`:
-```json
-{"run":"2026-10-02-editdraft-m2-6e2ced","date":"2026-10-02","topic":"xaf-editdraft-library-m2","attempts":[{"call":"diffreview","attempt":1,"state":"success","validation":"ok","accepted":true,"exit":0,"minutes":9.3,"commands":16,"nonzero_exits":3,"outside_repo":7,"file_changes":0,"reasoning_tokens":5590,"output_tokens":15470,"search":false},{"call":"tests","attempt":1,"state":"success","validation":"ok","accepted":true,"exit":0,"minutes":5.1,"commands":3,"nonzero_exits":0,"outside_repo":1,"file_changes":0,"reasoning_tokens":3338,"output_tokens":9619,"search":false}],"findings":{"claude_confirmed":10,"claude_rejected":0,"codex_confirmed":7,"codex_rejected":0,"both":0,"unverifiable":0,"open":5},"correlated_error_events":0,"escalated_to_owner":5,"passes":2,"hook_false_positives":0}
-```
+`artifacts/claude-test/20261002-6e2ced` deleted after the runs. The decompiled Llamachant behaviour notes are not in the repo.
 
 ## 15. Not verified / open questions
 - Runtime in a host: XAF module order and controller discovery from the library assembly, the popup and list rendering (D9 editor), the tick

@@ -241,7 +241,8 @@ namespace Xaf.EditDraft.Tests
             // Expectation changed by owner ruling 2026-10-02 ("the refusal toast reworded to say the draft cannot be restored
             // for this login (事業所)"); run 2026-10-02-time-editor-o3s-impl-3ad204, Codex tests a1 T23-T25.
             EditDraftTextSet.Japanese.RecordNotVisible.Should().Be("この入力控はこのログインでは戻せません（事業所の権限）。");
-            EditDraftTextSet.English.RecordNotVisible.Should().Be("This draft cannot be restored for this login (事業所 permission).");
+            // Expectation changed by gap G9 (run 2026-10-04-editdraft-close-gaps-08c338): no host term in the English set.
+            EditDraftTextSet.English.RecordNotVisible.Should().Be("This draft cannot be restored for this login (no permission to see the record).");
             Wave1.Source("Xaf.EditDraft.Blazor/EditDraftRestoreControllerBlazor.cs").Should().Contain(
                 "EditDraftLog.Info($\"[EditDraft] offer refused at '{trigger}': record {S(recordOid)} of {_policy.TypeName} is not visible to this login (事業所 rule)\");",
                 "T25: the log line text is unchanged");

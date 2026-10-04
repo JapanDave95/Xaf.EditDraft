@@ -3,15 +3,17 @@
 A minimal DevExpress XAF Blazor application that uses the Xaf.EditDraft library (`Xaf.EditDraft.Core` and
 `Xaf.EditDraft.Blazor`) to keep what a user typed into a record and did not save, and to offer it back later.
 It has one business class, `Note`, and uses no code from CareCrew. It is built from the DevExpress 26.1.4 `dx.xaf`
-project template (XPO, SQL Server, Blazor, password login) with the additions listed below.
+project template (XPO, SQL Server, Blazor, password login) with the additions listed below. The library's consumer
+guide is `docs/consumer-guide.md` at the repository root; this README shows how the sample follows it.
 
 ## Requirements
 
 - .NET 8 SDK.
 - DevExpress 26.1.4 NuGet packages (a DevExpress licence and the DevExpress NuGet feed).
 - SQL Server LocalDB, instance `MSSQLLocalDB`, or another SQL Server (change `ConnectionStrings:ConnectionString` in
-  `Xaf.EditDraft.Sample.Blazor.Server/appsettings.json`). The library's writer uses SQL Server T-SQL and looks for its
-  table in the `dbo` schema, so the database must be SQL Server and the store table must be in `dbo`.
+  `Xaf.EditDraft.Sample.Blazor.Server/appsettings.json`). The library supports SQL Server only (its writer uses T-SQL;
+  the startup check stops the application otherwise). The sample's store table is `dbo.SampleEditDraft`, the default
+  schema; another schema is set on the store class with `[Persistent("myschema.SampleEditDraft")]`.
 - The two library projects, referenced by path: `../../Xaf.EditDraft.Core` and `../../Xaf.EditDraft.Blazor`.
   Package versions come from the repository's `Directory.Packages.props` (central package management).
 
@@ -33,31 +35,37 @@ In this order; the file in this sample is given for each step.
    non-persistent base; your class is the persistent one and its name is the table name (`dbo.SampleEditDraft`
    here). Sample: `Xaf.EditDraft.Sample.Module/BusinessObjects/SampleEditDraft.cs`.
 3. **A policy per type** (`EditDraftTypePolicy`): the type, a `PolicyId`, the approved DetailView id(s), the ListView
-   id(s), the owner kind, and one decision per member (`EditDraftDecisions.Table(...)`). A type without a policy is
-   never captured. A member without a decision is never captured. Sample:
-   `Xaf.EditDraft.Sample.Module/EditDrafts/NoteEditDraftPolicy.cs`.
+   id(s), the owner kind, and one decision per member (`EditDraftDecisions.Table(...)` with the library helpers such as
+   `EditDraftDecisions.Restorable`). A type without a policy is never captured. A member without a decision is never
+   captured. Sample: `Xaf.EditDraft.Sample.Module/EditDrafts/NoteEditDraftPolicy.cs`.
 4. **Three service registrations**: `services.AddEditDraftStore<SampleEditDraft>()`,
-   `services.AddEditDraftRegistry(NoteEditDraftPolicy.Register)` and `services.AddEditDraftBlazor()`. Sample:
+   `services.AddEditDraftRegistry(NoteEditDraftPolicy.Register)` and `services.AddEditDraftBlazor()`. The sample also
+   uses two optional ones: `AddEditDraftBlazor(o => o.HeaderActionOnEveryView = true)`, so the header action "Drafts"
+   shows on every view and opens the list of every registered type off the Note list, and `AddEditDraftRetention()`, the
+   retention hosted service (off until `EditDraftCapture:Retention:Enabled` is true; see "Security"). Sample:
    `Startup.AddEditDrafts` in `Xaf.EditDraft.Sample.Blazor.Server/Startup.cs`.
 5. **Two modules** in the XAF module list: `.Add<EditDraftCoreModule>()` and `.Add<EditDraftBlazorModule>()`.
    Sample: `Startup.ConfigureServices`.
 6. **The non-persistent object space provider**: `builder.ObjectSpaceProviders ... .AddNonPersistent()`. The library's
-   restore popup and drafts list are non-persistent objects; without this provider they cannot be shown. The DevExpress
-   template already has the line. Sample: `Startup.ConfigureServices`.
+   restore popup and drafts list are non-persistent objects. The DevExpress template already has the line, XAF 26.1 adds
+   the provider itself when none is registered, and `EditDraftBlazorModule` stops the application at setup with a message
+   naming `.AddNonPersistent()` if it is still missing. Sample: `Startup.ConfigureServices`.
 7. **The switches** in configuration: section `EditDraftCapture`, keys `Enabled`, `Types:<PolicyId>:Enabled`,
    `ListViews:Enabled` and `NewRecords:Enabled`. Only a value that reads as the boolean `true` is on; a missing,
    empty or other value is off. Sample: `Xaf.EditDraft.Sample.Blazor.Server/appsettings.json`.
 8. **The row-badge stylesheet** in the host page:
    `<link href="_content/Xaf.EditDraft.Blazor/edit-draft-row-badge.css" rel="stylesheet" />`. Sample:
    `Xaf.EditDraft.Sample.Blazor.Server/Pages/_Host.cshtml`.
-9. **The store's security**: an explicit DENY of every operation on the store class for every role. See "Security"
-   below. Sample: `Updater.DenyDraftStoreToEveryRole` in `Xaf.EditDraft.Sample.Module/DatabaseUpdate/Updater.cs`.
+9. **The store's security**: an explicit DENY of every operation on the store class for every role, written by the
+   library helper `EditDraftSecurity.DenyStoreToAllRoles`. See "Security" below. Sample:
+   `Updater.DenyDraftStoreToEveryRole` in `Xaf.EditDraft.Sample.Module/DatabaseUpdate/Updater.cs`.
 10. Optional: the header action's paint style. The library creates the header action itself (id
-   `EditDraftListBlazor`); this sample only asks for caption and image. Sample:
+   `EditDraftListBlazor`) with caption and image; this sample's model node sets the same. Sample:
    `Xaf.EditDraft.Sample.Blazor.Server/Model.xafml`.
 
-Not in the sample, but needed in production: a retention sweep (see "Security"), and, if you use the XAF Audit Trail
-module, excluding the store class from auditing.
+At startup the library checks the registrations (store, policy, SQL Server, non-persistent provider) and stops with a
+message naming the fix (consumer guide, "Startup checks"). Not in the sample, but needed in production: the retention
+switch turned on (see "Security"), and, if you use the XAF Audit Trail module, excluding the store class from auditing.
 
 ## Library defaults this sample relies on
 
@@ -68,6 +76,7 @@ Nothing below is registered by the sample; each is the library default.
 | Owner of a draft | The XAF login's key, when it is a non-empty Guid. No login, no draft. | Register an `IEditDraftOwnerResolver` |
 | Record access | XAF security only; records are loaded through a secured object space first | Register an `IEditDraftRecordAccess` |
 | Switch section | `EditDraftCapture` | Register `new EditDraftSwitchOptions { Section = "..." }` |
+| Store table schema | `dbo` | `[Persistent("myschema.SampleEditDraft")]` on the store class |
 | Clock | `TimeProvider.System`, local time | Register a `TimeProvider` |
 | Log | The application's `ILogger`, category `Xaf.EditDraft`, lines start with `[EditDraft]` | Set `EditDraftLog.Sink` at startup |
 | Texts | English | `EditDraftTexts.Use(EditDraftLanguage.Japanese)` at startup |
@@ -111,9 +120,11 @@ Captions are the English text set's.
   generic list view such as `SampleEditDraft_ListView`, a lookup, an API — is governed by each role's permission
   policy. A role with `AllowAllByDefault` could then read and change every user's drafts, and the payload is the typed
   text in readable JSON. The updater therefore gives **every** role an explicit DENY of Read, Write, Create, Delete and
-  Navigate on `SampleEditDraft`, on every database update. The deny does not affect capture or restore.
+  Navigate on `SampleEditDraft`, on every database update, through `EditDraftSecurity.DenyStoreToAllRoles`. The deny does
+  not affect capture or restore. The helper logs each role it could not bind, and at startup the library logs every role
+  that can still read the store.
 - **What the deny does not cover.** It is a type permission. In XAF, object and member permissions that allow access
-  take priority over a type deny, and the updater leaves existing ones in place: do not add object or member
+  take priority over a type deny, and the helper leaves existing ones in place: do not add object or member
   permissions for the store class. The deny is written during a database update only, so a role created later (for
   example in the UI) has none until the next update; run the update again after creating roles, or add the deny when
   you create a role.
@@ -123,18 +134,19 @@ Captions are the English text set's.
   such a role so they apply if `IsAdministrative` is switched off. If administrators must not read drafts, do not give
   them an administrative role.
 - **Retention.** A draft expires 7 days after its first capture and is then hidden, but its row stays until something
-  deletes it (the drafts list's lead text says drafts are deleted when they expire; that is true only once you run a
-  sweep). `ExpiresOn` is written in the **application server's** local time, so the sweep must compare it with that
-  clock. If SQL Server runs in the same time zone as the application server, this is enough:
-  `DELETE FROM dbo.SampleEditDraft WHERE ExpiresOn <= GETDATE();`
-  Otherwise pass the application server's current local time as the cutoff instead of `GETDATE()`.
+  deletes it. The sample registers the library's retention hosted service (`AddEditDraftRetention()`); it deletes the
+  expired rows of every owner only while `EditDraftCapture:Retention:Enabled` is `true` (not set in `appsettings.json`,
+  so off), every `EditDraftCapture:Retention:IntervalMinutes` minutes (default 60), and logs the count. `ExpiresOn` is
+  written in the **application server's** local time and the library's sweep uses that clock. A SQL Agent job instead
+  must use the same clock: `DELETE FROM dbo.SampleEditDraft WHERE ExpiresOn <= GETDATE();` is right only when SQL
+  Server runs in the same time zone as the application server.
 - **Audit trail.** This sample has no Audit Trail module. If you add one, exclude the store class so typed drafts are
   not copied into the audit log.
 
 ## Limits (library contract v1)
 
-XPO only; records keyed by a Guid (`BaseObject`); SQL Server with the store table in `dbo`; the owner is a login with
-a Guid key; registered types must have different class names (the payload stores `Type.Name`).
+XPO only; records keyed by a Guid (`BaseObject`); SQL Server only (store table schema `dbo` unless set); the owner is
+a login with a Guid key; registered types must have different class names (the payload stores `Type.Name`).
 
 ## Tests
 
@@ -142,4 +154,7 @@ a Guid key; registered types must have different class names (the payload stores
 
 The tests check that the sample references the two libraries and no CareCrew assembly, that the Note policy admits
 `Note_DetailView` and `Note_ListView` and XAF generates both views, that every other seam is the library default, the
-switch values, and the store deny. They do not run a browser; capture and restore are checked by hand (see "Try it").
+switch values, the store deny, and that the sample uses the library's helpers. `SampleSqlServerTests` runs the library's
+SQL Server parts (provider check, table check, the probe in a quoted schema, the retention sweep at the exact cutoff
+across owners and with the application clock) against a throwaway LocalDB database it creates and drops; it is skipped
+where LocalDB is not installed. The tests do not run a browser; capture and restore are checked by hand (see "Try it").

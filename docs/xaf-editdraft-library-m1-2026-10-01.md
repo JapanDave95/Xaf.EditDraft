@@ -1,10 +1,10 @@
 # Xaf.EditDraft library — milestone M1 (Core package + CareCrew adapters)
 
 Run `2026-10-01-editdraft-m1-c3f4de` (collaborator: Claude Opus 5.5 implements; Codex gpt-6-astra at xhigh reviews, read-only).
-Worktree `C:\Users\owner\source\repos\CareCrew-library`, branch `feature/edit-draft-library`, base `6bfbf876c4f35a6755026d1c38aa6b35cbcc6deb`
+Branch `feature/edit-draft-library`, base `6bfbf876c4f35a6755026d1c38aa6b35cbcc6deb`
 (= master 6bfbf87). Committed 2026-10-02 as 1fe4865 (feat) / 61f8d91 (test) / 40405d1 (docs); the text below was written before
 the commit. No deploy, no database, no schema change.
-Design: `docs/xaf-editdraft-library-design-2026-10-01.md` (committed in 40405d1). Scratch: `%LOCALAPPDATA%\collab\2026-10-01-editdraft-m1-c3f4de\`.
+Design: `docs/xaf-editdraft-library-design-2026-10-01.md` (committed in 40405d1).
 
 > Note 2026-10-02 (M2 run `2026-10-02-editdraft-m2-6e2ced`): W41 is no longer red. On the owner's ruling 2026-10-02 (O-1, option a) W41 was
 > rewritten in 61f8d91 to compare the persistent member declarations of NHM's `EditDraft.cs` with `Xaf.EditDraft.Core.EditDraftStoreBase`
@@ -94,8 +94,8 @@ models stay because of Llamachant (`NPOBase`, `LabelPropertyEditor`), as the bri
 
 ## 3. The store class, before vs after
 
-Scratch tool `artifacts/claude-tools-c3f4de/StoreDump` (XPO `ReflectionDictionary` + `GetDataStoreSchema`) run on the unchanged tree
-(`baseline/store-mapping.txt`) and on the candidate (`after/store-mapping.txt`). Compared section — type full name, assembly, IsPersistent,
+A throwaway dump tool (XPO `ReflectionDictionary` + `GetDataStoreSchema`) run on the unchanged tree
+and on the candidate. Compared section — type full name, assembly, IsPersistent,
 TableName `EditDraft`, IdClass, key `oid`, OptimisticLockField, no GCRecord, DeferredDeletion off, class caption 入力控, the 21 persistent
 members (19 + Oid + OptimisticLockField) with mapping field, CLR type, size (ObjectType 100, ContextText 200, ViewId 100, Payload unlimited,
 OriginHost 100, LastError 2000), key/read-only/delayed flags, `[Indexed]` and captions, and the schema (pk Oid, 21 columns, indexes
@@ -134,7 +134,7 @@ The `tests` call ran in a requirement-only directory (brief + design, §4.11 wit
 and a could_not_determine list. New tests implement E1–E22 where M1 can test them (labels in the test names).
 
 ### 5b. Identity comparison (identity = class + test name incl. TestCase arguments, case-sensitive; outcome multiset)
-Baseline taken on the unchanged tree before any edit (`baseline/*.trx`). FINAL = the final candidate bytes (`final/*.trx`).
+Baseline taken on the unchanged tree before any edit (TRX files). FINAL = the final candidate bytes (TRX files).
 
 | Run | Baseline | Final | Missing | Changed outcome | Newly skipped | New |
 |---|---|---|---|---|---|---|
@@ -152,7 +152,7 @@ baseline (Total 5499, Skipped 6). Cause not investigated.)
 Every difference explained:
 - **W41** `EditDraftWave1WiringScanTests.W41_the_NHM_mirror_of_EditDraft_and_DraftStoreTypes_is_byte_identical`: compares CareCrew's
   `EditDraft.cs` byte-for-byte with NHM's. D1-A changes the CareCrew file (base class); D2-A keeps NHM's standalone. Failed in the full run,
-  failed again alone (solo rerun, `after-quick/w41-solo.trx`), failed in the final filter run. Not revised (its expectation, not its path,
+  failed again alone (solo rerun), failed in the final filter run. Not revised (its expectation, not its path,
   would have to change). Escalated: §8 O-1.
 - **New identities**: the 4 new files (`EditDraftLibraryIsolationTests` 6, `EditDraftLibrarySeamTests` incl. a 15-case parse table,
   `EditDraftStoreMappingTests` 2), all passed.
@@ -196,7 +196,7 @@ choice survives a culture change; E17/E18 row mapping keeps all 11 fields and di
 E21/D1 snapshot carries its clock; E22 per-database cache in both orders, failed probe = absent; SEC defaults fail closed; writer without a
 store fails closed).
 
-## 6. Builds (all `--artifacts-path artifacts/claude-test/20261001-c3f4de`, logs in `builds/` and `final/`)
+## 6. Builds (all `--artifacts-path artifacts/claude-test/20261001-c3f4de`)
 - `Xaf.EditDraft.Core` alone: exit 0, 0 warnings, 0 errors.
 - `CareCrew.Blazor.Server`: exit 0, 0 errors (full build 45 warnings, none in a touched file).
 - `CareCrew.Win`: exit 0, 0 errors, 1 warning (not in a touched file).
@@ -316,28 +316,28 @@ CareCrew file as intentionally different.
 Found independently by both: W41 (coverage, not confidence).
 
 ### Codex calls
-| Run | Call | Attempt | Path | Started | Duration | state | validation | Exit | PID | Model / effort | Effective effort | reasoning tokens | Search | MCP calls | activity (cmds / non-zero / file_change / outside-repo) | prompt / out sha256 | Pack | CLI |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| c3f4de | tests | a1 | `…\tests\a1` (cwd `tests\req`, `-SkipGitCheck`) | 20:31:26 | 5.8 min | success | ok | 0 | 41332 | gpt-6-astra / xhigh | not observable | 2,898 | off | 0 | 8 / 1 / 0 / 1 (powershell.exe) | CBE8DB01 / 01C3E487 | REQUIREMENT.md (brief + design, §4.11 withheld) | 0.153.4 |
-| c3f4de | diffreview | a1 | `…\diffreview\a1` | 22:52:17 | 8.1 min | success | ok (candidate unchanged during review) | 0 | 57060 | gpt-6-astra / xhigh | not observable | 4,870 | off | 6 (KB lookup, dxdocs search/get) | 15 / 4 / 0 / 3 (NHM repo read, powershell.exe, a TRX namespace string) | F6E1BAA5 / E8C22314 | v1 (359 KB) | 0.153.4 |
+| Run | Call | Attempt | Started | Duration | state | validation | Exit | Model / effort | Effective effort | reasoning tokens | Search | MCP calls | activity (cmds / non-zero / file_change / outside-repo) | Pack | CLI |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| c3f4de | tests | a1 (requirement-only directory) | 20:31:26 | 5.8 min | success | ok | 0 | gpt-6-astra / xhigh | not observable | 2,898 | off | 0 | 8 / 1 / 0 / 1 | REQUIREMENT.md (brief + design, §4.11 withheld) | 0.153.4 |
+| c3f4de | diffreview | a1 | 22:52:17 | 8.1 min | success | ok (candidate unchanged during review) | 0 | gpt-6-astra / xhigh | not observable | 4,870 | off | 6 (KB lookup, dxdocs search/get) | 15 / 4 / 0 / 3 (NHM repo read, a TRX namespace string) | v1 (359 KB) | 0.153.4 |
 
 Input tokens: tests 251,106 (cached 210,176); diffreview 2,504,391 (cached 2,316,544). The `tests` isolation is by convention (absolute reads
 remained possible); its out.md cites only REQUIREMENT.md.
 
-### Setup checks (Phase 0; outputs under `…\preflight\`)
+### Setup checks (Phase 0)
 | # | Item | Result |
 |---|---|---|
 | 1 | BASH_MAX_TIMEOUT_MS | present (2400000) |
 | 2 | Read-only query connection (HARD) | not applicable: no database used, no query run |
 | 3 | Repo trusted (HARD) | present (the hook fired, item 5) |
-| 4 | Manifest (HARD) | 7/7 hashes match (`manifest-worktree.txt`) |
+| 4 | Manifest (HARD) | 7/7 hashes match |
 | 5 | Hook fires (HARD) | push dry-run blocked by collab-guard; a harmless Monitor ran unblocked |
 | 6 | collab.rules | file present with the forbidden `git push` rule; the execpolicy check was indeterminate (PowerShell 5.1 dropped the `--` separator: `matchedRules: []`); the second attempt was refused by the auto-mode classifier and not retried |
 | 7 | prompt-input | saved; AGENTS.md present, CLAUDE.md body absent (pasted as pack item 0) |
 | 8 | Tool boundary (HARD) | no MCP tool writes a database, deploys, pushes or restarts; KB write tools not used |
 | 9 | Tool parity (HARD) | KB with the 9 read tools (`enabled_tools`), dxdocs; DEVIATION as in earlier runs: node_repl and cua_repl enabled for Codex — Codex ran node scripts through powershell, no node_repl/cua_repl MCP call |
 | 10 | Models (HARD) | gpt-6-astra listed with xhigh |
-| 11 | Run setup | run c3f4de, scratch, salt (unused), codex.exe from PATH, codex-cli 0.153.4; doctor overall "warning"; login ChatGPT |
+| 11 | Run setup | run c3f4de, salt (unused), codex from PATH, codex-cli 0.153.4; doctor overall "warning"; login ChatGPT |
 | 12 | Snapshot | worktree HEAD 6bfbf876, status at start: only the untracked design doc |
 | 13 | Policy drift | CLAUDE.md identical to the main repo (AF56E4B3…); AGENTS.md as in the design run |
 | 14 | Web search | off; no web_search item in either call |
@@ -355,22 +355,15 @@ CareCrew owner/access adapters — single-model, for owner review. Claude's priv
 2 cross-model calls (tests, diffreview), 2 attempts, no retries.
 
 ### KB
-No `log_new_fix` in this run: the KB server writes into `repos\CareCrew\mcp-blazor-knowledge-base\records`, and the brief forbids work in
-`repos\CareCrew`; the record is owed when the owner accepts M1 (suggested: one fix record for the extraction, pointing at this file).
+No `log_new_fix` in this run: the KB server writes into the CareCrew repository, and the brief forbids work in
+that repository; the record is owed when the owner accepts M1 (suggested: one fix record for the extraction, pointing at this file).
 
 ### Clean-up
-`artifacts/claude-test/20261001-c3f4de` and the scratch dump tool folder were deleted after the runs; the tool's source is kept in the scratch
-folder (`storedump-tool\`), its two dumps in `baseline\` and `after\`.
-
-### Run ledger
-Appended to `%LOCALAPPDATA%\collab\ledger.jsonl` by `tools/collab/append-ledger.ps1`:
-```json
-{"run":"2026-10-01-editdraft-m1-c3f4de","date":"2026-10-01","topic":"xaf-editdraft-library-m1","attempts":[{"call":"diffreview","attempt":1,"state":"success","validation":"ok","accepted":true,"exit":0,"minutes":8.1,"commands":15,"nonzero_exits":4,"outside_repo":3,"file_changes":0,"reasoning_tokens":4870,"output_tokens":13388,"search":false},{"call":"tests","attempt":1,"state":"success","validation":"ok","accepted":true,"exit":0,"minutes":5.8,"commands":8,"nonzero_exits":1,"outside_repo":1,"file_changes":0,"reasoning_tokens":2898,"output_tokens":10783,"search":false}],"findings":{"claude_confirmed":3,"claude_rejected":0,"codex_confirmed":4,"codex_rejected":0,"both":1,"unverifiable":0,"open":4},"correlated_error_events":0,"escalated_to_owner":5,"passes":2,"hook_false_positives":0}
-```
+`artifacts/claude-test/20261001-c3f4de` and the dump tool's folder were deleted after the runs.
 
 ## 12. Not verified / open questions
 - Runtime: XAF controller discovery and module order in the running CareCrew host, the capture/offer/list/badge behaviour, log lines in
-  `C:\Progress\logs`, Japanese texts on screen — a Dev2 browser pass (M4); nothing was run in a browser or a host.
+  the host's log folder, Japanese texts on screen — a Dev2 browser pass (M4); nothing was run in a browser or a host.
 - The ILogger default sink (set in `EditDraftCoreModule.Setup`) is not exercised by a test; CareCrew sets its own sink.
 - The writer's per-database cache with a real XPO data layer (the cache is tested with synthetic keys; `DatabaseKeyOf` falls back to the data
   layer object when no connection string is exposed — CareCrew's `ThreadSafe`/`UseSharedDataStoreProvider` setup was not observed).

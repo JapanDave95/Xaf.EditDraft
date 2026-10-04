@@ -14,10 +14,15 @@ public sealed record EditDraftGroup(string Id, IReadOnlyList<string> Members)
     public string Driver => Members[0];
 }
 
-/// <summary>Who owns a draft of this type (design §3): the F2 staff member (chart types) or the login.</summary>
+/// <summary>
+/// Who owns a draft of this type (design §3). Only <see cref="Login"/> takes part in the library's generic capture, restore
+/// and drafts list (EditDraftTypePolicy.IsGeneric).
+/// </summary>
 public enum EditDraftOwnerKind
 {
-    F2StaffMember,
+    /// <summary>The host decides the owner and handles such drafts itself; the generic engine does not admit the policy.</summary>
+    HostDefined,
+    /// <summary>The XAF login owns the draft (the library default owner seam).</summary>
     Login
 }
 
@@ -107,8 +112,12 @@ public sealed class EditDraftTypePolicy
     /// <summary>The per-member decision table (T3 gate). Null for the chart types (owner Q1: their name list stays).</summary>
     public IReadOnlyDictionary<string, EditDraftMemberDecision> Decisions { get; init; }
 
-    /// <summary>The record's 事業所 (SubSection Oid) for the visibility re-check and the list (design §3 S3.4). Null = the type has none.</summary>
-    public Func<object, Guid> SubSectionOf { get; init; }
+    /// <summary>
+    /// The record's access scope as a Guid (for example the Oid of the department or office the record belongs to), stored
+    /// with the draft (EditDraftStoreBase.ScopeOid) and asked of IEditDraftRecordAccess.IsScopeVisible before a NEW record is
+    /// recreated from a draft. Null = the type has none.
+    /// </summary>
+    public Func<object, Guid> ScopeOf { get; init; }
 
     /// <summary>The date shown beside the type caption in the list's 対象 column (design §3 S4c: caption + date, never a name). Null = none.</summary>
     public Func<object, DateTime?> ContextDateOf { get; init; }
@@ -168,7 +177,7 @@ public sealed class EditDraftTypePolicy
     public bool IsNotRestorableOnExisting(string path) => NotRestorableOnExisting.Contains(path);
 
     /// <summary>
-    /// True for a login-owned, decision-tabled policy (a generic type), false for a chart (F2) policy or null:
+    /// True for a login-owned, decision-tabled policy (a generic type), false for a host-defined-owner policy or null:
     /// the admission rule of the generic capture, restore and list (in the application's wave list until M1).
     /// </summary>
     public static bool IsGeneric(EditDraftTypePolicy policy) =>

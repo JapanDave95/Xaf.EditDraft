@@ -23,7 +23,7 @@ namespace Xaf.EditDraft.Tests
     // (tests a1): E01-E44 reused or changed per the rulings, N01-N33 added; the design's test ids T1-T16 are named beside them.
     // Logic runs against pure code (EditDraftCaptureRules, EditDraftNewRecordRules, EditDraftRecreate with a fake host) or an
     // in-memory object space over TEST-ONLY types; controller wiring is pinned by source scans; reloads, tabs and popups are
-    // the Dev2 browser pass. The security checks (EditDraftCreateAccess, IsSubSectionVisible) are SINGLE-MODEL: Claude's alone.
+    // the Dev2 browser pass. The security checks (EditDraftCreateAccess, IsScopeVisible) are SINGLE-MODEL: Claude's alone.
 
     /// <summary>A test-only record whose construction defaults depend on a clock, like 残業・有給 (日付 = today, times on 日付).</summary>
     public class EditDraftNewProbe : BaseObject
@@ -127,7 +127,7 @@ namespace Xaf.EditDraft.Tests
         public static Dictionary<string, (string Raw, string Text)> Bind(EditDraftTypePolicy policy, IObjectSpace os, object record)
         {
             var isNew = os.IsNewObject(record);
-            EditDraftCaptureControllerBlazor.IsAdmittedViewIncludingNew(policy, View, true, isNew)
+            EditDraftCaptureController.IsAdmittedViewIncludingNew(policy, View, true, isNew)
                 .Should().BeTrue("the screen is admitted (isNew=" + isNew + ")");
             EditDraftMembers.RunInitializingGetters(policy, record);
             var baseline = new Dictionary<string, (string Raw, string Text)>(StringComparer.Ordinal);
@@ -165,18 +165,18 @@ namespace Xaf.EditDraft.Tests
         [TestCase(true, false, false, NewProbe.View, false, TestName = "T1_existing_refused_in_a_nested_view")]
         public void T1_N02_E06_admission_including_new_records(bool allowNew, bool isNew, bool isRoot, string viewId, bool expected)
         {
-            EditDraftCaptureControllerBlazor.IsAdmittedViewIncludingNew(NewProbe.Policy(allowNew), viewId, isRoot, isNew).Should().Be(expected);
+            EditDraftCaptureController.IsAdmittedViewIncludingNew(NewProbe.Policy(allowNew), viewId, isRoot, isNew).Should().Be(expected);
         }
 
         [Test]
         public void T1_E43_E30_the_existing_rule_the_chart_policies_and_the_inline_list_stay_existing_only()
         {
             var policy = NewProbe.Policy();
-            EditDraftCaptureControllerBlazor.IsAdmittedView(policy, NewProbe.View, true, isNew: true).Should().BeFalse("the existing-record rule (used by the restore offer) is unchanged");
-            EditDraftCaptureControllerBlazor.IsAdmittedView(policy, NewProbe.View, true, isNew: false).Should().BeTrue();
-            var chart = new EditDraftTypePolicy(typeof(EditDraftNewProbe)) { PolicyId = "chart", OwnerKind = EditDraftOwnerKind.F2StaffMember, AllowNewRecords = true };
-            EditDraftCaptureControllerBlazor.IsAdmittedViewIncludingNew(chart, NewProbe.View, true, true).Should().BeFalse("a chart (F2) policy never enters the generic capture");
-            EditDraftCaptureControllerBlazor.IsAdmittedViewIncludingNew(null, NewProbe.View, true, true).Should().BeFalse("an unregistered type");
+            EditDraftCaptureController.IsAdmittedView(policy, NewProbe.View, true, isNew: true).Should().BeFalse("the existing-record rule (used by the restore offer) is unchanged");
+            EditDraftCaptureController.IsAdmittedView(policy, NewProbe.View, true, isNew: false).Should().BeTrue();
+            var chart = new EditDraftTypePolicy(typeof(EditDraftNewProbe)) { PolicyId = "chart", OwnerKind = EditDraftOwnerKind.HostDefined, AllowNewRecords = true };
+            EditDraftCaptureController.IsAdmittedViewIncludingNew(chart, NewProbe.View, true, true).Should().BeFalse("a chart (F2) policy never enters the generic capture");
+            EditDraftCaptureController.IsAdmittedViewIncludingNew(null, NewProbe.View, true, true).Should().BeFalse("an unregistered type");
             EditDraftListAdmission.IsAdmittedList(policy, NewProbe.List, true, true, isNew: true).Should().BeFalse("inline new rows in a list stay out (design §3)");
             new EditDraftTypePolicy(typeof(EditDraftNewProbe)).AllowNewRecords.Should().BeFalse("opt-in: off by default");
             new EditDraftTypePolicy(typeof(EditDraftNewProbe)).NewRecordReconstructionOrder.Should().BeEmpty();
@@ -372,7 +372,7 @@ namespace Xaf.EditDraft.Tests
             EditDraftNewRecordRules.IsWritable(new EditDraftSeed { OwnerUserOid = Guid.Empty, TargetOid = Guid.Empty, IsNew = true }).Should().BeFalse("never an ownerless row");
             EditDraftNewRecordRules.IsWritable(null).Should().BeFalse();
 
-            var capture = Wave1.Source("Xaf.EditDraft.Core/EditDraftCaptureControllerBlazor.cs");
+            var capture = Wave1.Source("Xaf.EditDraft.Core/EditDraftCaptureController.cs");
             capture.Should().Contain("var key = EditDraftNewRecordRules.Key(IsNewRecord(), RecordOid());")
                 .And.Contain("if (key.IsNew) _payload.AddProvisional(RecordOid());")
                 .And.Contain("TargetOid = key.TargetOid,").And.Contain("IsNew = key.IsNew,")
@@ -383,7 +383,7 @@ namespace Xaf.EditDraft.Tests
         [Test]
         public void N01_N06_the_controller_reads_the_NewRecords_key_per_event_and_binds_it_to_a_new_record_s_queued_writes()
         {
-            var capture = Wave1.Source("Xaf.EditDraft.Core/EditDraftCaptureControllerBlazor.cs");
+            var capture = Wave1.Source("Xaf.EditDraft.Core/EditDraftCaptureController.cs");
             capture.Should().Contain("if (!IsAdmittedViewIncludingNew(policy, View?.Id, View?.IsRoot ?? false, isNew))");
             capture.Should().Contain("if (IsNewRecord() != false && !EditDraftSwitch.IsNewRecordsEnabled(Application?.ServiceProvider, _policy.PolicyId)) return;");
             // Post-review (Codex diffreview D2): the new-record gate travels on a NEW record's snapshot and is checked per ticket.
@@ -459,7 +459,7 @@ namespace Xaf.EditDraft.Tests
             rebuilt.ToJson().Should().Be("{\"schema\":1,\"type\":\"X\",\"entries\":[{\"p\":\"B\",\"k\":\"string\",\"cap\":\"b\",\"bk\":true,\"br\":null,\"bt\":null,\"vr\":\"2\",\"vt\":\"2\",\"ctx\":false}]}",
                 "an existing-record payload is rebuilt exactly as before (no seed, no header)");
 
-            var capture = Wave1.Source("Xaf.EditDraft.Core/EditDraftCaptureControllerBlazor.cs");
+            var capture = Wave1.Source("Xaf.EditDraft.Core/EditDraftCaptureController.cs");
             Regex.Matches(capture, @"EditDraftCaptureRules\.FreshAfterGone\(").Count.Should().Be(2, "both fresh-start paths (RebuildAfterFreshStart, RetiredFreshStart)");
         }
     }
@@ -707,7 +707,7 @@ namespace Xaf.EditDraft.Tests
             public EditDraftTypePolicy Policy(string objectType) { Calls.Add("policy"); return PolicyValue; }
             public bool? IsSaved(EditDraftTypePolicy policy, Guid oid) { Calls.Add("saved"); return Saved(oid); }
             public bool MayCreate(EditDraftTypePolicy policy) { Calls.Add("mayCreate"); return Permitted; }
-            public bool IsSubSectionVisible(EditDraftTypePolicy policy, Guid subSectionOid) { Calls.Add("subSection"); return SubSectionVisible; }
+            public bool IsScopeVisible(EditDraftTypePolicy policy, Guid scopeOid) { Calls.Add("subSection"); return SubSectionVisible; }
             public IEditDraftRecreateCandidate CreateCandidate(EditDraftTypePolicy policy)
             {
                 Calls.Add("create");
@@ -739,7 +739,7 @@ namespace Xaf.EditDraft.Tests
             host.Draft = new EditDraftRecreateDraft
             {
                 DraftOid = Guid.NewGuid(), Revision = revision, ObjectType = nameof(EditDraftNewProbe), TargetOid = target ?? Guid.Empty,
-                SubSectionOid = subSection ?? Guid.Empty, LastCapturedOn = new DateTime(2026, 10, 2, 18, 21, 0), Live = live, PayloadReadable = true,
+                ScopeOid = subSection ?? Guid.Empty, LastCapturedOn = new DateTime(2026, 10, 2, 18, 21, 0), Live = live, PayloadReadable = true,
                 PayloadJson = payload.ToJson(), EntryCount = payload.Count
             };
             return host;
@@ -792,7 +792,7 @@ namespace Xaf.EditDraft.Tests
 
         private static EditDraftRecreateDraft Clone(EditDraftRecreateDraft d, bool? live = null, bool? readable = null, string json = null, Guid? target = null, Guid? subSection = null) => new()
         {
-            DraftOid = d.DraftOid, Revision = d.Revision, ObjectType = d.ObjectType, TargetOid = target ?? d.TargetOid, SubSectionOid = subSection ?? d.SubSectionOid,
+            DraftOid = d.DraftOid, Revision = d.Revision, ObjectType = d.ObjectType, TargetOid = target ?? d.TargetOid, ScopeOid = subSection ?? d.ScopeOid,
             LastCapturedOn = d.LastCapturedOn, Live = live ?? d.Live, PayloadReadable = readable ?? d.PayloadReadable, PayloadJson = json ?? d.PayloadJson, EntryCount = d.EntryCount
         };
 
@@ -917,7 +917,7 @@ namespace Xaf.EditDraft.Tests
         [Test]
         public void N19_N27_T16_the_capture_attaches_with_the_claimed_editor_id_and_the_save_deletes_that_row()
         {
-            var capture = Wave1.Source("Xaf.EditDraft.Core/EditDraftCaptureControllerBlazor.cs");
+            var capture = Wave1.Source("Xaf.EditDraft.Core/EditDraftCaptureController.cs");
             var attach = capture.Substring(capture.IndexOf("public bool TryAttachClaimed(Guid draftOid, int claimedRevision, Guid ownerOid, string payloadJson, Guid claimedEditorInstanceId)", StringComparison.Ordinal));
             attach = attach.Substring(0, attach.IndexOf("TakePendingAdoption(object record)", StringComparison.Ordinal));
             attach.Should().Contain("_editorInstanceId = claimedEditorInstanceId;").And.Contain("_slot.Attach(draftOid, claimedRevision)");
@@ -1003,12 +1003,12 @@ namespace Xaf.EditDraft.Tests
             foreach (var (n, l, d, g) in new[] { (false, true, true, true), (true, false, true, true), (true, true, false, true), (true, true, true, false) })
                 EditDraftCreateAccess.Decide(n, l, d, g).Should().BeFalse($"allowNew={n} listAllowNew={l} detailAllowEdit={d} granted={g}");
             EditDraftCreateAccess.MayCreate(null, NewProbe.Policy()).Should().BeFalse("no application");
-            ((IEditDraftRecordAccess)new HostWithoutOfficeRule()).IsSubSectionVisible(null, NewProbe.Policy(), Guid.NewGuid())
+            ((IEditDraftRecordAccess)new HostWithoutOfficeRule()).IsScopeVisible(null, NewProbe.Policy(), Guid.NewGuid())
                 .Should().BeFalse("a host that does not implement the 事業所-by-Oid check refuses (fail closed)");
-            XafSecurityEditDraftRecordAccess.Instance.IsSubSectionVisible(null, NewProbe.Policy(), Guid.NewGuid()).Should().BeFalse("a missing argument");
+            XafSecurityEditDraftRecordAccess.Instance.IsScopeVisible(null, NewProbe.Policy(), Guid.NewGuid()).Should().BeFalse("a missing argument");
             var recreateHost = Wave1.Source("Xaf.EditDraft.Blazor/EditDraftRecreateHostBlazor.cs");
             recreateHost.Should().Contain("public bool MayCreate(EditDraftTypePolicy policy) => EditDraftCreateAccess.MayCreate(_application, policy);")
-                .And.Contain("EditDraftServices.RecordAccess(_application.ServiceProvider).IsSubSectionVisible(_application, policy, subSectionOid)")
+                .And.Contain("EditDraftServices.RecordAccess(_application.ServiceProvider).IsScopeVisible(_application, policy, scopeOid)")
                 .And.Contain(".IsRecordVisible(_host._application, policy, _record)")
                 .And.Contain("TargetWindow = TargetWindow.NewModalWindow", "owner D6: a modal window, like today's 開く")
                 .And.Contain("var d = _writer.ReadOwn(readSpace, draftOid, ownerOid);   // owner-scoped (single-model)");
@@ -1037,7 +1037,7 @@ namespace Xaf.EditDraft.Tests
             public IServiceScope CreateScope() => throw new InvalidOperationException("no database in this test");
         }
 
-        private static EditDraftCaptureControllerBlazor.DraftSnapshot Snap(bool isNew, Func<bool> gate) =>
+        private static EditDraftCaptureController.DraftSnapshot Snap(bool isNew, Func<bool> gate) =>
             new(new EditDraftSeed { OwnerUserOid = Guid.NewGuid(), TargetOid = isNew ? Guid.Empty : Guid.NewGuid(), IsNew = isNew, ObjectType = "X", EditorInstanceId = Guid.NewGuid() },
                 "{}", 0, new DateTime(2026, 10, 3, 9, 0, 0), 1L, new Dictionary<string, long>()) { NewRecordsGate = gate };
 
@@ -1046,24 +1046,24 @@ namespace Xaf.EditDraft.Tests
         {
             var provider = new CountingProvider();
             var writer = new EditDraftWriter(provider, typeof(EditDraftTestStore));
-            var slot = new DraftWriteSlot<EditDraftCaptureControllerBlazor.DraftSnapshot>();
+            var slot = new DraftWriteSlot<EditDraftCaptureController.DraftSnapshot>();
             slot.TryBeginWrite(Snap(isNew: true, gate: () => false), out var newWrite).Should().BeTrue();   // a new-record write in flight, key OFF
             slot.OnSaved();                                                                                    // the record is saved meanwhile
             slot.TryBeginWrite(Snap(isNew: false, gate: null), out _).Should().BeFalse("queued behind the running write");
-            var next = EditDraftCaptureControllerBlazor.RunOneWrite(slot, writer, newWrite, _ => { }, (a, b) => { }, () => true);
+            var next = EditDraftCaptureController.RunOneWrite(slot, writer, newWrite, _ => { }, (a, b) => { }, () => true);
             provider.ScopeRequests.Should().Be(0, "the never-saved record's write is skipped while the new-record key is off");
             next.Should().NotBeNull("the existing-record snapshot is handed on");
-            EditDraftCaptureControllerBlazor.RunOneWrite(slot, writer, next.Value, _ => { }, (a, b) => { }, () => true);
+            EditDraftCaptureController.RunOneWrite(slot, writer, next.Value, _ => { }, (a, b) => { }, () => true);
             provider.ScopeRequests.Should().Be(1, "the saved record's write is attempted whatever the new-record key says");
             slot.IsWriteInFlight.Should().BeFalse();
 
-            var on = new DraftWriteSlot<EditDraftCaptureControllerBlazor.DraftSnapshot>();
+            var on = new DraftWriteSlot<EditDraftCaptureController.DraftSnapshot>();
             on.TryBeginWrite(Snap(isNew: true, gate: () => true), out var allowed).Should().BeTrue();
-            EditDraftCaptureControllerBlazor.RunOneWrite(on, writer, allowed, _ => { }, (a, b) => { }, () => true);
+            EditDraftCaptureController.RunOneWrite(on, writer, allowed, _ => { }, (a, b) => { }, () => true);
             provider.ScopeRequests.Should().Be(2, "key on: the new record's write is attempted");
-            var off = new DraftWriteSlot<EditDraftCaptureControllerBlazor.DraftSnapshot>();
+            var off = new DraftWriteSlot<EditDraftCaptureController.DraftSnapshot>();
             off.TryBeginWrite(Snap(isNew: true, gate: () => true), out var global).Should().BeTrue();
-            EditDraftCaptureControllerBlazor.RunOneWrite(off, writer, global, _ => { }, (a, b) => { }, () => false);
+            EditDraftCaptureController.RunOneWrite(off, writer, global, _ => { }, (a, b) => { }, () => false);
             provider.ScopeRequests.Should().Be(2, "the slot's own switch still applies first");
         }
 
@@ -1084,7 +1084,7 @@ namespace Xaf.EditDraft.Tests
             EditDraftCaptureRules.FreshAfterGone(old, e => e.Path == "Reason", out _).Get("Day").Should().BeNull("without the context list (an existing record) the old rule holds");
             EditDraftCaptureRules.FreshAfterGone(old, e => false, out _, context).Should().BeNull("context and seeds alone are never written");
 
-            var capture = Wave1.Source("Xaf.EditDraft.Core/EditDraftCaptureControllerBlazor.cs");
+            var capture = Wave1.Source("Xaf.EditDraft.Core/EditDraftCaptureController.cs");
             capture.Should().Contain("isNew ? _policy?.NewRecordReconstructionOrder : null);")
                 .And.Contain("if (fresh != null && isNew) EditDraftCaptureRules.Seed(_policy, fresh, _baseline, _record);")
                 .And.Contain("out var kept, newest.Context);")

@@ -14,7 +14,7 @@ namespace Xaf.EditDraft.Blazor;
 /// saved?" through a SECURED object space, asks the security questions, builds the candidate in its own object space and
 /// shows it in a MODAL window (owner D6, like today's 開く). Owner, record access and member write permission through the
 /// Core seams; "now" from the host clock; texts from EditDraftTexts.
-/// SINGLE-MODEL parts (owner review, D14): <see cref="MayCreate"/> (S1/S2, EditDraftCreateAccess), <see cref="IsSubSectionVisible"/>
+/// SINGLE-MODEL parts (owner review, D14): <see cref="MayCreate"/> (S1/S2, EditDraftCreateAccess), <see cref="IsScopeVisible"/>
 /// (S5 i, the record-access seam), the candidate's IsVisible (S5 ii), and the owner predicate of the read and of the claim
 /// (EditDraftWriter.ReadOwn / TryClaimNew).
 /// </summary>
@@ -48,7 +48,7 @@ internal sealed class EditDraftRecreateHostBlazor : IEditDraftRecreateHost
             if (d == null) return null;
             return new EditDraftRecreateDraft
             {
-                DraftOid = d.Oid, Revision = d.Revision, ObjectType = d.ObjectType, TargetOid = d.TargetOid, SubSectionOid = d.SubSectionOid,
+                DraftOid = d.Oid, Revision = d.Revision, ObjectType = d.ObjectType, TargetOid = d.TargetOid, ScopeOid = d.ScopeOid,
                 ContextText = d.ContextText, ViewId = d.ViewId, LastCapturedOn = d.LastCapturedOn, EntryCount = d.EntryCount,
                 Live = !d.HasExpired(now), PayloadReadable = d.IsPayloadReadable, PayloadJson = d.Payload
             };
@@ -74,8 +74,8 @@ internal sealed class EditDraftRecreateHostBlazor : IEditDraftRecreateHost
 
     public bool MayCreate(EditDraftTypePolicy policy) => EditDraftCreateAccess.MayCreate(_application, policy);
 
-    public bool IsSubSectionVisible(EditDraftTypePolicy policy, Guid subSectionOid) =>
-        EditDraftServices.RecordAccess(_application.ServiceProvider).IsSubSectionVisible(_application, policy, subSectionOid);
+    public bool IsScopeVisible(EditDraftTypePolicy policy, Guid scopeOid) =>
+        EditDraftServices.RecordAccess(_application.ServiceProvider).IsScopeVisible(_application, policy, scopeOid);
 
     public IEditDraftRecreateCandidate CreateCandidate(EditDraftTypePolicy policy)
     {

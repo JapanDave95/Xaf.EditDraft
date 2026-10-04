@@ -1,7 +1,7 @@
 # 入力控 for NEW (never saved) records — build M1–M3 (2026-10-03)
 
 Collaborator run `2026-10-03-edit-draft-new-records-build-f4b916`. Implementer: Claude (Opus 5.5). Reviewer: ChatGPT (Codex CLI 0.153.4, gpt-6-astra, effort xhigh), read-only.
-Worktree `C:\Users\owner\source\repos\CareCrew-newrecord`, branch `feature/edit-draft-new-records`, HEAD `132782b1` (= master). Everything below is UNCOMMITTED in the worktree. Design: `docs/edit-draft-new-records-design-2026-10-02.md` (untracked). Owner rulings 2026-10-03 as given in the brief.
+Branch `feature/edit-draft-new-records`, HEAD `132782b1` (= master). Everything below is UNCOMMITTED in the worktree. Design: `docs/edit-draft-new-records-design-2026-10-02.md` (untracked). Owner rulings 2026-10-03 as given in the brief.
 Paths are repo-relative; `Core/` = `Xaf.EditDraft.Core/`, `Blazor/` = `Xaf.EditDraft.Blazor/`, `Server/` = `CareCrew.Blazor.Server/`. Line numbers are of the final working tree.
 
 ## 0. Combined answer
@@ -109,7 +109,7 @@ Every refusal up to step 5 changes nothing. Every failure after the claim discar
 
 ## 5. The [AutoIncrement] check (D10)
 
-`TenantCase.CaseNumber` carries `LlamachantFramework.AutoIncrementingID.Attributes.AutoIncrementAttribute` (`NursingHome_Chart.Module/BusinessObjects/Tenants/TenantCase.cs:66-73`). I decompiled the package `Llamachant.ExpressApp.AutoIncrementingID` 26.1.4.1 with ilspycmd; this is the version `Directory.Packages.props` resolves (`LlamachantFrameworkVersion` = 26.1.4 + ".1"; dll SHA-256 `2BAF45DF…C859`). The output went to the session scratchpad, with excerpts kept in `%LOCALAPPDATA%\collab\2026-10-03-edit-draft-new-records-build-f4b916\autoincrement-evidence\`, not in the repo. It shows:
+`TenantCase.CaseNumber` carries `LlamachantFramework.AutoIncrementingID.Attributes.AutoIncrementAttribute` (`NursingHome_Chart.Module/BusinessObjects/Tenants/TenantCase.cs:66-73`). I decompiled the package `Llamachant.ExpressApp.AutoIncrementingID` 26.1.4.1 with ilspycmd; this is the version `Directory.Packages.props` resolves (`LlamachantFrameworkVersion` = 26.1.4 + ".1"; dll SHA-256 `2BAF45DF…C859`). The output and the excerpts were kept outside the repo. It shows:
 - `TriggerUpdater.UpdateDatabaseAfterUpdateSchema` creates `CREATE OR ALTER TRIGGER [t<Type>_<Member>_Trigger] ON [<table>] AFTER INSERT … UPDATE t SET t.[<col>] = sub.MaxID + g.RowNum …`. SQL Server assigns the number when the row is INSERTed.
 - `AutoIncrementingPropertyHelper` subscribes each non-nested object space's `Committing` (collects new objects of the type), `Committed` (`ReloadObject`, then `CommitChanges` if modified) and `RollingBack`. Nothing runs at construction.
 
@@ -170,10 +170,10 @@ Not covered by an executable test here (browser or database only): the SQL text 
 
 ## 7. Codex calls
 
-| Run | Call | Attempt | Path | Started | Duration | state | validation | Exit | PID | Model / effort requested | Effective effort | reasoning tokens | Search | MCP calls | activity (cmds / non-zero / file_change / outside-repo) | prompt / out / candidate sha256 (first 8) | Pack | CLI |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| f4b916 | tests | a1 | `…\tests\a1` (cwd `tests\req`, `-SkipGitCheck`) | 09:23:28 | 9.2 min | success | ok | 0 | 60180 | gpt-6-astra / xhigh | not observable | 5,018 | off | 0 | 4 / 0 / 0 / 1 (powershell.exe) | AE3D0D47 / 3F3BE382 / — | REQUIREMENT.md (brief + design + its own E01–E44), SHA 40BD3C33 | 0.153.4 |
-| f4b916 | diffreview | a1 | `…\diffreview\a1` | 10:07:35 | 11.1 min | success | ok (manifest frozen, 28 files unchanged during the review) | 0 | 34960 | gpt-6-astra / xhigh | not observable | 8,211 | off | 7 (KB lookup 1, dxdocs search 3, get_content 3) | 16 / 2 / 0 / 1 (powershell.exe) | 0876AACB / A80CACE7 / 555BDD3D (diff text 0B1D49AD) | parity-pack-v1 (198 KB) | 0.153.4 |
+| Run | Call | Attempt | Started | Duration | state | validation | Exit | Model / effort requested | Effective effort | reasoning tokens | Search | MCP calls | activity (cmds / non-zero / file_change / outside-repo) | Pack | CLI |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| f4b916 | tests | a1 (requirement-only directory) | 09:23:28 | 9.2 min | success | ok | 0 | gpt-6-astra / xhigh | not observable | 5,018 | off | 0 | 4 / 0 / 0 / 1 | REQUIREMENT.md (brief + design + its own E01–E44) | 0.153.4 |
+| f4b916 | diffreview | a1 | 10:07:35 | 11.1 min | success | ok (manifest frozen, 28 files unchanged during the review) | 0 | gpt-6-astra / xhigh | not observable | 8,211 | off | 7 (KB lookup 1, dxdocs search 3, get_content 3) | 16 / 2 / 0 / 1 | parity-pack-v1 (198 KB) | 0.153.4 |
 
 Input tokens: tests 143,687 (cached 109,440); diffreview 2,415,503 (cached 2,204,928). Codex found that the dxdocs pages resolved to 25.2 / 26.1.5 and did not use them as exact-version proof. The `tests` isolation is by convention (absolute-path reads remain possible); its out.md cites only REQUIREMENT.md, and its 4 commands read only that file. In the tests output Codex reported that the Japanese text of REQUIREMENT.md looked corrupted in its console (the file is UTF-8 and hash-matched), so it wrote semantic, not byte-exact, expectations for the Japanese literals.
 
@@ -193,15 +193,15 @@ Severity rule: top rank only for a defect proven wrong in production; a real pat
 | C-D6 | A ToDo created from a ToDoItem's nested list loses its parent on recreate | Claude (as a limitation, pack §9 item 10); Codex (as a defect) | correct (conditional: the nested route reaching the admitted view is not verified) | `ToDo.ToDoItem` [Association], `ToDoItem.ToDos` | parent must be re-picked / when that route is used / source / no | `D6_N28_…` (in memory) + browser | FIXED post-review: ToDoItem seeded (and SubSection for 夜間巡回時間, same reason) |
 | A1 | Post-review D2 edit broke the existing pin `{ Clock = _clock }` (`E21_D1_…`) | Claude (test run) | correct (implementation regression) | post-review first run | an existing test red / certain / run / n/a | rerun | FIXED in the implementation; final run green; test not touched |
 | A2 | The [AutoIncrement] timing (D10) | Claude | assigned by an AFTER INSERT trigger (decompiled source) | §5 | a number consumed by a discarded candidate / not by the code read / decompile + reflection / n/a | browser item 12 | TenantCase opted in; Codex: could_not_determine |
-| A3 | Incident: four EMPTY untracked files created in the MAIN repo `repos\CareCrew\Xaf.EditDraft.Core\` by a relative path resolved against the process directory | Claude | — | 09:49:56, 0 bytes, untracked | none (removed within a minute; `git status` of that folder clean) | — | removed; later normalisation used a script that takes absolute worktree paths and refuses tracked or outside files |
+| A3 | Incident: four EMPTY untracked files created in the MAIN repo's `Xaf.EditDraft.Core` folder by a relative path resolved against the process directory | Claude | — | 09:49:56, 0 bytes, untracked | none (removed within a minute; `git status` of that folder clean) | — | removed; later normalisation used a script that takes absolute worktree paths and refuses tracked or outside files |
 | A4 | My own new tests did not compile at first (private nested fakes in public test signatures, CS0051), plus two of my test-side mistakes found by reading (`Skip(7)`, `IndexOf` on the forwarder) | Claude | — | — | — | — | fixed before the new tests' first execution |
-| CR-§9 | Codex dispositions of Claude's deviations 3, 4, 5, 6, 8, 9 | Codex | no additional defect identified; runtime unverified | out.md table | — | browser items 10, 11, 1 | — |
+| CR-§9 | Codex dispositions of Claude's deviations 3, 4, 5, 6, 8, 9 | Codex | no additional defect identified; runtime unverified | Codex's diff-review table | — | browser items 10, 11, 1 | — |
 
 Found independently by both: the W38b conflict (X1) and the ToDo nested-route context loss (C-D6, Claude as a limitation, Codex as a defect). This is coverage, not confidence.
 
 ## 9. Edits made after the Codex review (NOT cross-reviewed)
 
-Files whose bytes differ from the reviewed candidate manifest (`diffreview\a1\candidate.json`):
+Files whose bytes differ from the reviewed candidate manifest:
 - `Xaf.EditDraft.Core/EditDraftCaptureControllerBlazor.cs`:
   - `DraftSnapshot.NewRecordsGate` + `Context` (`:419-430`);
   - per-ticket gate in `RunOneWrite` (`:630`); the loop-wide new-record gate removed (D2);
@@ -254,7 +254,7 @@ All executable checks were re-run on these bytes (§6.1 Final, T17 on final byte
 
 ## 12. KB text (to log with `log_new_fix` after the browser pass)
 
-Not logged in this run: the KB server writes into `repos\CareCrew\mcp-blazor-knowledge-base`, and this run must not touch `repos\CareCrew`.
+Not logged in this run: the KB server writes into the CareCrew repository, and this run must not touch that repository.
 
 - **Title:** Generic edit-draft (入力控) for NEW, never-saved records: TargetOid = Guid.Empty row, seeded construction context, prov Oid history, a 「新規」 list row recreates the record in a modal (残業・有給, ToDo, 夜間巡回時間, 苦情対応).
 - **Category / components:** xpo-data; EditDraftCaptureControllerBlazor, EditDraftCaptureRules, EditDraftRecreate, EditDraftWriter, EditDraftListControllerBlazor, EditDraftListBadgeControllerBlazor, EditDraftTypePolicy.
@@ -319,7 +319,7 @@ Not logged in this run: the KB server writes into `repos\CareCrew\mcp-blazor-kno
 - Every other changed file: Claude; reviewed by Codex with no defect raised against it.
 - Security files (§14): Claude only (single-model). Codex was told not to design them and raised no defect against them.
 
-### Setup checks (Phase 0; outputs under `%LOCALAPPDATA%\collab\2026-10-03-edit-draft-new-records-build-f4b916\preflight\`)
+### Setup checks (Phase 0)
 
 | # | Item | Result |
 |---|---|---|
@@ -333,7 +333,7 @@ Not logged in this run: the KB server writes into `repos\CareCrew\mcp-blazor-kno
 | 8 | Tool boundary (HARD) | no MCP tool of this agent writes a database, migrates, deploys, pushes or restarts; KB write tools, claude-in-chrome and Claude Docs are present but were not used |
 | 9 | Tool parity (HARD) | KB limited to the 9 read tools (`enabled_tools`, `~/.codex/config.toml:130-134`), dxdocs; node_repl and cua_repl enabled (not called); code-review and codex_app disabled |
 | 10 | Models (HARD) | gpt-6-astra listed with low…ultra, including xhigh |
-| 11 | Run setup | run f4b916, scratch, salt (unused), codex.exe `C:\Users\owner\AppData\Local\Programs\OpenAI\Codex\bin\codex.exe`, codex-cli 0.153.4; doctor exit 0; login ChatGPT |
+| 11 | Run setup | run f4b916, salt (unused), codex-cli 0.153.4; doctor exit 0; login ChatGPT |
 | 12 | Snapshot | worktree HEAD 132782b1, branch feature/edit-draft-new-records, clean except the untracked design doc; NHM not touched |
 | 13 | Policy drift | not re-checked this session (the previous run found CLAUDE.md / AGENTS.md identical to the main repo); `~/.codex/config.toml` effort medium, every call passed `-Effort xhigh` |
 | 14 | Web search | off in both calls |
@@ -348,9 +348,6 @@ None needed. No personal data was read. Of the appsettings files, only the `Edit
 
 ### Passes used
 1 cross-model review pass (diffreview) after the requirement-only `tests` call: 2 Codex calls, 2 attempts, no retries. Monitor slips: three watcher commands lost a `$` variable to bash expansion. One was discarded at once, one ended early with a false "state.json present" line (ignored), and the proper watcher and a bounded file check were used. Hook false positives: 0.
-
-### Run ledger
-See the final report; appended with `tools/collab/append-ledger.ps1`.
 
 ## 14. Security files for the owner's review (D14 — single-model, Claude only)
 

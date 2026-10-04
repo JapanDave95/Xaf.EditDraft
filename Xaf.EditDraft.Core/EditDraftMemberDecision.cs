@@ -19,12 +19,42 @@ public enum EditDraftDisposition
     Excluded
 }
 
-/// <summary>One line of a type's decision table: what the engine does with the member and why (census category + file:line).</summary>
+/// <summary>
+/// One line of a type's decision table: what the engine does with the member and why.
+/// - <see cref="CensusCategory"/>: a label recorded with the decision; the gate does not read it. The helpers below write
+///   the labels of the library's first host's setter census: A restorable, B group, C side effect, D not restorable,
+///   X excluded. Any label works.
+/// - <see cref="Reason"/>: why (for example "SetPropertyValue only"). Required, non-empty (the gate checks it).
+/// - <see cref="Evidence"/>: where the decision can be checked (for example the class file and line). Required, non-empty.
+/// </summary>
 public sealed record EditDraftMemberDecision(string Path, EditDraftDisposition Disposition, string CensusCategory, string Reason, string Evidence);
 
-/// <summary>Builds the per-type decision table and checks it against the policy's lists (the same fact stated twice must agree).</summary>
+/// <summary>
+/// Builds the per-type decision table and checks it against the policy's lists (the same fact stated twice must agree).
+/// Gap G10 (2026-10-04): one helper per disposition, so a consumer does not write its own.
+/// </summary>
 public static class EditDraftDecisions
 {
+    /// <summary>Captured and put back as typed (the setter is SetPropertyValue only, or rewrites only its own value). Label "A".</summary>
+    public static EditDraftMemberDecision Restorable(string path, string reason, string evidence) =>
+        new(path, EditDraftDisposition.Restorable, "A", reason, evidence);
+
+    /// <summary>Moves with a driver inside a named group (EditDraftTypePolicy.Groups). Label "B".</summary>
+    public static EditDraftMemberDecision Group(string path, string reason, string evidence) =>
+        new(path, EditDraftDisposition.Group, "B", reason, evidence);
+
+    /// <summary>Its setter changes another record (EditDraftTypePolicy.SideEffectMembers): selectable, never pre-ticked. Label "C".</summary>
+    public static EditDraftMemberDecision SideEffect(string path, string reason, string evidence) =>
+        new(path, EditDraftDisposition.SideEffect, "C", reason, evidence);
+
+    /// <summary>Captured and shown, never put back on an existing record (EditDraftTypePolicy.NotRestorableOnExisting). Label "D".</summary>
+    public static EditDraftMemberDecision NotRestorable(string path, string reason, string evidence) =>
+        new(path, EditDraftDisposition.NotRestorable, "D", reason, evidence);
+
+    /// <summary>Never captured (EditDraftTypePolicy.Excluded); the value must not be stored. Label "X".</summary>
+    public static EditDraftMemberDecision Excluded(string path, string reason, string evidence) =>
+        new(path, EditDraftDisposition.Excluded, "X", reason, evidence);
+
     public static IReadOnlyDictionary<string, EditDraftMemberDecision> Table(params EditDraftMemberDecision[] decisions)
     {
         var d = new Dictionary<string, EditDraftMemberDecision>(StringComparer.Ordinal);

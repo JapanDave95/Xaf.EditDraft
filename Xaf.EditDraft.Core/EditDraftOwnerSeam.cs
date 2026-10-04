@@ -23,8 +23,12 @@ public static class EditDraftOwnerRule
     }
 }
 
-/// <summary>The current owner ON THE CIRCUIT. The answer crosses to worker threads only as plain values.</summary>
-public readonly record struct EditDraftOwnerInfo(Guid Oid, bool LoginIsStaffMember)
+/// <summary>
+/// The current owner ON THE CIRCUIT. The answer crosses to worker threads only as plain values. <see cref="OwnerFlag"/> is a
+/// host-defined flag stored with each draft (EditDraftStoreBase.OwnerFlag) — record only, never used for access; the
+/// library default resolver sets it to false.
+/// </summary>
+public readonly record struct EditDraftOwnerInfo(Guid Oid, bool OwnerFlag)
 {
     public static readonly EditDraftOwnerInfo None = new(Guid.Empty, false);
     public bool IsNone => Oid == Guid.Empty;
@@ -76,7 +80,7 @@ public static partial class EditDraftServices
 /// <summary>
 /// Library default (SEC-1): the XAF login's key when it is a non-empty Guid, else no owner. A login whose key
 /// is not a Guid is not supported (the store column is a Guid) and resolves to no owner — fail closed, never a
-/// guessed owner. The recorded flag is false (the library knows no staff concept).
+/// guessed owner. The recorded flag (OwnerFlag) is false.
 /// </summary>
 public sealed class XafLoginEditDraftOwnerResolver : IEditDraftOwnerResolver
 {

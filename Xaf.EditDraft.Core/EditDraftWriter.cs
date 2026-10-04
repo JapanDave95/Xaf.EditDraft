@@ -14,10 +14,12 @@ public sealed class EditDraftSeed
     public Guid DraftKey { get; set; }
     public Guid EditorInstanceId { get; set; }
     public Guid OwnerUserOid { get; set; }
-    public bool LoginIsStaffMember { get; set; }
+    /// <summary>The host-defined flag recorded with the owner (EditDraftOwnerInfo.OwnerFlag). Record only.</summary>
+    public bool OwnerFlag { get; set; }
     public string ObjectType { get; set; }
     public Guid TargetOid { get; set; }
-    public Guid SubSectionOid { get; set; }
+    /// <summary>The record's access scope at capture (EditDraftTypePolicy.ScopeOf); Guid.Empty = none.</summary>
+    public Guid ScopeOid { get; set; }
     public string ContextText { get; set; }
     public string ViewId { get; set; }
 
@@ -40,7 +42,7 @@ internal interface IEditDraftWriter
 {
     IObjectSpace CreateReadSpace(out IServiceScope scope);
     Guid Create(EditDraftSeed seed, string payloadJson, int entryCount, DateTime now);
-    bool TrySupersede(Guid oid, int expectedRevision, Guid ownerOid, string payloadJson, int entryCount, Guid subSectionOid, string contextText, DateTime now);
+    bool TrySupersede(Guid oid, int expectedRevision, Guid ownerOid, string payloadJson, int entryCount, Guid scopeOid, string contextText, DateTime now);
     EditDraftRowState ReadRowState(Guid oid, int expectedRevision, Guid ownerOid, DateTime now);
     int TryClaim(Guid oid, int expectedRevision, Guid ownerOid, Guid editorInstanceId, DateTime now);
     int TryClaimNew(Guid oid, int expectedRevision, Guid ownerOid, Guid editorInstanceId, string payloadJson, int entryCount, DateTime now);
@@ -65,19 +67,25 @@ internal sealed class EditDraftWriter : IEditDraftWriter
     public EditDraftWriter(IServiceProvider serviceProvider)
         : this(serviceProvider, (serviceProvider?.GetService(typeof(EditDraftStoreRegistration)) as EditDraftStoreRegistration)?.StoreType) { }
 
-    /// <summary>The writer of an explicit store class (null = none: fail closed).</summary>
+    /// <summary>
+    /// The writer of an explicit store class (null = none: fail closed). The table name and schema come from the class's XPO
+    /// mapping (<see cref="EditDraftStoreRegistration"/>: schema "dbo" unless its XPO table name names one); the registration
+    /// in <paramref name="serviceProvider"/> is reused when it is the same class.
+    /// </summary>
     public EditDraftWriter(IServiceProvider serviceProvider, Type storeType)
     {
         if (storeType == null) { _store = NoStore.Instance; return; }
         if (!typeof(EditDraftStoreBase).IsAssignableFrom(storeType) || storeType.IsAbstract)
             throw new ArgumentException($"{storeType.FullName} is not a concrete subclass of {nameof(EditDraftStoreBase)}.", nameof(storeType));
-        _store = (IEditDraftWriter)Activator.CreateInstance(typeof(EditDraftWriter<>).MakeGenericType(storeType), serviceProvider);
+        var registration = serviceProvider?.GetService(typeof(EditDraftStoreRegistration)) as EditDraftStoreRegistration;
+        if (registration?.StoreType != storeType) registration = new EditDraftStoreRegistration(storeType);
+        _store = (IEditDraftWriter)Activator.CreateInstance(typeof(EditDraftWriter<>).MakeGenericType(storeType), serviceProvider, registration);
     }
 
     public IObjectSpace CreateReadSpace(out IServiceScope scope) => _store.CreateReadSpace(out scope);
     public Guid Create(EditDraftSeed seed, string payloadJson, int entryCount, DateTime now) => _store.Create(seed, payloadJson, entryCount, now);
-    public bool TrySupersede(Guid oid, int expectedRevision, Guid ownerOid, string payloadJson, int entryCount, Guid subSectionOid, string contextText, DateTime now) =>
-        _store.TrySupersede(oid, expectedRevision, ownerOid, payloadJson, entryCount, subSectionOid, contextText, now);
+    public bool TrySupersede(Guid oid, int expectedRevision, Guid ownerOid, string payloadJson, int entryCount, Guid scopeOid, string contextText, DateTime now) =>
+        _store.TrySupersede(oid, expectedRevision, ownerOid, payloadJson, entryCount, scopeOid, contextText, now);
     public EditDraftRowState ReadRowState(Guid oid, int expectedRevision, Guid ownerOid, DateTime now) => _store.ReadRowState(oid, expectedRevision, ownerOid, now);
     public int TryClaim(Guid oid, int expectedRevision, Guid ownerOid, Guid editorInstanceId, DateTime now) => _store.TryClaim(oid, expectedRevision, ownerOid, editorInstanceId, now);
     public int TryClaimNew(Guid oid, int expectedRevision, Guid ownerOid, Guid editorInstanceId, string payloadJson, int entryCount, DateTime now) =>
@@ -107,7 +115,7 @@ internal sealed class EditDraftWriter : IEditDraftWriter
 
         public IObjectSpace CreateReadSpace(out IServiceScope scope) { Refused(); scope = null; return null; }
         public Guid Create(EditDraftSeed seed, string payloadJson, int entryCount, DateTime now) { Refused(); return Guid.Empty; }
-        public bool TrySupersede(Guid oid, int expectedRevision, Guid ownerOid, string payloadJson, int entryCount, Guid subSectionOid, string contextText, DateTime now) { Refused(); return false; }
+        public bool TrySupersede(Guid oid, int expectedRevision, Guid ownerOid, string payloadJson, int entryCount, Guid scopeOid, string contextText, DateTime now) { Refused(); return false; }
         public EditDraftRowState ReadRowState(Guid oid, int expectedRevision, Guid ownerOid, DateTime now) { Refused(); return EditDraftRowState.ReadFailed; }
         public int TryClaim(Guid oid, int expectedRevision, Guid ownerOid, Guid editorInstanceId, DateTime now) { Refused(); return 0; }
         public int TryClaimNew(Guid oid, int expectedRevision, Guid ownerOid, Guid editorInstanceId, string payloadJson, int entryCount, DateTime now) { Refused(); return 0; }
@@ -124,28 +132,40 @@ internal sealed class EditDraftWriter : IEditDraftWriter
 }
 
 /// <summary>
-/// Persists 入力控 drafts in the host's store table (CareCrew: dbo.EditDraft, class NursingHome_Chart.Module.BusinessObjects.EditDraft).
-/// SINGLE-MODEL (owner review): the ownership predicates live here. Same shape as TenantChartDraftWriter; the owner column is different.
+/// Persists 入力控 drafts in the host's store table (the host's own subclass of EditDraftStoreBase).
+/// SINGLE-MODEL (owner review): the ownership predicates live here.
 ///
 /// OWNER-SCOPED IN EVERY STATEMENT: OwnerUserOid = the XAF login (design §3 S1) is part of the WHERE
 /// of every read, update and delete, so another login's draft is never loaded, changed or deleted,
 /// whatever Oid a caller passes. The rows are denied to every role, so the space is non-secured and
-/// this predicate IS the protection.
+/// this predicate IS the protection. (The retention sweep, EditDraftRetention, is the one owner-agnostic
+/// delete; it is not part of this class.)
 ///
 /// Every mutation is a single conditional statement whose affected-row count is the fence (no
 /// OptimisticLockField, no load-then-save, @pN names, no ExplicitBeginTransaction — KB fix-505).
 /// Expiry is set once at creation and never written again.
 ///
-/// Library (milestone M1): generic over the host's store class; the statements address its XPO table
-/// (unchanged text for CareCrew: the table is EditDraft). Supported contract v1: XPO, SQL Server.
+/// Library (milestone M1): generic over the host's store class; the statements address its table by the quoted,
+/// schema-qualified name of its registration (gap G6 and Codex C1, 2026-10-04: <c>[schema].[table]</c> from the store's XPO
+/// table name only, schema "dbo" unless that name carries one), the same table XPO's own reads and inserts use. The column names are the store base's
+/// (OwnerFlag and ScopeOid keep their columns LoginIsStaffMember and SubSectionOid). Supported contract v1: XPO, SQL Server.
 /// </summary>
 internal sealed class EditDraftWriter<TStore> : IEditDraftWriter where TStore : EditDraftStoreBase
 {
-    private static readonly string Table = EditDraftStoreRegistration.TableNameOf(typeof(TStore));
-    private static readonly EditDraftTableCache TableCache = new();
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, EditDraftTableCache> TableCaches = new(StringComparer.Ordinal);
+    private static int _notSqlServerLogged;
     private readonly IServiceProvider _serviceProvider;
 
-    public EditDraftWriter(IServiceProvider serviceProvider) => _serviceProvider = serviceProvider;
+    /// <summary>The quoted, schema-qualified table name every statement addresses, e.g. <c>[dbo].[EditDraft]</c>.</summary>
+    private readonly string Table;
+    private readonly EditDraftTableCache _tableCache;
+
+    public EditDraftWriter(IServiceProvider serviceProvider, EditDraftStoreRegistration store)
+    {
+        _serviceProvider = serviceProvider;
+        Table = (store ?? new EditDraftStoreRegistration(typeof(TStore))).QualifiedName;
+        _tableCache = TableCaches.GetOrAdd(Table, _ => new EditDraftTableCache(EditDraftTableCache.AbsentRecheck));
+    }
 
     private IServiceScope CreateScope() => _serviceProvider.GetRequiredService<IServiceScopeFactory>().CreateScope();
 
@@ -182,10 +202,10 @@ internal sealed class EditDraftWriter<TStore> : IEditDraftWriter where TStore : 
             d.DraftKey = seed.DraftKey != Guid.Empty ? seed.DraftKey : Guid.NewGuid();   // one key per ROW
             d.EditorInstanceId = seed.EditorInstanceId;
             d.OwnerUserOid = seed.OwnerUserOid;
-            d.LoginIsStaffMember = seed.LoginIsStaffMember;
+            d.OwnerFlag = seed.OwnerFlag;
             d.ObjectType = seed.ObjectType;
             d.TargetOid = seed.TargetOid;
-            d.SubSectionOid = seed.SubSectionOid;
+            d.ScopeOid = seed.ScopeOid;
             d.ContextText = seed.ContextText;
             d.ViewId = seed.ViewId;
             d.PayloadSchemaVersion = EditDraftStoreBase.CurrentPayloadSchemaVersion;
@@ -209,14 +229,15 @@ internal sealed class EditDraftWriter<TStore> : IEditDraftWriter where TStore : 
 
     /// <summary>Replaces the payload of this owner's live draft at the expected revision. ExpiresOn is NOT touched.</summary>
     public bool TrySupersede(Guid oid, int expectedRevision, Guid ownerOid, string payloadJson, int entryCount,
-                             Guid subSectionOid, string contextText, DateTime now)
+                             Guid scopeOid, string contextText, DateTime now)
     {
         if (ownerOid == Guid.Empty) return false;
+        // [SubSectionOid] is the column of EditDraftStoreBase.ScopeOid (the column name is kept; see the store base).
         var sql =
-            $"UPDATE [{Table}] SET [Payload] = @p0, [EntryCount] = @p1, [Revision] = [Revision] + 1, [LastCapturedOn] = @p2, " +
+            $"UPDATE {Table} SET [Payload] = @p0, [EntryCount] = @p1, [Revision] = [Revision] + 1, [LastCapturedOn] = @p2, " +
             $"[SubSectionOid] = @p3, [ContextText] = @p4, [LastError] = NULL " +
             $"WHERE [Oid] = @p5 AND [Revision] = @p6 AND [OwnerUserOid] = @p7 AND [DeletedOn] IS NULL AND [ExpiresOn] > @p2";
-        return Execute(sql, new object[] { payloadJson, entryCount, now, subSectionOid, contextText ?? string.Empty,
+        return Execute(sql, new object[] { payloadJson, entryCount, now, scopeOid, contextText ?? string.Empty,
                                            oid, expectedRevision, ownerOid }, "supersede") == 1;
     }
 
@@ -254,7 +275,7 @@ internal sealed class EditDraftWriter<TStore> : IEditDraftWriter where TStore : 
     {
         if (oid == Guid.Empty || ownerOid == Guid.Empty) return 0;
         var n = Execute(
-            $"UPDATE [{Table}] SET [EditorInstanceId] = @p0, [Revision] = [Revision] + 1, [DeletedOn] = NULL, [LastCapturedOn] = @p1 " +
+            $"UPDATE {Table} SET [EditorInstanceId] = @p0, [Revision] = [Revision] + 1, [DeletedOn] = NULL, [LastCapturedOn] = @p1 " +
             $"WHERE [Oid] = @p2 AND [Revision] = @p3 AND [OwnerUserOid] = @p4 AND [ExpiresOn] > @p1",
             new object[] { editorInstanceId, now, oid, expectedRevision, ownerOid }, "claim");
         return n == 1 ? expectedRevision + 1 : 0;
@@ -272,7 +293,7 @@ internal sealed class EditDraftWriter<TStore> : IEditDraftWriter where TStore : 
     {
         if (oid == Guid.Empty || ownerOid == Guid.Empty || editorInstanceId == Guid.Empty || string.IsNullOrEmpty(payloadJson)) return 0;
         var n = Execute(
-            $"UPDATE [{Table}] SET [EditorInstanceId] = @p0, [Revision] = [Revision] + 1, [DeletedOn] = NULL, [LastCapturedOn] = @p1, [Payload] = @p2, [EntryCount] = @p3 " +
+            $"UPDATE {Table} SET [EditorInstanceId] = @p0, [Revision] = [Revision] + 1, [DeletedOn] = NULL, [LastCapturedOn] = @p1, [Payload] = @p2, [EntryCount] = @p3 " +
             $"WHERE [Oid] = @p4 AND [Revision] = @p5 AND [OwnerUserOid] = @p6 AND [ExpiresOn] > @p1 AND [TargetOid] = @p7",
             new object[] { editorInstanceId, now, payloadJson, entryCount, oid, expectedRevision, ownerOid, Guid.Empty }, "claim new");
         return n == 1 ? expectedRevision + 1 : 0;
@@ -286,15 +307,16 @@ internal sealed class EditDraftWriter<TStore> : IEditDraftWriter where TStore : 
     public int DeleteOwn(Guid oid, Guid ownerOid, Guid editorInstanceId)
     {
         if (oid == Guid.Empty || ownerOid == Guid.Empty) return -1;
-        return Execute($"DELETE FROM [{Table}] WHERE [Oid] = @p0 AND [OwnerUserOid] = @p1 AND [EditorInstanceId] = @p2",
+        return Execute($"DELETE FROM {Table} WHERE [Oid] = @p0 AND [OwnerUserOid] = @p1 AND [EditorInstanceId] = @p2",
             new object[] { oid, ownerOid, editorInstanceId }, "delete on save");
     }
 
     /// <summary>
     /// Does the table exist? Restore and the list stay available while capture is switched OFF (design
-    /// §6), but only where the table exists — a database without it shows nothing. Cached for five
-    /// minutes PER DATABASE (library design §4.12 rule 2; was one process-wide answer); a failed probe
-    /// counts as absent. A failure to open the space is "absent" and is not cached.
+    /// §6), but only where the table exists — a database without it shows nothing. Cached PER DATABASE
+    /// (library design §4.12 rule 2): "present" for five minutes, "absent" for 30 seconds (gap G7); a failed
+    /// probe counts as absent. A failure to open the space is "absent" and is not cached. A store whose data
+    /// store is not SQL Server (gap G6) is "absent" without running a statement, and logged once.
     /// </summary>
     public bool TableExists()
     {
@@ -304,11 +326,17 @@ internal sealed class EditDraftWriter<TStore> : IEditDraftWriter where TStore : 
             using var os = scope.ServiceProvider.GetRequiredService<INonSecuredObjectSpaceFactory>()
                 .CreateNonSecuredObjectSpace(typeof(TStore));
             var session = SessionOf(os);
-            return TableCache.Get(EditDraftTableCache.DatabaseKeyOf(session), EditDraftServices.Clock(_serviceProvider).GetUtcNow().UtcDateTime, () =>
+            return _tableCache.Get(EditDraftTableCache.DatabaseKeyOf(session), EditDraftServices.Clock(_serviceProvider).GetUtcNow().UtcDateTime, () =>
             {
                 try
                 {
-                    var r = session.ExecuteScalar($"SELECT CASE WHEN OBJECT_ID(N'dbo.{Table}') IS NULL THEN 0 ELSE 1 END");
+                    if (EditDraftSqlServer.Classify(session, out var provider) == EditDraftDatabaseKind.NotSqlServer)
+                    {
+                        if (System.Threading.Interlocked.Exchange(ref _notSqlServerLogged, 1) == 0)
+                            EditDraftLog.Error($"[EditDraft] the store's data store is {provider}, not SQL Server; restore and the drafts list stay hidden (SQL Server only)");
+                        return false;
+                    }
+                    var r = session.ExecuteScalar("SELECT CASE WHEN OBJECT_ID(@p0) IS NULL THEN 0 ELSE 1 END", new[] { "@p0" }, new object[] { Table });
                     return Convert.ToInt32(r, System.Globalization.CultureInfo.InvariantCulture) == 1;
                 }
                 catch (Exception ex)
@@ -329,7 +357,7 @@ internal sealed class EditDraftWriter<TStore> : IEditDraftWriter where TStore : 
     public bool TrySoftDiscard(Guid oid, Guid ownerOid, DateTime now)
     {
         if (oid == Guid.Empty || ownerOid == Guid.Empty) return false;
-        return Execute($"UPDATE [{Table}] SET [DeletedOn] = @p2 WHERE [Oid] = @p0 AND [OwnerUserOid] = @p1 AND [DeletedOn] IS NULL",
+        return Execute($"UPDATE {Table} SET [DeletedOn] = @p2 WHERE [Oid] = @p0 AND [OwnerUserOid] = @p1 AND [DeletedOn] IS NULL",
             new object[] { oid, ownerOid, now }, "discard") == 1;
     }
 

@@ -7,6 +7,7 @@ using DevExpress.Persistent.Base;
 using DevExpress.Persistent.BaseImpl;
 using DevExpress.Persistent.BaseImpl.PermissionPolicy;
 using Microsoft.Extensions.DependencyInjection;
+using Xaf.EditDraft.Core;
 using Xaf.EditDraft.Sample.Module.BusinessObjects;
 
 namespace Xaf.EditDraft.Sample.Module.DatabaseUpdate;
@@ -15,7 +16,8 @@ namespace Xaf.EditDraft.Sample.Module.DatabaseUpdate;
 /// The DevExpress template's updater, with two additions for the sample:
 /// 1. No business data is seeded: the Note list starts empty.
 /// 2. The draft store's security obligation: every role gets an explicit DENY of every operation on SampleEditDraft
-///    (<see cref="DenyDraftStoreToEveryRole"/>), on every update, in every build configuration.
+///    (<see cref="DenyDraftStoreToEveryRole"/>, the library's EditDraftSecurity.DenyStoreToAllRoles), on every update, in
+///    every build configuration.
 /// The template's test users and roles (Admin and User, empty passwords) are created as the template creates them,
 /// only in non-RELEASE builds; the Default role additionally gets full access to Note so "User" can try the feature
 /// as a non-administrator.
@@ -55,33 +57,17 @@ public class Updater : ModuleUpdater
     }
 
     /// <summary>
-    /// The store's security obligation (sample README, "Security"). Gives every role in <paramref name="objectSpace"/> an
-    /// explicit DENY of Read, Write, Create, Delete and Navigate on <see cref="SampleEditDraft"/>; returns the number of roles.
-    ///
-    /// What it does and does not do:
-    /// - The library's engine never goes through XAF security for this table. Its writer works on a NON-SECURED object
-    ///   space: it creates a draft with CommitChanges, reads drafts with queries filtered on the owner, and updates or
-    ///   deletes them with T-SQL statements filtered on the owner (Xaf.EditDraft.Core/EditDraftWriter.cs). So this deny
-    ///   does not stop capture, restore or the drafts list, and it is not what keeps one user's drafts from another user;
-    ///   the owner condition is.
-    /// - It denies the store type to a role that reaches it through ordinary XAF security (SampleEditDraft_ListView, a
-    ///   lookup, the API). A role with PermissionPolicy AllowAllByDefault would otherwise read and edit every user's drafts.
-    /// - It is a TYPE permission only. Object or member permissions that ALLOW access to SampleEditDraft take priority over
-    ///   a type deny in XAF and are left in place, so do not add any for this class.
-    /// - It cannot restrict a role with IsAdministrative = true: "You cannot deny any rights for a role with the
-    ///   Administrative Permission" (XAF 26.1, Type, Object and Member Permissions). The rows are still written for such
-    ///   a role, so they apply if IsAdministrative is switched off later.
-    /// - It runs on a database update only. A role created later (for example in the UI) has no deny until the next update.
-    /// Idempotent: AddTypePermission reuses the role's existing permission object for the type.
+    /// The store's security obligation (docs/consumer-guide.md, "Security"), through the library helper
+    /// <see cref="EditDraftSecurity.DenyStoreToAllRoles"/>: every role in <paramref name="objectSpace"/> gets an explicit
+    /// DENY of Read, Write, Create, Delete and Navigate on <see cref="SampleEditDraft"/>; returns the number of roles.
+    /// Idempotent (the role's existing permission row for the type is reused). The helper logs each role the deny cannot
+    /// bind: an administrative role, and a role with an object or member ALLOW grant on the store. A role created after
+    /// this update has no deny until the next update; the library logs it at startup.
+    /// The library's writer does not go through XAF security for this table (non-secured object space, owner-filtered
+    /// statements), so the deny does not stop capture, restore or the drafts list.
     /// </summary>
-    public static int DenyDraftStoreToEveryRole(IObjectSpace objectSpace)
-    {
-        if (objectSpace == null) throw new ArgumentNullException(nameof(objectSpace));
-        var roles = objectSpace.GetObjects<PermissionPolicyRole>();
-        foreach (var role in roles)
-            role.AddTypePermission<SampleEditDraft>(SecurityOperations.FullAccess, SecurityPermissionState.Deny);
-        return roles.Count;
-    }
+    public static int DenyDraftStoreToEveryRole(IObjectSpace objectSpace) =>
+        EditDraftSecurity.DenyStoreToAllRoles(objectSpace, typeof(SampleEditDraft));
 
     private PermissionPolicyRole CreateAdminRole()
     {

@@ -85,7 +85,7 @@ namespace Xaf.EditDraft.Tests
             var sw = Wave1.Source("Xaf.EditDraft.Core/EditDraftSwitch.cs");
             sw.Should().NotContain(":ListViews:Enabled\" +", "no per-type list key is built");
             Regex.Matches(sw, "ListViewsKey").Count.Should().Be(2, "declared once, read once (in IsListEnabled)");
-            Wave1.Source("Xaf.EditDraft.Core/EditDraftCaptureControllerBlazor.cs").Should().NotContain("IsListEnabled", "DetailView capture is unchanged");
+            Wave1.Source("Xaf.EditDraft.Core/EditDraftCaptureController.cs").Should().NotContain("IsListEnabled", "DetailView capture is unchanged");
             Wave1.Source("Xaf.EditDraft.Blazor/EditDraftRestoreControllerBlazor.cs").Should().NotContain("IsListEnabled", "restore availability stays 'table exists'");
         }
 
@@ -105,7 +105,7 @@ namespace Xaf.EditDraft.Tests
             stillEnabled().Should().BeTrue();
             Wave1.Source(Wave1b.ListCapture)
                 .Should().Contain("var stillEnabled = EditDraftWriteGate.Bind(_policy?.PolicyId, id => EditDraftSwitch.IsListEnabled(services, id));")
-                .And.Contain("EditDraftCaptureControllerBlazor.RunOneWrite(slot, writer, running, mark.Raise, onFreshStart, stillEnabled)");
+                .And.Contain("EditDraftCaptureController.RunOneWrite(slot, writer, running, mark.Raise, onFreshStart, stillEnabled)");
         }
     }
 
@@ -166,7 +166,7 @@ namespace Xaf.EditDraft.Tests
         [Test]
         public void C3_C4_DetailView_capture_badges_the_record_and_open_decides_on_a_fresh_read()
         {
-            Wave1.Source("Xaf.EditDraft.Core/EditDraftCaptureControllerBlazor.cs")
+            Wave1.Source("Xaf.EditDraft.Core/EditDraftCaptureController.cs")
                 .Should().Contain("as EditDraftBadgeNotifier)?.Written(_policy.TypeName, RecordOid());");
             var badge = Wave1.Source(Wave1b.Badge);
             var open = badge.Substring(badge.IndexOf("private void OpenAction_Execute(", StringComparison.Ordinal));

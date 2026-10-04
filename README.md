@@ -6,8 +6,9 @@ record — after a browser refresh, a lost connection, a closed tab, or an appli
 user who typed them, expire, and are never applied without the user's confirmation.
 
 Status: extracted from the CareCrew application on 2026-10-03, where it runs behind configuration switches. This
-repository is the source of truth for the library from that date; CareCrew keeps an in-solution copy until the
-library ships as a NuGet package. See "Known gaps" before using it in another application.
+repository is the source of truth for the library from that date; CareCrew keeps an in-solution copy until it
+consumes the package. Version 0.2.0-preview.1 closes the library gaps found by the sample consumer (see "Status of
+the gaps").
 
 ## Projects
 
@@ -18,8 +19,10 @@ library ships as a NuGet package. See "Known gaps" before using it in another ap
 | `Xaf.EditDraft.Tests` | NUnit tests of the library alone (no application code) |
 | `samples/Xaf.EditDraft.Sample` | A minimal XAF Blazor application (one class, `Note`) built on the library with its default seams — the proof that the library works outside its first host. Its README lists everything a consumer supplies |
 
-Target: .NET 8, DevExpress 26.1.4 (`Directory.Packages.props`). SQL Server only: the writer uses T-SQL and expects
-the store table in `dbo`.
+Target: .NET 8. DevExpress 26.1.4 (`Directory.Packages.props`) is the tested floor: the version the library is built
+and tested with; older versions are not tested. XPO only. SQL Server only: the writer and the retention sweep use T-SQL,
+and the startup check stops an application whose store is in another database. The store table's schema is `dbo`
+unless the store class's XPO mapping names another (`[Persistent("myschema.MyEditDraft")]`).
 
 ## Installing the packages
 
@@ -38,7 +41,7 @@ for public packages: a consumer needs a GitHub personal access token (classic) w
    (the Blazor package depends on Core at the same version):
 
    ```xml
-   <PackageReference Include="Xaf.EditDraft.Blazor" Version="0.1.0-preview.1" />
+   <PackageReference Include="Xaf.EditDraft.Blazor" Version="0.2.0-preview.1" />
    ```
 
 3. The packages declare the DevExpress packages they need (26.1.4) as dependencies and do not contain them. DevExpress
@@ -46,18 +49,21 @@ for public packages: a consumer needs a GitHub personal access token (classic) w
    machine (`%AppData%\DevExpress\DevExpress_License.txt`, written by the DevExpress installer, or the
    `DevExpress_License` environment variable — see docs.devexpress.com/GeneralInformation/405494).
 
-Current version: see `<Version>` in `Directory.Build.props`. Versions before 1.0 are previews; see "Known gaps".
+Current version: see `<Version>` in `Directory.Build.props`; release notes in `<PackageReleaseNotes>` there. Versions
+before 1.0 are previews.
 
 ## Using it
 
-Read `samples/Xaf.EditDraft.Sample/README.md` first; it is the consumer guide. In short, a consumer supplies a
-persistent store class deriving from `EditDraftStoreBase` (the consumer owns the class name — security deny rows key
-on it), one `EditDraftTypePolicy` per captured type (which views, which members, how each member is restored),
-three service registrations (`AddEditDraftStore<TStore>()`, `AddEditDraftRegistry(...)`, `AddEditDraftBlazor()`),
-the two XAF modules (`EditDraftCoreModule`, `EditDraftBlazorModule`), the non-persistent object space provider, the
-configuration section `EditDraftCapture` (`Enabled`, `Types:<PolicyId>:Enabled`, `ListViews:Enabled`,
-`NewRecords:Enabled` — only the literal `true` is on), the stylesheet link, and an explicit DENY of the store class
-to every role.
+Read [docs/consumer-guide.md](docs/consumer-guide.md): it lists what a consumer supplies, what the library checks at
+startup, the security obligations and their limits, retention, and the renames from 0.1.0-preview.1. The working example
+is `samples/Xaf.EditDraft.Sample`. In short, a consumer supplies a persistent store class deriving from
+`EditDraftStoreBase` (the consumer owns the class name — security deny rows key on it), one `EditDraftTypePolicy` per
+captured type (which views, which members, how each member is restored; `EditDraftDecisions` helpers), three service
+registrations (`AddEditDraftStore<TStore>()`, `AddEditDraftRegistry(...)`, `AddEditDraftBlazor()`), the two XAF modules
+(`EditDraftCoreModule`, `EditDraftBlazorModule`), the non-persistent object space provider, the configuration section
+`EditDraftCapture` (`Enabled`, `Types:<PolicyId>:Enabled`, `ListViews:Enabled`, `NewRecords:Enabled` — only the
+literal `true` is on), the stylesheet link, and `EditDraftSecurity.DenyStoreToAllRoles` in its ModuleUpdater. A
+retention sweep (`AddEditDraftRetention()` + `EditDraftCapture:Retention:Enabled`) is off unless turned on.
 
 ## Build and test
 
@@ -84,19 +90,22 @@ To release: bump `<Version>`, commit, `git tag v<Version>`, `git push --tags`.
 
 ## Design and history
 
-`docs/` holds the design and milestone write-ups in order: the original engine design (2026-09-30), the library
-extraction design and its three milestones (2026-10-01/02), the new-record capture design and result (2026-10-02/03),
-and the sample consumer report (2026-10-03), whose last section lists the known gaps.
+`docs/` holds the consumer guide and the design and milestone write-ups in order: the original engine design
+(2026-09-30), the library extraction design and its three milestones (2026-10-01/02), the new-record capture design and
+result (2026-10-02/03), the sample consumer report (2026-10-03), whose last section lists the gaps G1-G15, and the
+report of their closing (2026-10-04).
 
 The git history of the four project folders is the history they had inside CareCrew (`git subtree split`).
 
-## Known gaps
+## Status of the gaps
 
-From `docs/xaf-editdraft-sample-consumer-2026-10-03.md`: the `AddNonPersistent()` prerequisite is not enforced; the
-security obligation (deny the store class to every role) is documented, not checked; the writer bypasses XAF
-security by design and relies on the owner fence; the restore popup's English texts still carry one host-specific
-term; there is no retention sweep in the library; no NuGet package yet. The DevExpress floor is 26.1.4 as built, not
-yet confirmed lower.
+The gaps G1-G15 listed in `docs/xaf-editdraft-sample-consumer-2026-10-03.md` are closed in 0.2.0-preview.1
+(`docs/close-gaps-2026-10-04.md`): startup checks for the prerequisites, a deny helper and a startup warning for roles
+that can read the store, an opt-in retention sweep, a schema option, host-neutral names and English texts, decision
+helpers, an all-types entry point for the drafts list, and the consumer guide. Still true by design: the writer does
+not use XAF security and relies on the owner condition in every statement; a type deny cannot bind an administrative
+role or object/member ALLOW grants (the startup warning names such roles); SQL Server and XPO only. Still to decide:
+the store's two column names `LoginIsStaffMember` and `SubSectionOid` are kept for the first host's existing tables.
 
 ## Licence
 

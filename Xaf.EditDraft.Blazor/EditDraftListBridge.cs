@@ -4,14 +4,13 @@ using Xaf.EditDraft.Core;
 namespace Xaf.EditDraft.Blazor
 {
     /// <summary>
-    /// Per-circuit (scoped) bridge for the 「入力控」 entry in the 復元 section of the gear panel (generic
-    /// edit-draft restore, owner D4). STAFF-accessible, on its own bridge — not ChartDraftListBridge
-    /// (F2 identity, chart table), not AttendanceDraftListBridge, not RecoveryToolsBridge (administrators
-    /// only). It makes no decision: the registered main-window controller answers "available?" (the
-    /// EditDraft table exists) when asked, and again when the entry is executed. The panel is plain UI
-    /// and is not trusted to have hidden it.
-    /// (Library milestone M2: moved from the application's Services folder; registered per circuit by
-    /// EditDraftBlazorServiceCollectionExtensions.AddEditDraftBlazor; the host's settings panel injects it.)
+    /// Per-circuit (scoped) entry point to the list of the login's drafts of EVERY registered type, for a host's own UI (a
+    /// settings panel, a menu item, a Razor component): inject it, show the entry while <see cref="IsAvailable"/>, and call
+    /// <see cref="Open"/>. It makes no decision: the main-window list controller (EditDraftListControllerBlazor) registers
+    /// itself here and answers "available?" (the store table exists) when asked, and again when the entry is executed;
+    /// the host UI is not trusted to have hidden it. Without a host UI, the header action can open the same list on every
+    /// view (EditDraftBlazorOptions.HeaderActionOnEveryView, gap G11).
+    /// (Library milestone M2: registered per circuit by EditDraftBlazorServiceCollectionExtensions.AddEditDraftBlazor.)
     /// </summary>
     public class EditDraftListBridge
     {

@@ -190,9 +190,11 @@ namespace Xaf.EditDraft.Tests
             writer.Should().Contain("WHERE [Oid] = @p5 AND [Revision] = @p6 AND [OwnerUserOid] = @p7 AND [DeletedOn] IS NULL AND [ExpiresOn] > @p2", "supersede");
             writer.Should().Contain("WHERE [Oid] = @p2 AND [Revision] = @p3 AND [OwnerUserOid] = @p4 AND [ExpiresOn] > @p1", "claim");
             writer.Should().Contain("WHERE [Oid] = @p4 AND [Revision] = @p5 AND [OwnerUserOid] = @p6 AND [ExpiresOn] > @p1 AND [TargetOid] = @p7", "new-record claim (TryClaimNew)");
-            writer.Should().Contain("DELETE FROM [{Table}] WHERE [Oid] = @p0 AND [OwnerUserOid] = @p1 AND [EditorInstanceId] = @p2", "delete on save");
+            // Gap G6 (run 2026-10-04-editdraft-close-gaps-08c338): the statements address {Table}, the quoted schema-qualified
+            // name ([schema].[table]), instead of [{Table}]; the predicates and the count are unchanged.
+            writer.Should().Contain("DELETE FROM {Table} WHERE [Oid] = @p0 AND [OwnerUserOid] = @p1 AND [EditorInstanceId] = @p2", "delete on save");
             writer.Should().Contain("SET [DeletedOn] = @p2 WHERE [Oid] = @p0 AND [OwnerUserOid] = @p1 AND [DeletedOn] IS NULL", "discard");
-            Regex.Matches(writer, @"\b(UPDATE|DELETE FROM) \[\{Table\}\]").Count.Should().Be(5, "exactly these five mutations exist");
+            Regex.Matches(writer, @"\b(UPDATE|DELETE FROM) \{Table\}").Count.Should().Be(5, "exactly these five mutations exist");
             Regex.Matches(writer, @"\[OwnerUserOid\] = @p\d").Count.Should().Be(5, "and each names the owner once");
         }
 
@@ -241,7 +243,7 @@ namespace Xaf.EditDraft.Tests
             EditDraftWriteGate.Bind("A", _ => throw new InvalidOperationException())().Should().BeFalse("a failing reader is off (fail closed)");
 
             // The controller binds the predicate ONCE at StartWrite and hands it to every fresh-start path.
-            var capture = Wave1.Source("Xaf.EditDraft.Core/EditDraftCaptureControllerBlazor.cs");
+            var capture = Wave1.Source("Xaf.EditDraft.Core/EditDraftCaptureController.cs");
             capture.Should().Contain("var stillEnabled = EditDraftWriteGate.Bind(_policy?.PolicyId, id => EditDraftSwitch.IsEnabled(services, id));");
             capture.Should().Contain("circuit.Post(_ => ResumeAfterFreshStart(slot, mark, newest, writer, stillEnabled), null);");
             capture.Should().Contain("if (!ReferenceEquals(slot, _slot)) { RetiredFreshStart(slot, mark, newest, writer, stillEnabled); return; }");

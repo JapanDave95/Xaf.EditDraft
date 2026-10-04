@@ -145,7 +145,7 @@ namespace Xaf.EditDraft.Tests
                 EditDraftComparison.StatusText(EditDraftItemStatus.Clean, true).Should().Be("Can be restored (other records change too)");
                 EditDraftDisplay.ChangeText(null, "x", false).Should().Be("(unknown) → x");
                 EditDraftProvenance.Origin(true, "Overtime").Should().Be("From the list (Overtime)");
-                EditDraftCaptureControllerBlazor.ContextTextFor("ToDo", new DateTime(2026, 9, 30)).Should().Be("ToDo / 2026/09/30");
+                EditDraftCaptureController.ContextTextFor("ToDo", new DateTime(2026, 9, 30)).Should().Be("ToDo / 2026/09/30");
 
                 EditDraftTexts.Use((EditDraftTextSet)null);
                 EditDraftTexts.Current.Should().BeSameAs(EditDraftTextSet.English, "null returns to the English default");
@@ -156,7 +156,7 @@ namespace Xaf.EditDraft.Tests
                 Thread.CurrentThread.CurrentUICulture = culture;
                 Thread.CurrentThread.CurrentCulture = culture;
             }
-            EditDraftCaptureControllerBlazor.ContextTextFor("苦情対応", new DateTime(2026, 9, 30)).Should().Be("苦情対応／2026/09/30", "CareCrew (ja) is unchanged");
+            EditDraftCaptureController.ContextTextFor("苦情対応", new DateTime(2026, 9, 30)).Should().Be("苦情対応／2026/09/30", "CareCrew (ja) is unchanged");
         }
     }
 

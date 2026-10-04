@@ -15,9 +15,10 @@ namespace Xaf.EditDraft.Sample.Module.EditDrafts;
 ///   Capture and the offer run only in the approved root DetailView; the header action and the row badges use the ListView.
 /// - AllowNewRecords: a never-saved Note is captured too (while EditDraftCapture:NewRecords:Enabled is on) and can be
 ///   recreated from the drafts list.
-/// - Decisions: one line per member reflection proposes. Every Note setter is SetPropertyValue only, so all four are
-///   "A" (Restorable). A member added to Note later is NOT captured until it gets a line here.
-/// - SubSectionOf, ContextDateOf, Groups, NewRecordReconstructionOrder: not needed for Note (left at their defaults).
+/// - Decisions: one line per member reflection proposes, written with the library helpers (EditDraftDecisions.Restorable
+///   etc.). Every Note setter is SetPropertyValue only, so all four are Restorable (label "A"). A member added to Note later
+///   is NOT captured until it gets a line here.
+/// - ScopeOf, ContextDateOf, Groups, NewRecordReconstructionOrder: not needed for Note (left at their defaults).
 /// </summary>
 public static class NoteEditDraftPolicy
 {
@@ -35,11 +36,12 @@ public static class NoteEditDraftPolicy
         ApprovedViewIds = new HashSet<string>(StringComparer.Ordinal) { DetailViewId },
         ListViewIds = new HashSet<string>(StringComparer.Ordinal) { ListViewId },
         AllowNewRecords = true,
+        // The library helper writes label "A" (Restorable); the reason and the evidence are required by the gate.
         Decisions = EditDraftDecisions.Table(
-            Restorable(nameof(Note.Title)),
-            Restorable(nameof(Note.Body)),
-            Restorable(nameof(Note.Priority)),
-            Restorable(nameof(Note.DueOn)))
+            EditDraftDecisions.Restorable(nameof(Note.Title), SetterReason, Evidence),
+            EditDraftDecisions.Restorable(nameof(Note.Body), SetterReason, Evidence),
+            EditDraftDecisions.Restorable(nameof(Note.Priority), SetterReason, Evidence),
+            EditDraftDecisions.Restorable(nameof(Note.DueOn), SetterReason, Evidence))
     };
 
     /// <summary>The registration callback for services.AddEditDraftRegistry(...).</summary>
@@ -49,7 +51,6 @@ public static class NoteEditDraftPolicy
         registry.Register(Create());
     }
 
-    // Census category "A": the setter is SetPropertyValue only, so the typed value can be put back as it was typed.
-    private static EditDraftMemberDecision Restorable(string member) =>
-        new(member, EditDraftDisposition.Restorable, "A", "SetPropertyValue only", Evidence);
+    // Every Note setter is SetPropertyValue only, so the typed value can be put back as it was typed.
+    private const string SetterReason = "SetPropertyValue only";
 }

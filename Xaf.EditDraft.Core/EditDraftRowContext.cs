@@ -37,7 +37,7 @@ public sealed class EditDraftRowContext
         Policy = policy ?? throw new ArgumentNullException(nameof(policy));
         Record = record ?? throw new ArgumentNullException(nameof(record));
         TargetOid = targetOid;
-        Mark = new EditDraftCaptureControllerBlazor.StoredMark(0);
+        Mark = new EditDraftCaptureController.StoredMark(0);
     }
 
     public EditDraftTypePolicy Policy { get; }
@@ -51,8 +51,8 @@ public sealed class EditDraftRowContext
 
     public EditDraftPayload Payload { get; private set; }
     public EditDraftOwnerInfo PayloadOwner { get; private set; } = EditDraftOwnerInfo.None;
-    public DraftWriteSlot<EditDraftCaptureControllerBlazor.DraftSnapshot> Slot { get; } = new();
-    public EditDraftCaptureControllerBlazor.StoredMark Mark { get; private set; }
+    public DraftWriteSlot<EditDraftCaptureController.DraftSnapshot> Slot { get; } = new();
+    public EditDraftCaptureController.StoredMark Mark { get; private set; }
     public Dictionary<string, long> CapturedAt { get; private set; } = new(StringComparer.Ordinal);
     public long CaptureSeq => _captureSeq;
 
@@ -221,11 +221,11 @@ public sealed class EditDraftRowContext
     // ---- write ------------------------------------------------------------------------------
 
     /// <summary>Built ON THE CIRCUIT; only plain values cross to the worker. Closes the open window. Null clock = the system clock.</summary>
-    public EditDraftCaptureControllerBlazor.DraftSnapshot BuildSnapshot(EditDraftSeed seed, TimeProvider clock = null)
+    public EditDraftCaptureController.DraftSnapshot BuildSnapshot(EditDraftSeed seed, TimeProvider clock = null)
     {
         _priorInWindow.Clear();
         _priorSeqInWindow.Clear();
-        return new EditDraftCaptureControllerBlazor.DraftSnapshot(seed, Payload.ToJson(), Payload.Count, EditDraftClock.Now(clock), _captureSeq,
+        return new EditDraftCaptureController.DraftSnapshot(seed, Payload.ToJson(), Payload.Count, EditDraftClock.Now(clock), _captureSeq,
             new Dictionary<string, long>(CapturedAt, StringComparer.Ordinal)) { Clock = clock };
     }
 
