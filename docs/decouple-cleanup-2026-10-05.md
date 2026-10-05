@@ -1,8 +1,8 @@
 # Xaf.EditDraft 0.4.1-preview.1: first-host cleanup (2026-10-05)
 
 Run `2026-10-05-decouple-cleanup-cca120`, collaborator agent (Claude Opus 5.5 implementing; Codex reviewing the frozen
-diff at `xhigh`, read-only). Branch `chore/decouple-cleanup` from `5f66b99` (0.4.0-preview.1). Not committed, not
-published.
+diff at `xhigh`, read-only). Branch `chore/decouple-cleanup` from `5f66b99` (0.4.0-preview.1), merged into `main` as
+`d7874ca` and published as 0.4.1-preview.1 (tag `v0.4.1-preview.1`, publish run succeeded).
 
 ## 0. Combined answer
 
@@ -14,13 +14,14 @@ git checkout). The version is 0.4.1-preview.1. There is no API change and no beh
 `PersonalLoginOnly` text. The guard tests that forbid the first host's assembly names and its real localStorage key
 stay; the NA8 source scan now also covers the names this cleanup removed and the project files. The first Codex review
 found three defects and Claude four more; all seven were fixed in a follow-up pass. The second and last Codex review of
-that pass found four further defects (one more first-host fixture and three statements in this write-up), reported
-unfixed in section 9.
+that pass found four further defects (one more first-host fixture and three statements in this write-up); they were
+resolved after that pass without a further review (section 9, "Resolved") and the full checks re-run on the final bytes.
 
 ## 1. Status
 
-2026-10-05: implemented in the working tree, two review passes done, not committed (git-committer follows), not
-published (a tag `v0.4.1-preview.1` runs the publish workflow).
+2026-10-05: implemented, two review passes done, pass-2 findings resolved, committed (`8aaeb86`, `b3f22ff`), merged
+(`d7874ca`) and published as 0.4.1-preview.1. Final bytes: Release build 0 warnings / 0 errors, Xaf.EditDraft.Tests
+358/358 (0 skipped), Sample.Tests 65, js 140 (138 pass, 2 todo), pack clean.
 
 ## 2. Scan before and after
 
@@ -209,7 +210,7 @@ each confirmed by Claude against the files. As decided, they are reported here a
 > printed pattern now states the word boundaries the scan used; P2-C2 — E16 fixture "Overtime" changed to "Notes";
 > P2-C3 — the count corrected to five call sites; P2-C4 — the removal of the two comment references to a document that
 > is not in this repository is kept (a pointer to a missing file helps no reader). Final checks re-run after these
-> edits (see the release commit).
+> edits (section 1).
 
 Codex's `could_not_determine` in pass 2: build, test and package results were supplied, not rerun; skip behaviour
 outside a checkout was read in `Wave1.Root`, not executed; which package build is deployed.
@@ -232,14 +233,11 @@ outside a checkout was read in `Wave1.Root`, not executed; which package build i
 
 ## 11. Not verified / open
 
-- The NuGet packages were packed locally, not published; the publish workflow runs on a tag.
 - The first host still pins 0.4.0-preview.1; after it upgrades, its users see the new Japanese `PersonalLoginOnly`
   text. No first-host test pins that text (checked by search).
 - Not part of this cleanup, reported for the owner: `samples/` still names the first host in comments, a README and
   sample tests (its upgrade tests use the first host's real column names `LoginIsStaffMember` and `SubSectionOid`);
   README's history paragraph and the earlier release notes name it; `KB fix-NNN` references in comments point to a
   knowledge base outside this repository.
-- Open from review pass 2, unfixed: P2-C1 (this write-up's scan statement), P2-C2 (the "Overtime" fixture in E16),
-  P2-C3 (this write-up's call-site count), P2-C4 (scope of the two library-comment removals) — section 9. Sections 0,
-  2 and 3 of this write-up still carry the statements P2-C1 to P2-C3 correct.
+- The pass-2 findings P2-C1 to P2-C4 were resolved after the last review pass and were not reviewed again (section 9).
 - The skip behaviour outside a git checkout was read from the source, not executed.
