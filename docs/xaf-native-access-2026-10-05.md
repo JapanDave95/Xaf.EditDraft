@@ -2,7 +2,9 @@
 
 Run 2026-10-05-xaf-native-access-a0c6. Single model (Claude), by the owner's guardrails for XAF security-strategy code: no
 second model designed, reviewed or tested this change. The owner reviews it (section 12). Base: `main` at 72c6469
-(0.3.0-preview.2). Branch `feature/xaf-native-access`. Nothing is committed, published or deployed by this run.
+(0.3.0-preview.2). Branch `feature/xaf-native-access`, merged into `main` and released as 0.4.0-preview.1 by owner
+decision 2026-10-05 ("Accept the save-time check", "Keep: require Write", "Merge and publish now"); the owner's
+security read of section 12 is pending and gates the first host's next production deploy.
 
 ## 1. Summary
 
@@ -308,40 +310,14 @@ Points to decide or confirm:
 7. The tests were written by the same model as the code (single-model run); agreement with the code is not independent
    evidence. The executed evidence is the XAF security run in the sample tests, the LocalDB runs and the browser run.
 
-## 13. What CareCrew must do to upgrade (the follow-up run)
+## 13. Upgrading an existing host
 
-1. Re-point to 0.4.0-preview.1 and fix the build breaks: remove `OwnerKind = ...` from the five wave policies and
-   `TenantChartDraftTypePolicy.Create`; remove the five `ScopeOf = ...` lines and keep each type's 事業所 function in
-   CareCrew's own code (for example a map from policy id or type to `Func<object, Guid>`).
-2. Replace `CareCrewEditDraftRecordAccess : IEditDraftRecordAccess` and its registration in `Startup.cs`
-   (`services.AddSingleton<IEditDraftRecordAccess>(...)`) with an `IEditDraftAccessCheck`: `MayRestore(app, policy,
-   record)` = the 事業所 assignment rule on the record (`EditDraftAccess.IsRecordVisible` without `policy.ScopeOf`, using
-   CareCrew's own map); `MayRecreate(app, policy, rebuilt)` = the same rule on the rebuilt record (the former "by stored
-   Oid" check `IsSubSectionVisible` is no longer needed: the rebuilt record has its 事業所). CareCrew's access model is a
-   custom StaffMember → SubSection assignment collection, not DevExpress roles, so it belongs in this hook. Keep it fail
-   closed.
-3. `CareCrewEditDraftOwnerResolver` / `EditDraftOwner`: implement `Current(IObjectSpace, EditDraftTypePolicy)` and
-   `Current(XafApplication, EditDraftTypePolicy)`; move `EditDraftOwnerRule.Decide` (five lines) into CareCrew; build
-   `new EditDraftOwnerInfo(oid)` (the staff flag is no longer carried). For TenantChart policies return the F2 staff
-   member identity. Note: the library never asks about a chart policy today — chart policies have no decision table, so
-   the generic engine does not admit them and their drafts are in CareCrew's own chart store; the F2 branch matters only
-   if a chart type moves to the generic engine. CareCrew's chart engine keeps its own F2 code.
-4. `NursingHome_Chart.Module/BusinessObjects/EditDraft.cs`: declare `LoginIsStaffMember` (bool, `[Persistent("LoginIsStaffMember")]`)
-   and `SubSectionOid` (Guid, `[Persistent("SubSectionOid")]`) with the same column names and types and no index (the
-   base never indexed them), so `dbo.EditDraft` does not change (pattern: `SampleLegacyColumnsTests`). New rows then get
-   false / `Guid.Empty` unless CareCrew fills them; nothing in the library reads them. Update the class comment that
-   cites `EditDraftStoreBase.OwnerFlag`. NHM's standalone copy declares all members itself and is not affected.
-5. Audit what reads those columns or `ScopeOf`: `Infrastructure/EditDraftAccess.cs` (ScopeOf, the by-Oid check),
-   `Infrastructure/EditDrafts/EditDraftOwner.cs` (EditDraftOwnerRule, two-argument EditDraftOwnerInfo), the five wave
-   policies, `TenantChartDraftTypePolicy.cs`, `Startup.cs:135`, and the tests in `NursingHome_Chart.Rostering.Tests`
-   that use `OwnerKind`, `IEditDraftRecordAccess`, `ScopeOid`/`OwnerFlag` (EditDraftEngineTests, EditDraftLibraryBlazorTests,
-   EditDraftLibraryIsolationTests, EditDraftLibrarySeamTests, EditDraftStoreMappingTests, EditDraftWave1Tests). No
-   CareCrew SQL script reads the two columns of `dbo.EditDraft` (the chart files that name SubSectionOid are the chart
-   store's own columns).
-6. Behaviour to confirm in CareCrew: restore now also needs XAF Write on the record and recreate needs Create, Write
-   and Read on the rebuilt record; with roles set to AllowAllByDefault nothing changes, but a role with type-level Write
-   denials loses restore on those types. `EditDraftWavePolicies.IsGeneric` keeps its answers (chart policies have no
-   decision table).
+A host that used the removed members moves its own rules into its own code: a scope or organisational-unit rule
+becomes its `IEditDraftAccessCheck` (`MayRestore` on the saved record, `MayRecreate` on the rebuilt one — the rebuilt
+record carries the values the rule needs, so no stored scope is required); per-type ownership becomes its
+`IEditDraftOwnerResolver` (which now receives the policy); extra columns an existing store table already has are
+declared on the host's own store class with the same names and types, so the table does not change (see the
+consumer guide §12 and `SampleLegacyColumnsTests`). The first host's own checklist is kept in that host's repository.
 
 ## 14. Not verified, follow-ups (not changed in this run)
 
