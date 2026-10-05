@@ -98,7 +98,7 @@ To release: bump `<Version>`, commit, `git tag v<Version>`, `git push --tags`.
 
 ## Design and history
 
-`docs/` holds the consumer guide and the design and milestone write-ups in order: the original engine design
+`CHANGELOG.md` lists what changed in each version. `docs/` holds the consumer guide and the design and milestone write-ups in order: the original engine design
 (2026-09-30), the library extraction design and its three milestones (2026-10-01/02), the new-record capture design and
 result (2026-10-02/03), the sample consumer report (2026-10-03), whose last section lists the gaps G1-G15, the
 report of their closing (2026-10-04), and the report of the move to XAF-native access (2026-10-05).
