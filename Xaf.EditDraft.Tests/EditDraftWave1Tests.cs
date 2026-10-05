@@ -72,17 +72,8 @@ namespace Xaf.EditDraft.Tests
             EditDraftSwitch.TypeKey("ToDo").Should().NotBe(EditDraftSwitch.TypeKey("TenantCase"));
         }
 
-        [Test]
-        public void W10_D6_owner_rule_login_owns_general_user_never_unreadable_staff_never_non_staff_login_owns()
-        {
-            var login = Guid.NewGuid();
-            EditDraftOwnerRule.Decide(login, loginIsStaffMember: true, staffFound: true, staffIsGeneralUser: false).Should().Be(login);
-            EditDraftOwnerRule.Decide(login, true, true, staffIsGeneralUser: true).Should().Be(Guid.Empty, "D6: a GeneralUser login never owns a draft");
-            EditDraftOwnerRule.Decide(login, true, staffFound: false, false).Should().Be(Guid.Empty, "a StaffMember that cannot be read: no owner");
-            EditDraftOwnerRule.Decide(login, loginIsStaffMember: false, false, false).Should().Be(login, "an administrator (non-StaffMember) login owns its drafts");
-            EditDraftOwnerRule.Decide(null, true, true, false).Should().Be(Guid.Empty);
-            EditDraftOwnerRule.Decide(Guid.Empty, true, true, false).Should().Be(Guid.Empty);
-        }
+        // W10 (EditDraftOwnerRule, the first host's D6 staff/GeneralUser rule) was deleted in 0.4.0-preview.1 with the rule
+        // itself (owner ruling 2026-10-05: the library keeps no host owner rule; a host implements IEditDraftOwnerResolver).
 
         [Test]
         public void W20b_no_owner_at_apply_time_refuses()
@@ -187,7 +178,9 @@ namespace Xaf.EditDraft.Tests
             // new-record claim TryClaimNew is the fifth statement, fenced on Oid, Revision, Owner, ExpiresOn and
             // TargetOid = Empty like the others.
             var writer = Wave1.Source(Writer);
-            writer.Should().Contain("WHERE [Oid] = @p5 AND [Revision] = @p6 AND [OwnerUserOid] = @p7 AND [DeletedOn] IS NULL AND [ExpiresOn] > @p2", "supersede");
+            // 0.4.0-preview.1 (owner ruling 2026-10-05): the supersede no longer sets the scope column, so its parameters are
+            // renumbered (@p3 = ContextText, @p4..@p6 = Oid, Revision, Owner); the predicates are unchanged and still name the owner.
+            writer.Should().Contain("WHERE [Oid] = @p4 AND [Revision] = @p5 AND [OwnerUserOid] = @p6 AND [DeletedOn] IS NULL AND [ExpiresOn] > @p2", "supersede");
             writer.Should().Contain("WHERE [Oid] = @p2 AND [Revision] = @p3 AND [OwnerUserOid] = @p4 AND [ExpiresOn] > @p1", "claim");
             writer.Should().Contain("WHERE [Oid] = @p4 AND [Revision] = @p5 AND [OwnerUserOid] = @p6 AND [ExpiresOn] > @p1 AND [TargetOid] = @p7", "new-record claim (TryClaimNew)");
             // Gap G6 (run 2026-10-04-editdraft-close-gaps-08c338): the statements address {Table}, the quoted schema-qualified

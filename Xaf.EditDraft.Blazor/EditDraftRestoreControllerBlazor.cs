@@ -20,13 +20,14 @@ namespace Xaf.EditDraft.Blazor;
 /// a member drafted in two drafts is shown twice, the newer one pre-ticked.
 ///
 /// SINGLE-MODEL parts (design §3 S3): ownership, revision, View.AllowEdit, per-member write permission
-/// and the record's 事業所 are checked when the offer is built and AGAIN immediately before anything is
+/// and the access check on the record (EditDraftServices.MayRestore: XAF Write on the record plus the host's
+/// IEditDraftAccessCheck) are checked when the offer is built and AGAIN immediately before anything is
 /// applied. Claim first (every contributing draft), attach the newest to this screen's capture, then
 /// fill in UNSAVED through EditDraftRestorer.ApplyExisting under EditDraftRestoreGuard (owner D12).
 /// A draft whose entries are all 戻せません gets a read-only full-text display (owner D9).
 ///
-/// Library milestone M2: in Xaf.EditDraft.Blazor (it watches the TabbedMDI template). Owner, record access and member
-/// write permission through the Core seams (EditDraftServices.CurrentOwner, EditDraftServices.RecordAccess,
+/// Library milestone M2: in Xaf.EditDraft.Blazor (it watches the TabbedMDI template). Owner, access check and member
+/// write permission through the Core seams (EditDraftServices.CurrentOwner, EditDraftServices.MayRestore,
 /// EditDraftMemberAccess), "now" from the host clock, texts from EditDraftTexts, log lines through EditDraftLog (same
 /// text); the popup rows are the library's EditDraftRestoreItem.
 /// </summary>
@@ -150,10 +151,10 @@ public class EditDraftRestoreControllerBlazor : ObjectViewController<DetailView,
                 WatchMdi();
                 return;
             }
-            var owner = EditDraftServices.CurrentOwner(Application?.ServiceProvider, ObjectSpace);
+            var owner = EditDraftServices.CurrentOwner(Application?.ServiceProvider, ObjectSpace, _policy);
             if (owner.IsNone)
             {
-                EditDraftLog.Info($"[EditDraft] offer skipped at '{trigger}': no owner (not logged in, or a GeneralUser login — D6)");
+                EditDraftLog.Info($"[EditDraft] offer skipped at '{trigger}': no owner (not logged in, or the owner seam named none)");
                 return;
             }
             _offeredThisActivation = true;
@@ -163,15 +164,6 @@ public class EditDraftRestoreControllerBlazor : ObjectViewController<DetailView,
             var ownInstance = Frame?.GetController<EditDraftCaptureController>()?.CurrentEditorInstanceId ?? Guid.Empty;
             var requested = (Application?.ServiceProvider?.GetService(typeof(EditDraftOfferRequests)) as EditDraftOfferRequests)
                 ?.TakeOfferRequest(record) ?? Guid.Empty;
-
-            // Design §3 S3.4: the record must be one the login may see (the host's record-access seam; CareCrew: the
-            // 事業所 rule). Nothing from the draft is shown otherwise.
-            if (!EditDraftServices.RecordAccess(Application?.ServiceProvider).IsRecordVisible(Application, _policy, record))
-            {
-                EditDraftLog.Info($"[EditDraft] offer refused at '{trigger}': record {S(recordOid)} of {_policy.TypeName} is not visible to this login (事業所 rule)");
-                Message(EditDraftTexts.Of(t => t.RecordNotVisible), InformationType.Warning);
-                return;
-            }
 
             var drafts = new List<(EditDraftStoreBase Draft, EditDraftPayload Payload)>();
             using (var readSpace = _writer.CreateReadSpace(out var scope))
@@ -202,6 +194,16 @@ public class EditDraftRestoreControllerBlazor : ObjectViewController<DetailView,
             if (drafts.Count == 0)
             {
                 EditDraftLog.Info($"[EditDraft] no draft to offer for {_policy.TypeName} record={S(recordOid)} owner={S(owner.Oid)} excludedEditor={S(ownInstance)} requested={S(requested)} at '{trigger}'");
+                return;
+            }
+
+            // Design §3 S3.4 (0.4.0-preview.1): the login may restore onto this record — XAF Write on the record, loaded
+            // through the application's secured object space, plus the host's IEditDraftAccessCheck. Asked once there is a
+            // draft to offer, so a record the login may only read opens without a message. Nothing from the draft is shown otherwise.
+            if (!EditDraftServices.MayRestore(Application, _policy, record))
+            {
+                EditDraftLog.Info($"[EditDraft] offer refused at '{trigger}': record {S(recordOid)} of {_policy.TypeName}: this login may not restore onto it");
+                Message(EditDraftTexts.Of(t => t.RecordNotVisible), InformationType.Warning);
                 return;
             }
 
@@ -314,6 +316,7 @@ public class EditDraftRestoreControllerBlazor : ObjectViewController<DetailView,
         var view = new EditDraftReadOnlyView
         {
             OwnerOid = plan.OwnerOid,
+            ObjectType = plan.ObjectType,
             Lead = string.Format(EditDraftTexts.Of(t => t.ReadOnlyLead), count),
             Provenance = plan.Provenance,
             Text = text.ToString()
@@ -336,7 +339,7 @@ public class EditDraftRestoreControllerBlazor : ObjectViewController<DetailView,
 
         var record = View?.CurrentObject;
         var recordOid = (record as BaseObject)?.Oid ?? Guid.Empty;
-        var owner = EditDraftServices.CurrentOwner(Application?.ServiceProvider, ObjectSpace);
+        var owner = EditDraftServices.CurrentOwner(Application?.ServiceProvider, ObjectSpace, _policy);
         var capture = Frame?.GetController<EditDraftCaptureController>();
         if (record == null || capture == null || capture.Policy == null || capture.Policy.Type != _policy.Type)
         {
@@ -344,13 +347,13 @@ public class EditDraftRestoreControllerBlazor : ObjectViewController<DetailView,
             return;
         }
 
-        // RE-AUTHORISE AT APPLY (single-model): owner, revision, liveness, record, view edit, record access, write permission.
+        // RE-AUTHORISE AT APPLY (single-model): owner, revision, liveness, record, view edit, access check, write permission.
         if (!View.AllowEdit)
         {
             Message(EditDraftTexts.Of(t => t.ApplyViewNotEditable), InformationType.Warning);
             return;
         }
-        if (!EditDraftServices.RecordAccess(Application?.ServiceProvider).IsRecordVisible(Application, _policy, record))
+        if (!EditDraftServices.MayRestore(Application, _policy, record))
         {
             Message(EditDraftTexts.Of(t => t.RecordNotVisible), InformationType.Warning);
             return;

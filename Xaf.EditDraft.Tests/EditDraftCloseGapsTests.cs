@@ -54,7 +54,7 @@ namespace Xaf.EditDraft.Tests
             // The three strings G9 names are reworded (owner-ruled expectation change: the gap list).
             EditDraftTextSet.English.PersonalLoginOnly.Should().NotBe("Drafts are available to a personal login only.");
             EditDraftTextSet.English.RecordNotVisible.Should().NotBe("This draft cannot be restored for this login (事業所 permission).");
-            EditDraftTextSet.English.RecreateSubSectionNotVisible.Should().NotBe("The office (事業所) of this draft's record cannot be shown.");
+            // 0.4.0-preview.1: RecreateSubSectionNotVisible is removed (owner ruling 2026-10-05); its assertion went with it.
         }
 
         [Test]
@@ -62,8 +62,8 @@ namespace Xaf.EditDraft.Tests
         {
             var ja = EditDraftTextSet.Japanese;
             ja.PersonalLoginOnly.Should().Be("この画面の入力控は、職員個人のログインで使えます。");
-            ja.RecordNotVisible.Should().Be("この入力控はこのログインでは戻せません（事業所の権限）。");
-            ja.RecreateSubSectionNotVisible.Should().Be("この入力控の記録の事業所は表示できません。");
+            // Expectation changed by owner ruling 2026-10-05 (0.4.0-preview.1: no 事業所 in the library); RecreateSubSectionNotVisible is removed.
+            ja.RecordNotVisible.Should().Be("この入力控はこのログインでは戻せません（権限がありません）。");
             ja.ListLead.Should().Be("保存されていない入力です。選んで「開く」を押すと記録に戻せます（戻した内容はまだ保存されません）。保存期限を過ぎると削除されます。");
         }
 
@@ -196,23 +196,9 @@ namespace Xaf.EditDraft.Tests
                 foreach (var name in names)
                     HostNames.Should().NotContain(name, $"{type.FullName}.{name} is host vocabulary (G8)");
             }
-            typeof(EditDraftStoreBase).GetProperty("OwnerFlag").Should().NotBeNull();
-            typeof(EditDraftStoreBase).GetProperty("ScopeOid").Should().NotBeNull();
-            typeof(EditDraftTypePolicy).GetProperty("ScopeOf").Should().NotBeNull();
-            typeof(IEditDraftRecordAccess).GetMethod("IsScopeVisible").Should().NotBeNull();
-            Enum.GetNames(typeof(EditDraftOwnerKind)).Should().BeEquivalentTo(new[] { "HostDefined", "Login" });
-        }
-
-        [Test]
-        public void G8_the_renamed_store_members_keep_their_database_column_names()
-        {
-            // Decision G8 (owner decision O-1 in docs/close-gaps-2026-10-04.md): the CLR names change, the columns do not,
-            // so an existing store table needs no migration.
-            var info = new ReflectionDictionary().GetClassInfo(typeof(EditDraftTestStore));
-            info.FindMember("OwnerFlag")?.MappingField.Should().Be("LoginIsStaffMember");
-            info.FindMember("ScopeOid")?.MappingField.Should().Be("SubSectionOid");
-            info.FindMember("OwnerFlag").Should().NotBeNull();
-            info.FindMember("ScopeOid").Should().NotBeNull();
+            // 0.4.0-preview.1 (owner ruling 2026-10-05) removed the G8 replacements OwnerFlag, ScopeOid, ScopeOf, IsScopeVisible
+            // and EditDraftOwnerKind; the five lines that asserted they exist went with them (their absence:
+            // EditDraftXafNativeAccessTests.NA1). The G8 test that pinned their column names was deleted for the same reason.
         }
 
         [Test]

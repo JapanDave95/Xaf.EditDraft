@@ -143,8 +143,9 @@ namespace Xaf.EditDraft.Tests
             EditDraftJournalAttributeControllerBlazor.KindOf(new DxDateEditModel<DateTime>(), "datetime").Should().Be(((string)null, (string)null), "a date editor is not a time editor");
             EditDraftJournalAttributeControllerBlazor.KindOf(new object(), "string").Should().Be(((string)null, (string)null), "an unknown (custom) component model: no guess from a descendant input");
             EditDraftJournalAttributeControllerBlazor.KindOf(new DxMemoModel(), "ref").Should().Be(((string)null, (string)null));
-            var chart = new EditDraftTypePolicy(typeof(EditDraftNewProbe)) { PolicyId = "chart", OwnerKind = EditDraftOwnerKind.HostDefined, AllowNewRecords = true };
-            EditDraftCaptureController.IsAdmittedViewIncludingNew(chart, NewProbe.View, true, false).Should().BeFalse("policies with the host-defined owner kind stay out (owner decision 15)");
+            // 0.4.0-preview.1: the owner kind is gone; a policy without a decision table (a host's own policy) stays out.
+            var chart = new EditDraftTypePolicy(typeof(EditDraftNewProbe)) { PolicyId = "chart", AllowNewRecords = true };
+            EditDraftCaptureController.IsAdmittedViewIncludingNew(chart, NewProbe.View, true, false).Should().BeFalse("policies without a decision table stay out (owner decision 15)");
         }
 
         [Test]

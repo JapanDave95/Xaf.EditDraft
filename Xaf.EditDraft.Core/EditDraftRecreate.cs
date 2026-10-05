@@ -9,8 +9,6 @@ public sealed class EditDraftRecreateDraft
     public int Revision { get; init; }
     public string ObjectType { get; init; }
     public Guid TargetOid { get; init; }
-    /// <summary>The access scope stored at capture (EditDraftStoreBase.ScopeOid); Guid.Empty = none.</summary>
-    public Guid ScopeOid { get; init; }
     public string ContextText { get; init; }
     public string ViewId { get; init; }
     public DateTime LastCapturedOn { get; init; }
@@ -30,7 +28,7 @@ public enum EditDraftRecreateOutcome
 {
     /// <summary>No owner (not logged in, or a login the host's owner seam refuses).</summary>
     NoOwner,
-    /// <summary>Not this login's live draft (gone, expired, or another owner's — the read is owner-scoped).</summary>
+    /// <summary>Not this login's live draft of the named type (gone, expired, another owner's — the read is owner-scoped — or of another type).</summary>
     NotLive,
     Unreadable,
     /// <summary>Not a new-record draft (TargetOid is set): the existing-record path opens it.</summary>
@@ -45,16 +43,17 @@ public enum EditDraftRecreateOutcome
     SavedCheckFailed,
     /// <summary>The login may not create the type, or the UI does not offer creating it (S1/S2).</summary>
     NotPermitted,
-    /// <summary>The draft's access scope (ScopeOid) is not visible to the login (S5 i, IEditDraftRecordAccess.IsScopeVisible).</summary>
-    SubSectionNotVisible,
     /// <summary>The candidate object could not be built.</summary>
     CandidateFailed,
     /// <summary>The claim statement lost (another screen claimed or changed the row, or it expired): nothing applied or shown.</summary>
     ClaimLost,
     /// <summary>Filling the candidate failed after the claim.</summary>
     FillFailed,
-    /// <summary>The filled record is not visible to the login (S5 ii, IEditDraftRecordAccess.IsRecordVisible): nothing shown.</summary>
-    FilledNotVisible,
+    /// <summary>
+    /// The filled, uncommitted record may not be created by the login (EditDraftServices.MayRecreate: XAF Create, Write and
+    /// Read on its values, plus the host's IEditDraftAccessCheck): discarded, nothing shown.
+    /// </summary>
+    FilledNotPermitted,
     /// <summary>Showing the record failed.</summary>
     ShowFailed,
     /// <summary>The record's screen did not attach the claimed draft: the record was closed unsaved.</summary>
@@ -89,12 +88,13 @@ public sealed class EditDraftRecreateResult
 /// <summary>
 /// The XAF side of a recreate, behind an interface so the order of the steps is tested with fakes (design T12). The
 /// implementation (Xaf.EditDraft.Blazor) reads through the owner-scoped writer and the application's SECURED object spaces.
-/// SINGLE-MODEL parts (owner review, D14): <see cref="MayCreate"/>, <see cref="IsScopeVisible"/>, the candidate's
-/// <see cref="IEditDraftRecreateCandidate.IsVisible"/>, and the owner predicate of <see cref="ReadDraft"/> and <see cref="Claim"/>.
+/// SINGLE-MODEL parts (owner review, D14): <see cref="MayCreate"/>, the candidate's
+/// <see cref="IEditDraftRecreateCandidate.MayRecreate"/>, and the owner predicate of <see cref="ReadDraft"/> and <see cref="Claim"/>.
 /// </summary>
 public interface IEditDraftRecreateHost
 {
-    EditDraftOwnerInfo CurrentOwner();
+    /// <summary>The owner seam's answer for drafts of <paramref name="policy"/>'s type (null = the type is not registered).</summary>
+    EditDraftOwnerInfo CurrentOwner(EditDraftTypePolicy policy);
     DateTime Now();
 
     /// <summary>The draft, read with the owner in the query; null = none for this owner.</summary>
@@ -107,9 +107,6 @@ public interface IEditDraftRecreateHost
 
     /// <summary>S1/S2: the login may create the type and the UI offers creating it.</summary>
     bool MayCreate(EditDraftTypePolicy policy);
-
-    /// <summary>S5 (i): records of this access scope are visible to the login.</summary>
-    bool IsScopeVisible(EditDraftTypePolicy policy, Guid scopeOid);
 
     /// <summary>Builds the fresh, unsaved object in its own object space (its AfterConstruction runs). Null = failed.</summary>
     IEditDraftRecreateCandidate CreateCandidate(EditDraftTypePolicy policy);
@@ -127,8 +124,8 @@ public interface IEditDraftRecreateCandidate : IDisposable
     /// <summary>InitializingGetters, then EditDraftRestorer.ApplyNew under EditDraftRestoreGuard.</summary>
     EditDraftNewApplyResult Fill(EditDraftTypePolicy policy, EditDraftPayload payload);
 
-    /// <summary>S5 (ii): the FILLED object is visible to the login.</summary>
-    bool IsVisible(EditDraftTypePolicy policy);
+    /// <summary>The FILLED, uncommitted object may be created by the login (EditDraftServices.MayRecreate).</summary>
+    bool MayRecreate(EditDraftTypePolicy policy);
 
     /// <summary>Offers <paramref name="adoption"/> to the object's screen and shows it (modal, owner D6). True only when the screen acknowledged the adoption.</summary>
     bool Show(EditDraftTypePolicy policy, EditDraftPendingAdoption adoption);
@@ -140,35 +137,39 @@ public interface IEditDraftRecreateCandidate : IDisposable
 /// <summary>
 /// NEW records — 開く on a 「新規」 row of the 「入力控」 list (design docs/edit-draft-new-records-design-2026-10-02.md §4.4;
 /// owner rulings 2026-10-03: D6 modal, D7 apply directly, D11 safeguards). The order is the safeguard:
-///  1. owner (re-resolved now); the draft read owner-scoped, live, readable; a generic policy with AllowNewRecords;
+///  1. the type's policy and the owner the owner seam names for it (re-resolved now); the draft read owner-scoped, of that
+///     type, live, readable; a generic policy with AllowNewRecords;
 ///  2. a draft with no typed entry a fresh record can take → the D9 read-only display, nothing created;
 ///  3. "already saved?" over the whole prov history (a failed read asks, never creates silently);
-///  4. security before anything is created: Create permission + the UI offers it (S1/S2), the draft's access scope (S5 i);
+///  4. security before anything is created: type-level Create permission + the UI offers it (S1/S2);
 ///  5. the candidate object, in memory (BEFORE the claim: its Oid goes into the claim's payload);
 ///  6. ONE fenced claim statement: new editor id, revision + 1, the payload with the candidate's Oid at the head of prov;
 ///  7. InitializingGetters, then ApplyNew under the restore guard;
-///  8. the filled object's visibility (S5 ii);
+///  8. the filled, uncommitted object may be created (0.4.0-preview.1: XAF Create, Write and Read on its values plus the
+///     host's IEditDraftAccessCheck, EditDraftServices.MayRecreate);
 ///  9.–10. the pending adoption, then the modal screen; success only once the screen acknowledged the adoption.
 /// Every refusal up to step 5 changes nothing; every failure after the claim disposes the candidate, shows and saves nothing,
 /// logs the step and leaves the row live at its new revision (the next 開く re-reads it).
 /// </summary>
 public static class EditDraftRecreate
 {
-    public static EditDraftRecreateResult Run(IEditDraftRecreateHost host, Guid draftOid, bool proceedWhenSavedCheckFails = false)
+    /// <summary>Recreates the record of the new-record draft <paramref name="draftOid"/>, whose type is <paramref name="objectType"/> (the list row's type).</summary>
+    public static EditDraftRecreateResult Run(IEditDraftRecreateHost host, Guid draftOid, string objectType, bool proceedWhenSavedCheckFails = false)
     {
         if (host == null) throw new ArgumentNullException(nameof(host));
         var id = EditDraftCaptureController.Short(draftOid);
 
-        // 1. Owner, the draft (owner in the query), liveness, readability, a generic policy that allows new records.
-        var owner = host.CurrentOwner();
+        // 1. The type's policy (the owner seam answers per type), the owner, the draft (owner in the query, of that type),
+        //    liveness, readability, a generic policy that allows new records.
+        var policy = host.Policy(objectType);
+        var owner = host.CurrentOwner(policy);
         if (owner.IsNone) return End(EditDraftRecreateOutcome.NoOwner, id, 1);
         var now = host.Now();
         var draft = host.ReadDraft(draftOid, owner.Oid, now);
-        if (draft == null || !draft.Live) return End(EditDraftRecreateOutcome.NotLive, id, 1, owner.Oid);
+        if (draft == null || !draft.Live || draft.ObjectType != objectType) return End(EditDraftRecreateOutcome.NotLive, id, 1, owner.Oid);
         if (!EditDraftNewRecordRules.IsNewRecordDraft(draft.TargetOid)) return End(EditDraftRecreateOutcome.NotNewRecord, id, 1, owner.Oid, draft);
         var payload = draft.PayloadReadable ? EditDraftPayload.FromJson<EditDraftPayload>(draft.PayloadJson) : null;
         if (payload == null) return End(EditDraftRecreateOutcome.Unreadable, id, 1, owner.Oid, draft);
-        var policy = host.Policy(draft.ObjectType);
         if (!EditDraftTypePolicy.IsGeneric(policy) || !policy.AllowNewRecords || policy.TypeName != draft.ObjectType)
             return End(EditDraftRecreateOutcome.TypeNotAllowed, id, 1, owner.Oid, draft);
 
@@ -183,10 +184,8 @@ public static class EditDraftRecreate
         if (saved == EditDraftSavedState.CheckFailed && !proceedWhenSavedCheckFails)
             return End(EditDraftRecreateOutcome.SavedCheckFailed, id, 3, owner.Oid, draft, policy, payload);
 
-        // 4. Security before anything is created (single-model, design §5 S1/S2/S5 i).
+        // 4. Security before anything is created (single-model, design §5 S1/S2): type-level Create and the UI offers it.
         if (!host.MayCreate(policy)) return End(EditDraftRecreateOutcome.NotPermitted, id, 4, owner.Oid, draft, policy, payload);
-        if (draft.ScopeOid != Guid.Empty && !host.IsScopeVisible(policy, draft.ScopeOid))
-            return End(EditDraftRecreateOutcome.SubSectionNotVisible, id, 4, owner.Oid, draft, policy, payload);
 
         // 5. The candidate, in memory; nothing is saved.
         IEditDraftRecreateCandidate candidate = null;
@@ -219,9 +218,9 @@ public static class EditDraftRecreate
                 return End(EditDraftRecreateOutcome.FillFailed, id, 7, owner.Oid, draft, policy, payload, claimed);
             }
 
-            // 8. The filled object's visibility.
-            if (!candidate.IsVisible(policy))
-                return End(EditDraftRecreateOutcome.FilledNotVisible, id, 8, owner.Oid, draft, policy, payload, claimed, fill);
+            // 8. The filled, uncommitted object: XAF security on its values plus the host's access check (single-model).
+            if (!candidate.MayRecreate(policy))
+                return End(EditDraftRecreateOutcome.FilledNotPermitted, id, 8, owner.Oid, draft, policy, payload, claimed, fill);
 
             // 9.-10. The pending adoption (Core contract), then the modal screen; success only once it attached the draft.
             var adoption = new EditDraftPendingAdoption(draft.DraftOid, claimed, owner.Oid, editor, json);

@@ -180,7 +180,7 @@ public sealed class EditDraftJournalAttributeControllerBlazor : ViewController<D
         var isNew = ObjectSpace.IsNewObject(record);
         if (!EditDraftCaptureController.IsAdmittedViewIncludingNew(policy, View.Id, View.IsRoot, isNew)) return null;
         if (!EditDraftSwitch.IsJournalEnabled(services, policy.PolicyId, isNew)) return null;
-        var owner = EditDraftServices.CurrentOwner(services, ObjectSpace);
+        var owner = EditDraftServices.CurrentOwner(services, ObjectSpace, policy);
         if (owner.IsNone) return null;
         var spec = policy.Find(editor.PropertyName);
         if (spec == null || !EditDraftJournalRules.IsJournaledMemberKind(spec.Kind, policy.JournalTimeOfDayMembers.Contains(spec.Path))) return null;

@@ -8,15 +8,14 @@ using DevExpress.ExpressApp.Utils;
 namespace Xaf.EditDraft.Core;
 
 /// <summary>
-/// 入力控 CAPTURE for the DetailViews of the registered non-chart types (generic edit-draft engine,
-/// wave 1; design §1.2, §6; owner D3/D5/D6/D15). Pattern: TenantChartDraftCaptureControllerBlazor,
-/// without F2, D5 and NEW-record seeding.
+/// 入力控 CAPTURE for the DetailViews of the registered generic types (generic edit-draft engine,
+/// wave 1; design §1.2, §6; owner D3/D5/D6/D15).
 ///
 /// GATE (all must hold, re-checked at every capture and before every write):
-///   registered policy for the record's EXACT type with OwnerKind Login AND View.Id in the policy's
+///   registered generic policy (one with a decision table) for the record's EXACT type AND View.Id in the policy's
 ///   approved DetailView ids AND View.IsRoot AND an EXISTING record AND EditDraftCapture:Enabled AND
-///   EditDraftCapture:Types:&lt;PolicyId&gt;:Enabled AND an owner (the XAF login; a GeneralUser login is
-///   never an owner, D6). Anything else: nothing is captured, not even in memory.
+///   EditDraftCapture:Types:&lt;PolicyId&gt;:Enabled AND an owner (the owner seam's answer for the policy; the library
+///   default is the XAF login). Anything else: nothing is captured, not even in memory.
 ///   NEW records (design docs/edit-draft-new-records-design-2026-10-02.md, owner rulings 2026-10-03): a never-saved record
 ///   is admitted too when its policy has AllowNewRecords, and captured only while EditDraftCapture:NewRecords:Enabled is on
 ///   as well. Its rows are keyed by TargetOid = Guid.Empty with the screen object's Oid in the payload's prov header; its
@@ -104,7 +103,7 @@ public class EditDraftCaptureController : ObjectViewController<DetailView, objec
     public int TryAdopt(Guid draftOid, int revision, Guid ownerOid, string payloadJson)
     {
         if (draftOid == Guid.Empty || ownerOid == Guid.Empty || _objectSpace == null || _writer == null) return 0;
-        var current = EditDraftServices.CurrentOwner(Application?.ServiceProvider, _objectSpace);
+        var current = EditDraftServices.CurrentOwner(Application?.ServiceProvider, _objectSpace, _policy);
         if (current.Oid != ownerOid) return 0;
         if (_payload != null || _slot.Oid != Guid.Empty || _slot.IsWriteInFlight)
         {
@@ -135,7 +134,7 @@ public class EditDraftCaptureController : ObjectViewController<DetailView, objec
     public bool TryAttachClaimed(Guid draftOid, int claimedRevision, Guid ownerOid, string payloadJson)
     {
         if (draftOid == Guid.Empty || ownerOid == Guid.Empty || claimedRevision <= 0 || _objectSpace == null) return false;
-        var current = EditDraftServices.CurrentOwner(Application?.ServiceProvider, _objectSpace);
+        var current = EditDraftServices.CurrentOwner(Application?.ServiceProvider, _objectSpace, _policy);
         if (current.Oid != ownerOid || _payload != null || _slot.Oid != Guid.Empty || _slot.IsWriteInFlight)
         {
             EditDraftLog.Warning($"[EditDraft] claimed draft {draftOid} not attached (owner changed or screen already holds a draft)");
@@ -157,7 +156,7 @@ public class EditDraftCaptureController : ObjectViewController<DetailView, objec
     public bool TryAttachClaimed(Guid draftOid, int claimedRevision, Guid ownerOid, string payloadJson, Guid claimedEditorInstanceId)
     {
         if (claimedEditorInstanceId == Guid.Empty || draftOid == Guid.Empty || ownerOid == Guid.Empty || claimedRevision <= 0 || _objectSpace == null) return false;
-        var current = EditDraftServices.CurrentOwner(Application?.ServiceProvider, _objectSpace);
+        var current = EditDraftServices.CurrentOwner(Application?.ServiceProvider, _objectSpace, _policy);
         if (current.Oid != ownerOid || _payload != null || _slot.Oid != Guid.Empty || _slot.IsWriteInFlight)
         {
             EditDraftLog.Warning($"[EditDraft] claimed draft {draftOid} not attached to the recreated record (owner changed or screen already holds a draft)");
@@ -366,13 +365,13 @@ public class EditDraftCaptureController : ObjectViewController<DetailView, objec
         var path = EditDraftMembers.PathFor(_policy, _record, e.Object, e.PropertyName);
         if (path == null) return;
 
-        var owner = EditDraftServices.CurrentOwner(Application?.ServiceProvider, objectSpace);
+        var owner = EditDraftServices.CurrentOwner(Application?.ServiceProvider, objectSpace, _policy);
         if (owner.IsNone)
         {
             if (!_refusalLogged)
             {
                 _refusalLogged = true;
-                EditDraftLog.Info($"[EditDraft] capture refused: no owner (not logged in, or a GeneralUser login — owner D6); nothing is stored");
+                EditDraftLog.Info($"[EditDraft] capture refused: no owner (not logged in, or the owner seam named none); nothing is stored");
             }
             return;
         }
@@ -557,11 +556,9 @@ public class EditDraftCaptureController : ObjectViewController<DetailView, objec
         {
             EditorInstanceId = _editorInstanceId,
             OwnerUserOid = _payloadOwner.Oid,
-            OwnerFlag = _payloadOwner.OwnerFlag,
             ObjectType = _policy.TypeName,
             TargetOid = key.TargetOid,
             IsNew = key.IsNew,
-            ScopeOid = SafeScope(),
             ContextText = ContextText(),
             ViewId = View?.Id
         };
@@ -576,11 +573,6 @@ public class EditDraftCaptureController : ObjectViewController<DetailView, objec
             NewRecordsGate = EditDraftWriteGate.Bind(_policy?.PolicyId, id => EditDraftSwitch.IsNewRecordsEnabled(services, id)),
             Context = _policy?.NewRecordReconstructionOrder
         };
-    }
-
-    private Guid SafeScope()
-    {
-        try { return _policy.ScopeOf?.Invoke(_record) ?? Guid.Empty; } catch { return Guid.Empty; }
     }
 
     /// <summary>「苦情対応／2026/09/30」: the type caption and the policy's context date (separator from EditDraftTexts). Never a person's name.</summary>
@@ -673,7 +665,7 @@ public class EditDraftCaptureController : ObjectViewController<DetailView, objec
             {
                 what = "supersede";
                 ok = writer.TrySupersede(ticket.Oid, ticket.Revision, s.Seed.OwnerUserOid, s.Json, s.Count,
-                    s.Seed.ScopeOid, s.Seed.ContextText, s.Now);
+                    s.Seed.ContextText, s.Now);
                 if (ok) onStored?.Invoke(s.MaxSeq);
                 if (!ok)
                 {

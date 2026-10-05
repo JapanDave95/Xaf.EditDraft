@@ -41,6 +41,8 @@ public static class EditDraftBlazorServiceCollectionExtensions
         services.AddScoped<EditDraftOfferRequests>();
         services.AddScoped<EditDraftBadgeNotifier>();   // wave 1b row badges, per circuit (B6)
         services.AddScoped<EditDraftPendingAdoptions>();   // NEW records: the recreate hands its claimed draft to the record's screen (Core contract)
+        // 0.4.0-preview.1: XAF permissions on a rebuilt, uncommitted record, evaluated on its values (EditDraftServices.MayRecreate). Stateless.
+        services.AddSingleton<IEditDraftNewObjectPermissions, EditDraftNewObjectPermissions>();
         return services;
     }
 

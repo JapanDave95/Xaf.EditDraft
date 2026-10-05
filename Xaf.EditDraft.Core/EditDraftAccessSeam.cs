@@ -8,45 +8,144 @@ using DevExpress.Persistent.Base;
 namespace Xaf.EditDraft.Core;
 
 /// <summary>
-/// Record-access seam — design §4.11 SEC-2. SINGLE-MODEL (owner review). May the login see this record's draft?
-/// Asked when an offer or a list row is built and again immediately before anything is applied.
+/// The ONE optional extra access check (0.4.0-preview.1, owner ruling 2026-10-05). SINGLE-MODEL (owner review). "May this
+/// login restore a draft onto this record / recreate this record from a draft?" A host registers it in DI
+/// (<c>services.AddSingleton&lt;IEditDraftAccessCheck&gt;(...)</c>) only when XAF security does not express its rule. It is
+/// asked IN ADDITION to the library's XAF check (<see cref="XafSecurityEditDraftAccessCheck"/>): both must allow
+/// (<see cref="EditDraftServices.MayRestore"/>, <see cref="EditDraftServices.MayRecreate"/>), so a host can only narrow
+/// access, never widen it. An exception is a refusal. Called on the UI thread/circuit, when an offer, a list row or an open
+/// is built and again immediately before anything is applied or shown.
 /// </summary>
-public interface IEditDraftRecordAccess
+public interface IEditDraftAccessCheck
 {
-    bool IsRecordVisible(XafApplication application, EditDraftTypePolicy policy, object record);
+    /// <summary>A SAVED record: may the login restore a draft onto <paramref name="record"/> (of <paramref name="policy"/>'s exact type)?</summary>
+    bool MayRestore(XafApplication application, EditDraftTypePolicy policy, object record);
 
     /// <summary>
-    /// NEW records (design docs/edit-draft-new-records-design-2026-10-02.md §5 S5 i): may the login see records of this
-    /// access scope (the Guid the policy's ScopeOf returned at capture) — asked before a record is recreated from a draft
-    /// whose stored ScopeOid is not empty, when no record exists yet to ask <see cref="IsRecordVisible"/> about. A host that
-    /// does not implement it refuses (fail closed).
+    /// A NEVER-SAVED record: may the login create <paramref name="record"/> — the object rebuilt from the draft, filled with
+    /// its values, uncommitted in its own object space? Refused = the object is discarded unsaved.
     /// </summary>
-    bool IsScopeVisible(XafApplication application, EditDraftTypePolicy policy, Guid scopeOid) => false;
+    bool MayRecreate(XafApplication application, EditDraftTypePolicy policy, object record);
 }
 
 public static partial class EditDraftServices
 {
-    /// <summary>The host's record-access seam; the library default (XAF security only) otherwise. SINGLE-MODEL (design §4.11 SEC-2).</summary>
-    public static IEditDraftRecordAccess RecordAccess(IServiceProvider services) =>
-        (services?.GetService(typeof(IEditDraftRecordAccess)) as IEditDraftRecordAccess) ?? XafSecurityEditDraftRecordAccess.Instance;
+    /// <summary>The host's extra access check, or null when none is registered (XAF security alone decides).</summary>
+    public static IEditDraftAccessCheck AccessCheck(IServiceProvider services) =>
+        services?.GetService(typeof(IEditDraftAccessCheck)) as IEditDraftAccessCheck;
+
+    /// <summary>
+    /// May the login restore a draft onto the saved <paramref name="record"/>: the XAF check
+    /// (<see cref="XafSecurityEditDraftAccessCheck.MayRestore"/>) AND the host's <see cref="IEditDraftAccessCheck"/> when one
+    /// is registered. A missing argument or an exception is a refusal. SINGLE-MODEL (owner review).
+    /// </summary>
+    public static bool MayRestore(XafApplication application, EditDraftTypePolicy policy, object record) =>
+        Decide("restore", application, policy, record, (c, a, p, r) => c.MayRestore(a, p, r));
+
+    /// <summary>
+    /// May the login create the rebuilt, uncommitted <paramref name="record"/>: the XAF check
+    /// (<see cref="XafSecurityEditDraftAccessCheck.MayRecreate"/>) AND the host's <see cref="IEditDraftAccessCheck"/> when one
+    /// is registered. A missing argument or an exception is a refusal. SINGLE-MODEL (owner review).
+    /// </summary>
+    public static bool MayRecreate(XafApplication application, EditDraftTypePolicy policy, object record) =>
+        Decide("recreate", application, policy, record, (c, a, p, r) => c.MayRecreate(a, p, r));
+
+    private static bool Decide(string what, XafApplication application, EditDraftTypePolicy policy, object record,
+        Func<IEditDraftAccessCheck, XafApplication, EditDraftTypePolicy, object, bool> ask)
+    {
+        if (application == null || policy == null || record == null) return false;
+        try
+        {
+            if (!ask(XafSecurityEditDraftAccessCheck.Instance, application, policy, record))
+            {
+                EditDraftLog.Info($"[EditDraft] {what} refused for {policy.TypeName}: XAF security");
+                return false;
+            }
+            var host = AccessCheck(application.ServiceProvider);
+            if (host != null && !ReferenceEquals(host, XafSecurityEditDraftAccessCheck.Instance) && !ask(host, application, policy, record))
+            {
+                EditDraftLog.Info($"[EditDraft] {what} refused for {policy.TypeName}: the host's access check");
+                return false;
+            }
+            return true;
+        }
+        catch (Exception ex)
+        {
+            EditDraftLog.Warning($"[EditDraft] {what} access check failed for {policy.TypeName} ({ex.GetType().Name}); treated as refused");
+            return false;
+        }
+    }
 }
 
 /// <summary>
-/// Library default (SEC-2): no rule beyond XAF security. Safe only because every caller first loads the
-/// record through the application's SECURED object space (Application.CreateObjectSpace, then GetObjectByKey;
-/// null = not readable) or runs inside the record's own DetailView — a record XAF security hides never
-/// reaches this check. A missing argument is "not visible".
+/// The library's XAF check, always asked first (0.4.0-preview.1). SINGLE-MODEL (owner review). XAF 26.1.4 APIs only:
+/// <see cref="IRequestSecurity.IsGranted(IPermissionRequest)"/> with a <see cref="PermissionRequest"/> on the object, from the
+/// application's own security (<see cref="XafApplication.Security"/>).
+///
+/// SAVED record (<see cref="MayRestore"/>): the record is loaded again by its key through
+/// <see cref="XafApplication.CreateObjectSpace(Type)"/> — the application's SECURED object space when it uses XAF security,
+/// where a record the login may not read is not found — and Write must be granted on the loaded object (role object
+/// criteria are evaluated on its stored values).
+///
+/// NEVER-SAVED record (<see cref="MayRecreate"/>): the rebuilt object must still be new in its own object space, and
+/// Create, then Write, then Read must be granted on it with its own values — the check XAF itself makes before it saves a
+/// new object (XPO integrated security, SecurityRule2.ValidateObjectOnSave / IsGrantedCore: a server permission request on
+/// the object with an expression evaluator). Create alone is not enough: XAF does not evaluate object criteria for Create
+/// (PermissionRequestProcessor.IsGrantedInSameRole; role object permissions have no Create state). And the public
+/// PermissionRequest path evaluates a NEW object at type level only (PermissionRequestProcessorWrapper.IsGranted drops a new
+/// target object), so the evaluation on the values is done by the Blazor package (registered by AddEditDraftBlazor; it
+/// references XAF's security assembly, which Core does not). Without it, or with a security that is not XAF's
+/// integrated SecurityStrategy, the recreate is refused (fail closed).
+///
+/// No request security (<see cref="XafApplication.Security"/> is null or not <see cref="IRequestSecurity"/>): allowed, as
+/// XAF itself allows creating and editing then (DataManipulationRight.CanCreate / CanEdit ask security only when it is
+/// <see cref="IRequestSecurity"/>). A missing argument, a record of another type, or an exception is a refusal.
 /// </summary>
-public sealed class XafSecurityEditDraftRecordAccess : IEditDraftRecordAccess
+public sealed class XafSecurityEditDraftAccessCheck : IEditDraftAccessCheck
 {
-    public static readonly XafSecurityEditDraftRecordAccess Instance = new();
+    public static readonly XafSecurityEditDraftAccessCheck Instance = new();
 
-    public bool IsRecordVisible(XafApplication application, EditDraftTypePolicy policy, object record) =>
-        application != null && policy != null && record != null;
+    /// <summary>The operations XAF requires on a new object before it saves it, in its order.</summary>
+    internal static readonly string[] NewObjectOperations = { SecurityOperations.Create, SecurityOperations.Write, SecurityOperations.Read };
 
-    /// <summary>NEW records: no scope rule in the library default; the filled record is still asked <see cref="IsRecordVisible"/> before it is shown.</summary>
-    public bool IsScopeVisible(XafApplication application, EditDraftTypePolicy policy, Guid scopeOid) =>
-        application != null && policy != null;
+    private static int _noEvaluatorLogged;
+
+    public bool MayRestore(XafApplication application, EditDraftTypePolicy policy, object record)
+    {
+        if (application == null || policy == null || record == null || record.GetType() != policy.Type) return false;
+        if (application.Security is not IRequestSecurity security) return true;
+        using var objectSpace = application.CreateObjectSpace(policy.Type);
+        var key = objectSpace.GetKeyValue(record);
+        var loaded = key == null ? null : objectSpace.GetObjectByKey(policy.Type, key);
+        if (loaded == null) return false;   // not readable through the application's object space, or never saved
+        return security.IsGranted(new PermissionRequest(objectSpace, policy.Type, SecurityOperations.Write, loaded));
+    }
+
+    public bool MayRecreate(XafApplication application, EditDraftTypePolicy policy, object record)
+    {
+        if (application == null || policy == null || record == null || record.GetType() != policy.Type) return false;
+        if (application.Security is not IRequestSecurity) return true;
+        var objectSpace = BaseObjectSpace.FindObjectSpaceByObject(record);
+        if (objectSpace == null || objectSpace.IsDisposed || !objectSpace.IsNewObject(record)) return false;
+        if (application.ServiceProvider?.GetService(typeof(IEditDraftNewObjectPermissions)) is not IEditDraftNewObjectPermissions evaluator)
+        {
+            if (System.Threading.Interlocked.Exchange(ref _noEvaluatorLogged, 1) == 0)
+                EditDraftLog.Warning("[EditDraft] recreate refused: no evaluator of a new object's permissions is registered (services.AddEditDraftBlazor())");
+            return false;
+        }
+        return evaluator.IsGranted(application.Security, objectSpace, policy.Type, record, NewObjectOperations);
+    }
+}
+
+/// <summary>
+/// Evaluates XAF permissions on a NEW (uncommitted) object with the object's own values, as XAF does when it saves a new
+/// object. Implemented by the Blazor package (it references XAF's security assembly) and registered by AddEditDraftBlazor;
+/// not a host seam. SINGLE-MODEL (owner review).
+/// </summary>
+internal interface IEditDraftNewObjectPermissions
+{
+    /// <summary>True only when every operation is granted on <paramref name="record"/>; false when it is not or cannot be decided.</summary>
+    bool IsGranted(ISecurityStrategyBase security, IObjectSpace objectSpace, Type type, object record, IReadOnlyList<string> operations);
 }
 
 /// <summary>

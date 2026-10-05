@@ -14,12 +14,8 @@ public sealed class EditDraftSeed
     public Guid DraftKey { get; set; }
     public Guid EditorInstanceId { get; set; }
     public Guid OwnerUserOid { get; set; }
-    /// <summary>The host-defined flag recorded with the owner (EditDraftOwnerInfo.OwnerFlag). Record only.</summary>
-    public bool OwnerFlag { get; set; }
     public string ObjectType { get; set; }
     public Guid TargetOid { get; set; }
-    /// <summary>The record's access scope at capture (EditDraftTypePolicy.ScopeOf); Guid.Empty = none.</summary>
-    public Guid ScopeOid { get; set; }
     public string ContextText { get; set; }
     public string ViewId { get; set; }
 
@@ -42,7 +38,7 @@ internal interface IEditDraftWriter
 {
     IObjectSpace CreateReadSpace(out IServiceScope scope);
     Guid Create(EditDraftSeed seed, string payloadJson, int entryCount, DateTime now);
-    bool TrySupersede(Guid oid, int expectedRevision, Guid ownerOid, string payloadJson, int entryCount, Guid scopeOid, string contextText, DateTime now);
+    bool TrySupersede(Guid oid, int expectedRevision, Guid ownerOid, string payloadJson, int entryCount, string contextText, DateTime now);
     EditDraftRowState ReadRowState(Guid oid, int expectedRevision, Guid ownerOid, DateTime now);
     int TryClaim(Guid oid, int expectedRevision, Guid ownerOid, Guid editorInstanceId, DateTime now);
     int TryClaimNew(Guid oid, int expectedRevision, Guid ownerOid, Guid editorInstanceId, string payloadJson, int entryCount, DateTime now);
@@ -84,8 +80,8 @@ internal sealed class EditDraftWriter : IEditDraftWriter
 
     public IObjectSpace CreateReadSpace(out IServiceScope scope) => _store.CreateReadSpace(out scope);
     public Guid Create(EditDraftSeed seed, string payloadJson, int entryCount, DateTime now) => _store.Create(seed, payloadJson, entryCount, now);
-    public bool TrySupersede(Guid oid, int expectedRevision, Guid ownerOid, string payloadJson, int entryCount, Guid scopeOid, string contextText, DateTime now) =>
-        _store.TrySupersede(oid, expectedRevision, ownerOid, payloadJson, entryCount, scopeOid, contextText, now);
+    public bool TrySupersede(Guid oid, int expectedRevision, Guid ownerOid, string payloadJson, int entryCount, string contextText, DateTime now) =>
+        _store.TrySupersede(oid, expectedRevision, ownerOid, payloadJson, entryCount, contextText, now);
     public EditDraftRowState ReadRowState(Guid oid, int expectedRevision, Guid ownerOid, DateTime now) => _store.ReadRowState(oid, expectedRevision, ownerOid, now);
     public int TryClaim(Guid oid, int expectedRevision, Guid ownerOid, Guid editorInstanceId, DateTime now) => _store.TryClaim(oid, expectedRevision, ownerOid, editorInstanceId, now);
     public int TryClaimNew(Guid oid, int expectedRevision, Guid ownerOid, Guid editorInstanceId, string payloadJson, int entryCount, DateTime now) =>
@@ -115,7 +111,7 @@ internal sealed class EditDraftWriter : IEditDraftWriter
 
         public IObjectSpace CreateReadSpace(out IServiceScope scope) { Refused(); scope = null; return null; }
         public Guid Create(EditDraftSeed seed, string payloadJson, int entryCount, DateTime now) { Refused(); return Guid.Empty; }
-        public bool TrySupersede(Guid oid, int expectedRevision, Guid ownerOid, string payloadJson, int entryCount, Guid scopeOid, string contextText, DateTime now) { Refused(); return false; }
+        public bool TrySupersede(Guid oid, int expectedRevision, Guid ownerOid, string payloadJson, int entryCount, string contextText, DateTime now) { Refused(); return false; }
         public EditDraftRowState ReadRowState(Guid oid, int expectedRevision, Guid ownerOid, DateTime now) { Refused(); return EditDraftRowState.ReadFailed; }
         public int TryClaim(Guid oid, int expectedRevision, Guid ownerOid, Guid editorInstanceId, DateTime now) { Refused(); return 0; }
         public int TryClaimNew(Guid oid, int expectedRevision, Guid ownerOid, Guid editorInstanceId, string payloadJson, int entryCount, DateTime now) { Refused(); return 0; }
@@ -147,8 +143,8 @@ internal sealed class EditDraftWriter : IEditDraftWriter
 ///
 /// Library (milestone M1): generic over the host's store class; the statements address its table by the quoted,
 /// schema-qualified name of its registration (gap G6 and Codex C1, 2026-10-04: <c>[schema].[table]</c> from the store's XPO
-/// table name only, schema "dbo" unless that name carries one), the same table XPO's own reads and inserts use. The column names are the store base's
-/// (OwnerFlag and ScopeOid keep their columns LoginIsStaffMember and SubSectionOid). Supported contract v1: XPO, SQL Server.
+/// table name only, schema "dbo" unless that name carries one), the same table XPO's own reads and inserts use. The column names are the store base's;
+/// 0.4.0-preview.1: no statement names a column the store base does not declare. Supported contract v1: XPO, SQL Server.
 /// </summary>
 internal sealed class EditDraftWriter<TStore> : IEditDraftWriter where TStore : EditDraftStoreBase
 {
@@ -202,10 +198,8 @@ internal sealed class EditDraftWriter<TStore> : IEditDraftWriter where TStore : 
             d.DraftKey = seed.DraftKey != Guid.Empty ? seed.DraftKey : Guid.NewGuid();   // one key per ROW
             d.EditorInstanceId = seed.EditorInstanceId;
             d.OwnerUserOid = seed.OwnerUserOid;
-            d.OwnerFlag = seed.OwnerFlag;
             d.ObjectType = seed.ObjectType;
             d.TargetOid = seed.TargetOid;
-            d.ScopeOid = seed.ScopeOid;
             d.ContextText = seed.ContextText;
             d.ViewId = seed.ViewId;
             d.PayloadSchemaVersion = EditDraftStoreBase.CurrentPayloadSchemaVersion;
@@ -229,15 +223,14 @@ internal sealed class EditDraftWriter<TStore> : IEditDraftWriter where TStore : 
 
     /// <summary>Replaces the payload of this owner's live draft at the expected revision. ExpiresOn is NOT touched.</summary>
     public bool TrySupersede(Guid oid, int expectedRevision, Guid ownerOid, string payloadJson, int entryCount,
-                             Guid scopeOid, string contextText, DateTime now)
+                             string contextText, DateTime now)
     {
         if (ownerOid == Guid.Empty) return false;
-        // [SubSectionOid] is the column of EditDraftStoreBase.ScopeOid (the column name is kept; see the store base).
         var sql =
             $"UPDATE {Table} SET [Payload] = @p0, [EntryCount] = @p1, [Revision] = [Revision] + 1, [LastCapturedOn] = @p2, " +
-            $"[SubSectionOid] = @p3, [ContextText] = @p4, [LastError] = NULL " +
-            $"WHERE [Oid] = @p5 AND [Revision] = @p6 AND [OwnerUserOid] = @p7 AND [DeletedOn] IS NULL AND [ExpiresOn] > @p2";
-        return Execute(sql, new object[] { payloadJson, entryCount, now, scopeOid, contextText ?? string.Empty,
+            $"[ContextText] = @p3, [LastError] = NULL " +
+            $"WHERE [Oid] = @p4 AND [Revision] = @p5 AND [OwnerUserOid] = @p6 AND [DeletedOn] IS NULL AND [ExpiresOn] > @p2";
+        return Execute(sql, new object[] { payloadJson, entryCount, now, contextText ?? string.Empty,
                                            oid, expectedRevision, ownerOid }, "supersede") == 1;
     }
 

@@ -1,8 +1,10 @@
 using System;
 using System.Linq;
+using DevExpress.Data.Filtering;
 using DevExpress.ExpressApp;
 using DevExpress.ExpressApp.Actions;
 using DevExpress.ExpressApp.Blazor.SystemModule;
+using DevExpress.ExpressApp.Editors;
 using DevExpress.ExpressApp.SystemModule;
 using DevExpress.Persistent.Base;
 using Xaf.EditDraft.Core;
@@ -12,6 +14,9 @@ namespace Xaf.EditDraft.Blazor;
 /// <summary>
 /// 開く / 破棄 on the rows of the 「入力控」 list; the grid shows no generic list chrome.
 /// Library milestone M2: owner through the Core owner seam, "now" from the host clock, texts from EditDraftTexts.
+/// 0.4.0-preview.1: the owner seam is asked for the row's type (the list's <see cref="EditDraftList.ObjectTypes"/>), and 開く
+/// is disabled on the rows in <see cref="EditDraftList.NotOpenable"/> through the action's TargetObjectsCriteria (XAF
+/// evaluates it for the selected row and for each row's inline button).
 /// </summary>
 public class EditDraftListItemControllerBlazor : ObjectViewController<ListView, EditDraftListItem>
 {
@@ -40,8 +45,9 @@ public class EditDraftListItemControllerBlazor : ObjectViewController<ListView, 
                 return;
             }
             var draftOid = item.DraftOid;
+            var objectType = ObjectTypeOf(item);
             ClosePopup();
-            list.OpenDraftDeferred(draftOid);   // runs on the main window after the popup has closed
+            list.OpenDraftDeferred(draftOid, objectType);   // runs on the main window after the popup has closed
         };
 
         DiscardAction = new SimpleAction(this, "EditDraftListDiscard", PredefinedCategory.RecordEdit)
@@ -53,7 +59,7 @@ public class EditDraftListItemControllerBlazor : ObjectViewController<ListView, 
         {
             if (e.CurrentObject is not EditDraftListItem item || item.IsDiscarded) return;
             EditDraftLog.Info($"[EditDraft] list 破棄 clicked: row={item.DraftOid}");
-            var owner = EditDraftServices.CurrentOwner(Application?.ServiceProvider, Application);
+            var owner = EditDraftServices.CurrentOwnerOfType(Application?.ServiceProvider, Application, ObjectTypeOf(item));
             if (owner.IsNone)
             {
                 try { Application?.ShowViewStrategy?.ShowMessage(EditDraftTexts.Of(t => t.PersonalLoginOnly), InformationType.Warning, 8000); } catch { }
@@ -80,7 +86,28 @@ public class EditDraftListItemControllerBlazor : ObjectViewController<ListView, 
                  })
             if (c != null) c.Active[reason] = false;
         if (View?.Model is IModelListViewBlazor m) m.ShowAllRows = true;
+        UpdateOpenCriteria();
     }
+
+    /// <summary>
+    /// 0.4.0-preview.1: 開く is disabled on the rows of <see cref="EditDraftList.NotOpenable"/> (「新規」 rows whose type this login
+    /// may not create): the action's TargetObjectsCriteria excludes their draft Oids. Called on activation and after the list
+    /// is filled again (破棄済みも表示).
+    /// </summary>
+    internal void UpdateOpenCriteria()
+    {
+        var blocked = ParentList()?.NotOpenable;
+        OpenAction.TargetObjectsCriteria = blocked == null || blocked.Count == 0
+            ? null
+            : new NotOperator(new InOperator(nameof(EditDraftListItem.DraftOid), blocked.Select(o => (object)o).ToArray())).ToString();
+    }
+
+    /// <summary>The list this ListView shows (the popup's DetailView object).</summary>
+    private EditDraftList ParentList() => (Frame as NestedFrame)?.ViewItem?.View?.CurrentObject as EditDraftList;
+
+    /// <summary>The row's draft type, as the list recorded it when it was filled; null when unknown (the owner seam then answers for no type).</summary>
+    private string ObjectTypeOf(EditDraftListItem item) =>
+        item != null && ParentList()?.ObjectTypes.TryGetValue(item.DraftOid, out var type) == true ? type : null;
 
     private EditDraftListControllerBlazor ListController() => Application?.MainWindow?.GetController<EditDraftListControllerBlazor>();
 
@@ -105,12 +132,13 @@ public class EditDraftListViewControllerBlazor : ObjectViewController<DetailView
         {
             var list = ViewCurrentObject;
             if (list == null) return;
-            var owner = EditDraftServices.CurrentOwner(Application?.ServiceProvider, Application);
-            EditDraftLog.Info($"[EditDraft] list toggle discarded -> {!list.IncludeDiscarded} owner={(owner.IsNone ? "none" : "set")} filter={list.ObjectTypeFilter ?? "all"}");
-            if (owner.IsNone) return;
             list.IncludeDiscarded = !list.IncludeDiscarded;
+            // Fill asks the owner seam per type and changes nothing when it names no owner (0.4.0-preview.1).
+            var filled = Application?.MainWindow?.GetController<EditDraftListControllerBlazor>()?.Fill(list) ?? false;
+            EditDraftLog.Info($"[EditDraft] list toggle discarded -> {list.IncludeDiscarded} owner={(filled ? "set" : "none")} filter={list.ObjectTypeFilter ?? "all"}");
+            if (!filled) { list.IncludeDiscarded = !list.IncludeDiscarded; return; }
             ToggleDiscardedAction.Caption = list.IncludeDiscarded ? EditDraftTexts.Of(t => t.ActionHideDiscarded) : EditDraftTexts.Of(t => t.ActionShowDiscarded);
-            Application?.MainWindow?.GetController<EditDraftListControllerBlazor>()?.Fill(list, owner.Oid);
+            (View?.FindItem(nameof(EditDraftList.Items)) as ListPropertyEditor)?.Frame?.GetController<EditDraftListItemControllerBlazor>()?.UpdateOpenCriteria();
             View?.Refresh();
         };
     }

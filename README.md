@@ -9,7 +9,10 @@ Status: extracted from the CareCrew application on 2026-10-03, where it runs beh
 repository is the source of truth for the library from that date; CareCrew consumes the package. Version
 0.2.0-preview.1 closed the library gaps found by the sample consumer (see "Status of the gaps"). Version
 0.3.0-preview.2 adds the client-side input journal, off by default and not yet connected to restore (see the
-`docs/edit-draft-client-journal-*` write-ups).
+`docs/edit-draft-client-journal-*` write-ups). Version 0.4.0-preview.1 (breaking) leaves access to XAF security: who may
+restore or recreate a record is decided by the application's roles and permissions, plus one optional host check
+(`IEditDraftAccessCheck`); the scope and owner-kind concepts of the first host are removed (see
+`docs/xaf-native-access-2026-10-05.md` and the consumer guide's upgrade section).
 
 ## Projects
 
@@ -42,7 +45,7 @@ for public packages: a consumer needs a GitHub personal access token (classic) w
    (the Blazor package depends on Core at the same version):
 
    ```xml
-   <PackageReference Include="Xaf.EditDraft.Blazor" Version="0.3.0-preview.2" />
+   <PackageReference Include="Xaf.EditDraft.Blazor" Version="0.4.0-preview.1" />
    ```
 
 3. The packages declare the DevExpress packages they need (26.1.4) as dependencies and do not contain them. DevExpress
@@ -56,7 +59,8 @@ before 1.0 are previews.
 ## Using it
 
 Read [docs/consumer-guide.md](docs/consumer-guide.md): it lists what a consumer supplies, what the library checks at
-startup, the security obligations and their limits, retention, and the renames from 0.1.0-preview.1. The working example
+startup, the security obligations and their limits, how access is decided (XAF security plus the optional
+`IEditDraftAccessCheck`), retention, and the upgrade steps from earlier versions. The working example
 is `samples/Xaf.EditDraft.Sample`. In short, a consumer supplies a persistent store class deriving from
 `EditDraftStoreBase` (the consumer owns the class name — security deny rows key on it), one `EditDraftTypePolicy` per
 captured type (which views, which members, how each member is restored; `EditDraftDecisions` helpers), three service
@@ -93,8 +97,8 @@ To release: bump `<Version>`, commit, `git tag v<Version>`, `git push --tags`.
 
 `docs/` holds the consumer guide and the design and milestone write-ups in order: the original engine design
 (2026-09-30), the library extraction design and its three milestones (2026-10-01/02), the new-record capture design and
-result (2026-10-02/03), the sample consumer report (2026-10-03), whose last section lists the gaps G1-G15, and the
-report of their closing (2026-10-04).
+result (2026-10-02/03), the sample consumer report (2026-10-03), whose last section lists the gaps G1-G15, the
+report of their closing (2026-10-04), and the report of the move to XAF-native access (2026-10-05).
 
 The git history of the four project folders is the history they had inside CareCrew (`git subtree split`).
 
@@ -105,8 +109,9 @@ The gaps G1-G15 listed in `docs/xaf-editdraft-sample-consumer-2026-10-03.md` are
 that can read the store, an opt-in retention sweep, a schema option, host-neutral names and English texts, decision
 helpers, an all-types entry point for the drafts list, and the consumer guide. Still true by design: the writer does
 not use XAF security and relies on the owner condition in every statement; a type deny cannot bind an administrative
-role or object/member ALLOW grants (the startup warning names such roles); SQL Server and XPO only. Still to decide:
-the store's two column names `LoginIsStaffMember` and `SubSectionOid` are kept for the first host's existing tables.
+role or object/member ALLOW grants (the startup warning names such roles); SQL Server and XPO only. Decided in
+0.4.0-preview.1: the store base no longer declares the two columns the first host's tables have; a host that keeps them
+declares them on its own store class.
 
 ## Licence
 

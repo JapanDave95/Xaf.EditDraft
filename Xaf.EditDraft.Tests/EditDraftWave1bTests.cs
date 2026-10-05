@@ -52,7 +52,8 @@ namespace Xaf.EditDraft.Tests
             var src = Wave1.Source(Wave1b.ListCapture);
             src.Should().Contain("EditDraftListAdmission.IsAdmittedList(policy, View.Id, View.IsRoot, editsInPlace, isNew: false)");
             src.Should().Contain("row.GetType() == _policy.Type && _objectSpace != null && !_objectSpace.IsNewObject(row)", "exact type, existing record, per event");
-            src.Should().Contain("if (!ListEnabled()) return;").And.Contain("EditDraftServices.CurrentOwner(Application?.ServiceProvider, objectSpace)");
+            // 0.4.0-preview.1: the owner seam takes the policy (owner ruling 2026-10-05); the pin follows the call.
+            src.Should().Contain("if (!ListEnabled()) return;").And.Contain("EditDraftServices.CurrentOwner(Application?.ServiceProvider, objectSpace, _policy)");
             src.Should().Contain("var record = e.Object;");
             src.Should().NotContain("View.CurrentObject").And.NotContain("ViewCurrentObject").And.NotContain("SelectedObjects", "fix-032: the changed row, never the focused/selected one");
             src.Should().Contain("EditDraftListAdmission.EditsInPlace(editor is DxGridListEditorBase && editor is IGridEditingLifeCycle, allowEdit, split, mode)");
@@ -157,7 +158,7 @@ namespace Xaf.EditDraft.Tests
         {
             var src = Wave1.Source(Wave1b.ListCapture);
             var started = src.Substring(src.IndexOf("private void Grid_EditingStarted(", StringComparison.Ordinal));
-            var gate = started.IndexOf("if (!ListEnabled() || EditDraftServices.CurrentOwner(Application?.ServiceProvider, _objectSpace).IsNone) return;", StringComparison.Ordinal);
+            var gate = started.IndexOf("if (!ListEnabled() || EditDraftServices.CurrentOwner(Application?.ServiceProvider, _objectSpace, _policy).IsNone) return;", StringComparison.Ordinal);   // 0.4.0-preview.1: with the policy
             gate.Should().BeGreaterThan(0);
             gate.Should().BeLessThan(started.IndexOf("new EditDraftRowContext(", StringComparison.Ordinal));
             gate.Should().BeLessThan(started.IndexOf("RunInitializingGetters", StringComparison.Ordinal));
@@ -188,7 +189,7 @@ namespace Xaf.EditDraft.Tests
             badge.Should().Contain("Application.CreateDetailView(os, detailViewId, true, target)").And.Contain("TargetWindow.NewModalWindow");
             badge.Should().Contain("var detailViewId = _policy.ApprovedViewIds?.FirstOrDefault();");
             badge.Should().Contain("if (IsEditing())", "an open row edit is never resolved silently");
-            badge.Should().Contain("EditDraftServices.RecordAccess(Application?.ServiceProvider).IsRecordVisible(Application, _policy, target)");
+            badge.Should().Contain("EditDraftServices.MayRestore(Application, _policy, target)");   // 0.4.0-preview.1: replaces the record-access seam
             foreach (var file in new[] { Wave1b.Badge, Wave1b.ListCapture })
             {
                 var s = Wave1.Source(file);

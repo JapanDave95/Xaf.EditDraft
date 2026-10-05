@@ -264,7 +264,9 @@ public class SampleFixPassTests
         using var services = Services<FixPassSchemaStore>(_provider);
         Assert.That(new EditDraftStoreRegistration(typeof(FixPassSchemaStore)).QualifiedName, Is.EqualTo("[drafts].[FixPassDraft]"));
         Assert.That(EditDraftStartup.DatabaseProblems(services, checkTable: true), Is.Empty, "SQL Server, XPO's name equals the library's, the table exists");
-        Assert.That(Columns("drafts", "FixPassDraft"), Does.Contain("LoginIsStaffMember").And.Contain("SubSectionOid"), "T5: columns kept (O-1)");
+        // T5 changed by owner ruling 2026-10-05 (0.4.0-preview.1): the store base no longer declares OwnerFlag / ScopeOid, so a
+        // table XPO creates from it has neither column (an existing table keeps them; see SampleXafNativeAccessTests.L2).
+        Assert.That(Columns("drafts", "FixPassDraft"), Does.Not.Contain("LoginIsStaffMember").And.Not.Contain("SubSectionOid"), "T5: the removed members have no column");
 
         var now = DateTime.Now;
         var sentinel = AddRow<FixPassDboDecoy>(Guid.NewGuid(), now.AddDays(3), "{\"decoy\":1}");
@@ -278,10 +280,10 @@ public class SampleFixPassTests
         Assert.That(Find<FixPassSchemaStore>(oid)?.Revision, Is.EqualTo(1), "XPO reads the row it created");
 
         // Supersede: the writer's UPDATE. XPO must see the change in the same table.
-        var scope = Guid.NewGuid();
-        Assert.That(writer.Call<bool>("TrySupersede", oid, 1, owner, "{\"v\":2}", 2, scope, "context", now), Is.True);
+        // 0.4.0-preview.1: TrySupersede no longer takes or writes a scope (owner ruling 2026-10-05).
+        Assert.That(writer.Call<bool>("TrySupersede", oid, 1, owner, "{\"v\":2}", 2, "context", now), Is.True);
         var row = Find<FixPassSchemaStore>(oid);
-        Assert.That((row.Revision, row.Payload, row.ScopeOid, row.EntryCount), Is.EqualTo((2, "{\"v\":2}", scope, 2)), "the UPDATE reached XPO's table (ScopeOid through column SubSectionOid)");
+        Assert.That((row.Revision, row.Payload, row.ContextText, row.EntryCount), Is.EqualTo((2, "{\"v\":2}", "context", 2)), "the UPDATE reached XPO's table");
 
         // Discard and claim: two more UPDATEs.
         Assert.That(writer.Call<bool>("TrySoftDiscard", oid, owner, now), Is.True);

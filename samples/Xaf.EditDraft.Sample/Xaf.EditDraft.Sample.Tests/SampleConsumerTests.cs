@@ -107,7 +107,8 @@ public class SampleConsumerTests
         Assert.That(dictionary.GetClassInfo(typeof(EditDraftStoreBase)).IsPersistent, Is.False, "the library maps no table of its own");
         var libraryMembers = typeof(EditDraftStoreBase).GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
             .Where(p => p.CanWrite).Select(p => p.Name).ToList();
-        Assert.That(libraryMembers, Has.Count.EqualTo(19), "the store base declares 19 persistent members");
+        // 0.4.0-preview.1 (owner ruling 2026-10-05) removed OwnerFlag and ScopeOid: 19 became 17.
+        Assert.That(libraryMembers, Has.Count.EqualTo(17), "the store base declares 17 persistent members");
         foreach (var name in libraryMembers)
             Assert.That(store.FindMember(name)?.IsPersistent, Is.True, $"{name} is a column of dbo.SampleEditDraft");
         Assert.That(store.FindMember("GCRecord"), Is.Null, "DeferredDeletion(false) is inherited: no GCRecord column");
@@ -127,8 +128,7 @@ public class SampleConsumerTests
         Assert.That(policy, Is.Not.Null);
         Assert.That(registry.Find(nameof(Note)), Is.SameAs(policy), "the payload keys on Type.Name");
         Assert.That(policy.PolicyId, Is.EqualTo("Note"));
-        Assert.That(EditDraftTypePolicy.IsGeneric(policy), Is.True, "login-owned with a decision table");
-        Assert.That(policy.OwnerKind, Is.EqualTo(EditDraftOwnerKind.Login));
+        Assert.That(EditDraftTypePolicy.IsGeneric(policy), Is.True, "a decision table (0.4.0-preview.1: no owner kind; the OwnerKind assertion was removed with the member)");
         Assert.That(policy.AllowNewRecords, Is.True);
         Assert.That(policy.SwitchKey, Is.EqualTo("EditDraftCapture:Types:Note:Enabled"));
 
@@ -156,7 +156,7 @@ public class SampleConsumerTests
         Assert.That(services.Count(d => d.ServiceType == typeof(EditDraftRegistry)), Is.EqualTo(1));
         Assert.That(services.Count(d => d.ServiceType == typeof(EditDraftListBridge) && d.Lifetime == ServiceLifetime.Scoped), Is.EqualTo(1));
         Assert.That(services.Any(d => d.ServiceType == typeof(IEditDraftOwnerResolver)), Is.False, "no custom owner seam");
-        Assert.That(services.Any(d => d.ServiceType == typeof(IEditDraftRecordAccess)), Is.False, "no custom record-access seam");
+        Assert.That(services.Any(d => d.ServiceType == typeof(IEditDraftAccessCheck)), Is.False, "no extra access check: XAF security alone");
         Assert.That(services.Any(d => d.ServiceType == typeof(EditDraftSwitchOptions)), Is.False, "no custom switch section");
 
         var registryDescriptor = services.Single(d => d.ServiceType == typeof(EditDraftRegistry));
@@ -242,7 +242,7 @@ public class SampleConsumerTests
     {
         using var services = Startup.AddEditDrafts(new ServiceCollection()).BuildServiceProvider();
         Assert.That(EditDraftServices.Owner(services), Is.SameAs(XafLoginEditDraftOwnerResolver.Instance), "owner: the XAF login's Guid");
-        Assert.That(EditDraftServices.RecordAccess(services), Is.SameAs(XafSecurityEditDraftRecordAccess.Instance), "record access: XAF security only");
+        Assert.That(EditDraftServices.AccessCheck(services), Is.Null, "access: XAF security only (no IEditDraftAccessCheck)");
         Assert.That(EditDraftServices.Clock(services), Is.SameAs(TimeProvider.System), "clock: the system clock");
         Assert.That(services.GetService<EditDraftSwitchOptions>(), Is.Null, "switch section: the default, EditDraftCapture");
         Assert.That(EditDraftSwitch.In(services, EditDraftSwitch.EnabledKey), Is.EqualTo("EditDraftCapture:Enabled"));
@@ -269,8 +269,8 @@ public class SampleConsumerTests
     {
         // C17 boundary: an unauthenticated context never captures under a guessed or shared owner.
         using var services = Startup.AddEditDrafts(new ServiceCollection()).BuildServiceProvider();
-        Assert.That(EditDraftServices.CurrentOwner(services, (IObjectSpace)null).IsNone, Is.True);
-        Assert.That(XafLoginEditDraftOwnerResolver.Instance.Current((XafApplication)null).IsNone, Is.True);
+        Assert.That(EditDraftServices.CurrentOwner(services, (IObjectSpace)null, NoteEditDraftPolicy.Create()).IsNone, Is.True);
+        Assert.That(XafLoginEditDraftOwnerResolver.Instance.Current((XafApplication)null, null).IsNone, Is.True);
     }
 
     [Test]

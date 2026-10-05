@@ -22,7 +22,7 @@ namespace Xaf.EditDraft.Blazor;
 /// GATE (re-checked per event and before every write): a generic policy for the list's EXACT row type, the
 /// list id in the policy's ListViewIds (B7: the allowlist), a ROOT list whose DxGrid edits rows in place (not
 /// split, not light access), an EXISTING record (never a new row), EditDraftCapture:Enabled AND the type key
-/// AND EditDraftCapture:ListViews:Enabled, and an owner (the XAF login; a GeneralUser login never, D6).
+/// AND EditDraftCapture:ListViews:Enabled, and an owner (the owner seam's answer for the policy; the library default is the XAF login).
 ///
 /// Per ROW: one context per record Oid on the list's OWN ObjectSpace (EditDraftRowContext); the change is read
 /// from ObjectChangedEventArgs.Object, never the focused/selected row (fix-032). Baseline at the grid's
@@ -176,7 +176,7 @@ public class EditDraftListCaptureControllerBlazor : ObjectViewController<ListVie
                 return;
             }
             // Codex diffreview C6: switched off or no owner -> no context and no initializing getters (T1 "nothing").
-            if (!ListEnabled() || EditDraftServices.CurrentOwner(Application?.ServiceProvider, _objectSpace).IsNone) return;
+            if (!ListEnabled() || EditDraftServices.CurrentOwner(Application?.ServiceProvider, _objectSpace, _policy).IsNone) return;
             var ctx = new EditDraftRowContext(_policy, e.EditedObject, oid) { SessionStartedModified = modified };
             Suppressed(() =>
             {
@@ -302,13 +302,13 @@ public class EditDraftListCaptureControllerBlazor : ObjectViewController<ListVie
         var oid = OidOf(record);
         if (oid == Guid.Empty) return;
 
-        var owner = EditDraftServices.CurrentOwner(Application?.ServiceProvider, objectSpace);
+        var owner = EditDraftServices.CurrentOwner(Application?.ServiceProvider, objectSpace, _policy);
         if (owner.IsNone)
         {
             if (!_refusalLogged)
             {
                 _refusalLogged = true;
-                EditDraftLog.Info("[EditDraft] list capture refused: no owner (not logged in, or a GeneralUser login — owner D6); nothing is stored");
+                EditDraftLog.Info("[EditDraft] list capture refused: no owner (not logged in, or the owner seam named none); nothing is stored");
             }
             return;
         }
@@ -374,19 +374,12 @@ public class EditDraftListCaptureControllerBlazor : ObjectViewController<ListVie
         {
             EditorInstanceId = _editorInstanceId,
             OwnerUserOid = ctx.PayloadOwner.Oid,
-            OwnerFlag = ctx.PayloadOwner.OwnerFlag,
             ObjectType = _policy.TypeName,
             TargetOid = ctx.TargetOid,
-            ScopeOid = SafeScope(ctx.Record),
             ContextText = ContextText(ctx.Record),
             ViewId = View?.Id
         };
         return ctx.BuildSnapshot(seed, EditDraftServices.Clock(Application?.ServiceProvider));
-    }
-
-    private Guid SafeScope(object record)
-    {
-        try { return _policy.ScopeOf?.Invoke(record) ?? Guid.Empty; } catch { return Guid.Empty; }
     }
 
     /// <summary>Type caption + the policy's context date, never a name (same text as a DetailView draft).</summary>

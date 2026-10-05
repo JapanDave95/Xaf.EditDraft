@@ -1,9 +1,9 @@
 # Xaf.EditDraft consumer guide
 
 How to add Xaf.EditDraft to a DevExpress XAF Blazor application, what the library checks at startup, and what stays the
-application's responsibility. Version 0.3.0-preview.2 (the client-side input journal it adds is off by default and
-not covered here; see the `edit-draft-client-journal-*` write-ups). The working example is `samples/Xaf.EditDraft.Sample` (one class,
-`Note`); each step below names the sample file that does it.
+application's responsibility. Version 0.4.0-preview.1 (the client-side input journal added in 0.3.0 is off by default
+and not covered here; see the `edit-draft-client-journal-*` write-ups). The working example is `samples/Xaf.EditDraft.Sample` (one class,
+`Note`); each step below names the sample file that does it. Upgrading from 0.3.0-preview.x: section 12.
 
 ## 1. What the library does
 
@@ -22,7 +22,8 @@ recreated from its draft. The main header action "Drafts" (「入力控」 in th
 | Database | **SQL Server only.** The writer and the retention sweep use T-SQL. The startup check stops an application whose store is in another database. |
 | Store table schema | `dbo` by default; another schema through the store class's XPO mapping, `[Persistent("myschema.MyEditDraft")]` (the only source of the schema and table name) |
 | Records | XPO classes keyed by a Guid (DevExpress `BaseObject`), properties written through `SetPropertyValue` |
-| Owner | an XAF login whose key is a Guid (library default); another owner rule through `IEditDraftOwnerResolver` |
+| Owner | an XAF login whose key is a Guid (library default); another owner rule, per type if needed, through `IEditDraftOwnerResolver` |
+| Access | XAF security (roles, type, object and member permissions); one optional extra check through `IEditDraftAccessCheck` (section 11) |
 | Registered types | different CLR class names (the payload stores `Type.Name`) |
 
 ## 3. What a consumer supplies
@@ -43,13 +44,14 @@ In this order.
    }
    ```
 
-   The table has the 19 members of the base plus `Oid` and `OptimisticLockField`. Two members were renamed in
-   0.2.0-preview.1 and keep their old column names, so an existing table needs no migration: `OwnerFlag` (column
-   `LoginIsStaffMember`) and `ScopeOid` (column `SubSectionOid`).
+   The table has the 17 members of the base plus `Oid` and `OptimisticLockField`. A table created by 0.3.0-preview.x or
+   earlier also has the columns `LoginIsStaffMember` and `SubSectionOid`; the library no longer reads or writes them
+   (section 12).
 
 3. **A policy per type** (`EditDraftTypePolicy`): the type, a `PolicyId`, the approved DetailView id(s), the ListView
-   id(s), the owner kind, and one decision per member. A type without a policy is never captured; a member without a
-   decision is never captured. Write the decisions with the library helpers; each takes the member, a reason and where the
+   id(s), and one decision per member. A type without a policy is never captured; a member without a decision is never
+   captured; a policy without a decision table is never admitted (a host may keep such policies in the same registry for
+   its own code). Write the decisions with the library helpers; each takes the member, a reason and where the
    decision can be checked (both required by the decision gate `EditDraftDecisions.Check`):
 
    | Helper | Meaning | Policy list it must agree with | Label |
@@ -60,10 +62,8 @@ In this order.
    | `EditDraftDecisions.NotRestorable` | shown, never put back on an existing record | `NotRestorableOnExisting` | D |
    | `EditDraftDecisions.Excluded` | never captured | `Excluded` | X |
 
-   The label is a record only; the gate does not read it. `ScopeOf` (optional) returns the record's access scope as a
-   Guid (for example the Oid of its department); it is stored with the draft and asked of
-   `IEditDraftRecordAccess.IsScopeVisible` before a never-saved record is recreated. Sample:
-   `.../EditDrafts/NoteEditDraftPolicy.cs`.
+   The label is a record only; the gate does not read it. The policy says nothing about who may restore: that is XAF
+   security (section 11). Sample: `.../EditDrafts/NoteEditDraftPolicy.cs`.
 
 4. **Service registrations** (Startup):
 
@@ -72,7 +72,12 @@ In this order.
    services.AddEditDraftRegistry(NoteEditDraftPolicy.Register);
    services.AddEditDraftBlazor();                                  // options: o => o.HeaderActionOnEveryView = true
    services.AddEditDraftRetention();                               // optional: the retention hosted service (section 6)
+   // optional: services.AddSingleton<IEditDraftAccessCheck, MyAccessCheck>();   // an extra access rule (section 11)
+   // optional: services.AddSingleton<IEditDraftOwnerResolver, MyOwnerResolver>(); // another owner rule (section 11)
    ```
+
+   `AddEditDraftBlazor()` also registers what the recreate needs to check XAF permissions on a rebuilt record's values;
+   without it a recreate is refused.
 
    The library reads the store table's schema and name only from the store class's XPO mapping, the same name XPO's own
    reads and inserts use. For a schema other than `dbo`, set `[Persistent("myschema.MyEditDraft")]` on the store class.
@@ -147,7 +152,8 @@ At the same point the library logs a warning for each role that may be able to r
 - **The writer does not use XAF security for the store.** It works on a non-secured object space: it creates a draft with
   `CommitChanges`, reads drafts with queries, and updates or deletes them with T-SQL. Every read, update and delete names
   the owner (`OwnerUserOid` = the XAF login's Guid) in the statement; that condition keeps one login's drafts from
-  another's. XAF role permissions do not apply to the engine.
+  another's. XAF role permissions do not apply to the store table. Whether a draft may be put back onto a record, or a
+  record recreated from one, is decided by XAF permissions on that record (section 11).
 - **Why deny the store anyway.** A role can still reach the store class through ordinary XAF security — a generic list
   view such as `SampleEditDraft_ListView`, a lookup, the Web API — where only its permissions apply. A role with
   `AllowAllByDefault` could then read and change every user's drafts, and the payload is the typed text in readable JSON.
@@ -200,8 +206,8 @@ server run in the same time zone; otherwise pass the application server's local 
 
 | Seam | Default | To change it |
 |---|---|---|
-| Owner of a draft | the XAF login's key when it is a non-empty Guid; no login, no draft | register an `IEditDraftOwnerResolver` |
-| Record access | XAF security only (records are loaded through a secured object space first); `IsScopeVisible` allows every scope | register an `IEditDraftRecordAccess` |
+| Owner of a draft | the XAF login's key when it is a non-empty Guid, for every type; no login, no draft | register an `IEditDraftOwnerResolver` (asked with the policy of the draft's type) |
+| Access | XAF security only: Write on a saved record, Create, Write and Read on a recreated one (section 11) | register an `IEditDraftAccessCheck` (asked in addition; it can only narrow) |
 | Switch section | `EditDraftCapture` | `new EditDraftSwitchOptions { Section = "..." }` |
 | Store schema | `dbo` | `[Persistent("myschema.MyEditDraft")]` on the store class |
 | Clock | `TimeProvider.System`, local time | register a `TimeProvider` |
@@ -240,3 +246,99 @@ Behaviour changes: the startup checks above; the English texts `PersonalLoginOnl
 `RecreateSubSectionNotVisible` and `ListLead` are reworded; the header action shows caption and image; a grid row's
 "Open draft" icon keeps the enabled state XAF gives it (with a row without a draft selected, the icons are disabled like
 the toolbar button); an absent store table is re-checked after 30 seconds instead of 5 minutes.
+
+## 11. Access: XAF security plus the optional IEditDraftAccessCheck
+
+Who may put a draft back onto a record, or recreate a never-saved record from a draft, is decided by the application's XAF
+security: its roles and their type, object and member permissions. The library has no access rule of its own besides the
+owner condition of the store.
+
+- **A saved record** (the offer when the record opens, the apply, the drafts list's Open and its record text, the Open
+  of a ListView row): the record is loaded again by its key through `XafApplication.CreateObjectSpace` (the secured
+  object space when the application uses integrated security, where a record the login may not read is not found) and
+  **Write** must be granted on it; role object criteria are evaluated on its stored values. A refused offer shows "This
+  draft cannot be restored for this login (no permission)." The offer asks only when there is a draft to offer, so a
+  record the login may only read opens without a message. Member permissions still apply per field: a field the login
+  may not write is shown as "cannot be restored", as before.
+- **A never-saved record** (Open on a "New" row): the record is rebuilt from the draft in its own object space, filled,
+  not committed, and **Create, then Write, then Read** must be granted on it with its own values — the check XAF makes
+  before it saves a new object. XAF evaluates no object criterion for Create, and XAF's public `PermissionRequest`
+  answers a new object at type level only, so the library evaluates the rebuilt object through the server-side
+  permission request XAF itself uses at save (registered by `AddEditDraftBlazor()`; XAF's integrated `SecurityStrategy`
+  only, any other security refuses). A refusal shows "You do not have permission to create this record." and discards
+  the rebuilt record; the draft stays. Before anything is rebuilt, type-level Create and the views' AllowNew/AllowEdit
+  are checked as before; a "New" row whose type fails that check stays in the drafts list with Open disabled.
+- **No security strategy** (`XafApplication.Security` is null or not an `IRequestSecurity`): allowed, as XAF itself
+  allows creating and editing then.
+- **`IEditDraftAccessCheck`** (optional, one per application, registered in DI): `MayRestore(application, policy,
+  record)` and `MayRecreate(application, policy, rebuiltRecord)`. It is asked after the XAF check and only when XAF
+  allowed; both must allow, so it can only narrow access. An exception in it is a refusal. Register one only for a rule
+  XAF security does not express, for example an assignment table that is not a role:
+
+  ```csharp
+  public sealed class MyAccessCheck : IEditDraftAccessCheck
+  {
+      public bool MayRestore(XafApplication application, EditDraftTypePolicy policy, object record) => MyRule(application, record);
+      public bool MayRecreate(XafApplication application, EditDraftTypePolicy policy, object record) => MyRule(application, record);
+  }
+  ```
+
+- **The owner seam** (`IEditDraftOwnerResolver`) answers "who owns a draft", never "who may restore it". It is asked with
+  the policy of the draft's type (null when the type is not registered), so an application can name a different owner per
+  type. The drafts list asks once per type, reads each distinct owner, and lists a row only when its stored owner is the
+  owner named for its type. No owner refuses capture, offer, list and apply.
+
+Sample: the `RestrictedNotes` role in `.../DatabaseUpdate/Updater.cs` (Note Read and Create; Write only where `Priority`
+is not `High`) and its test user `Restricted` (empty password, Debug builds only), checked in
+`Xaf.EditDraft.Sample.Tests/SampleXafNativeAccessTests.cs`.
+
+## 12. Upgrading from 0.3.0-preview.1 and 0.3.0-preview.2
+
+| 0.3.0-preview.x | 0.4.0-preview.1 |
+|---|---|
+| `EditDraftTypePolicy.ScopeOf` | none in the library; a host that needs a scope computes it from the record in its own `IEditDraftAccessCheck` |
+| `EditDraftTypePolicy.OwnerKind`, `EditDraftOwnerKind` (`Login`, `HostDefined`) | none: a policy is admitted when it has a decision table (`IsGeneric`); the owner is the owner seam's answer for the policy |
+| `EditDraftOwnerRule.Decide` | none; a host keeps its owner rule in its own `IEditDraftOwnerResolver` |
+| `IEditDraftOwnerResolver.Current(IObjectSpace)`, `Current(XafApplication)` | `Current(IObjectSpace, EditDraftTypePolicy)`, `Current(XafApplication, EditDraftTypePolicy)` |
+| `EditDraftServices.CurrentOwner(services, objectSpace)`, `CurrentOwner(services, application)` | the same with the policy as a third argument |
+| `EditDraftOwnerInfo(Guid Oid, bool OwnerFlag)` | `EditDraftOwnerInfo(Guid Oid)` |
+| `EditDraftStoreBase.OwnerFlag` (column `LoginIsStaffMember`), `EditDraftStoreBase.ScopeOid` (column `SubSectionOid`) | none in the base; keep the columns by declaring them on your store class (below) |
+| `EditDraftSeed.OwnerFlag`, `EditDraftSeed.ScopeOid`, `EditDraftRecreateDraft.ScopeOid` | none |
+| `IEditDraftRecordAccess.IsRecordVisible`, `XafSecurityEditDraftRecordAccess`, `EditDraftServices.RecordAccess` | XAF security (`XafSecurityEditDraftAccessCheck.MayRestore`) plus the optional `IEditDraftAccessCheck.MayRestore`; both through `EditDraftServices.MayRestore` |
+| `IEditDraftRecordAccess.IsScopeVisible`, `IEditDraftRecreateHost.IsScopeVisible` | `IEditDraftAccessCheck.MayRecreate`, asked on the rebuilt record; both through `EditDraftServices.MayRecreate` |
+| `IEditDraftRecreateCandidate.IsVisible` | `IEditDraftRecreateCandidate.MayRecreate` |
+| `IEditDraftRecreateHost.CurrentOwner()` | `CurrentOwner(EditDraftTypePolicy)` |
+| `EditDraftRecreate.Run(host, draftOid, proceedWhenSavedCheckFails)` | `Run(host, draftOid, objectType, proceedWhenSavedCheckFails)` |
+| `EditDraftRecreateOutcome.SubSectionNotVisible` | none (the scope step is gone) |
+| `EditDraftRecreateOutcome.FilledNotVisible` | `FilledNotPermitted` |
+| `EditDraftTextSet.RecreateSubSectionNotVisible` | none; `RecreateNoPermission` is shown for both recreate refusals |
+
+**An existing store table keeps its extra columns.** XPO never drops a column, so a table created by an earlier version
+keeps `LoginIsStaffMember` and `SubSectionOid` (XPO created them nullable). The library no longer reads or writes them.
+Without a mapping, XPO inserts NULL into them for new rows. To keep them mapped, with the same column names and types so
+the table does not change, declare them on your own store class:
+
+```csharp
+public class EditDraft : EditDraftStoreBase
+{
+    public EditDraft(Session session) : base(session) { }
+
+    private bool _loginIsStaffMember;
+    [Persistent("LoginIsStaffMember")]
+    public bool LoginIsStaffMember { get => _loginIsStaffMember; set => SetPropertyValue(nameof(LoginIsStaffMember), ref _loginIsStaffMember, value); }
+
+    private Guid _subSectionOid;
+    [Persistent("SubSectionOid")]
+    public Guid SubSectionOid { get => _subSectionOid; set => SetPropertyValue(nameof(SubSectionOid), ref _subSectionOid, value); }
+}
+```
+
+New rows then get XPO's default values (false, `Guid.Empty`) unless the host sets them, and a value the host writes is
+never changed by the library's statements (checked in `SampleLegacyColumnsTests`).
+
+Behaviour changes: restoring needs Write on the record (the 0.3 default only required that the record was found through
+the secured object space); recreating needs Create, Write and Read on the rebuilt record with its values; the offer asks
+the access check only when there is a draft to offer; the drafts list shows a record's text only when the login may
+restore onto it; a "New" row whose type the login may not create stays listed with Open disabled; `RecordNotVisible`
+reads "This draft cannot be restored for this login (no permission)." in English and ends in 「（権限がありません）」 in
+Japanese; the log lines no longer name a host rule.

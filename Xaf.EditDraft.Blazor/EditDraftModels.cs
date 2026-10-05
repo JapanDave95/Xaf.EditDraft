@@ -12,9 +12,9 @@ using DevExpress.Xpo;
 namespace Xaf.EditDraft.Blazor;
 
 /// <summary>
-/// The 入力控 restore popup for the generic (non-chart) types. A SEPARATE class from the application's chart
-/// plan on purpose: the chart popup controller targets that class and routes 破棄 to the F2 author and the
-/// chart writer; this plan never activates it. The rows are the library's <see cref="EditDraftRestoreItem"/>
+/// The 入力控 restore popup for the generic types. A SEPARATE class from any plan class a host keeps for its own
+/// drafts on purpose: a host's popup controller targets its own class and routes 破棄 to its own owner and writer;
+/// this plan never activates it. The rows are the library's <see cref="EditDraftRestoreItem"/>
 /// (milestone M2; before M2 they reused the chart row type), ticked by EditDraftRestoreItemListControllerBlazor.
 /// Non-persistent; the controller re-checks owner, revision, permissions and the record's access rule before
 /// anything is applied.
@@ -97,6 +97,8 @@ public class EditDraftReadOnlyView : NonPersistentBaseObject
 
     [Browsable(false)] public List<Guid> DraftOids { get; } = new();
     [Browsable(false)] public Guid OwnerOid { get; set; }
+    /// <summary>The drafts' type (CLR class name): 破棄 asks the owner seam for this type's owner.</summary>
+    [Browsable(false)] public string ObjectType { get; set; }
     [Browsable(false)] public bool Answered { get; set; }
 
     /// <summary>NEW records: the display of entries a recreate could not put back — the draft now belongs to the recreated screen, so 破棄 is not offered.</summary>
@@ -139,4 +141,14 @@ public class EditDraftList : NonPersistentBaseObject
 
     /// <summary>D14: the ObjectType (CLR class name) the list is filtered to; null = every registered type (the gear entry).</summary>
     [Browsable(false)] public string ObjectTypeFilter { get; set; }
+
+    /// <summary>Each listed draft's type (CLR class name) by draft Oid (0.4.0-preview.1): 開く and 破棄 ask the owner seam for that type's owner.</summary>
+    [Browsable(false)] public Dictionary<Guid, string> ObjectTypes { get; } = new();
+
+    /// <summary>
+    /// The 「新規」 rows whose type this login may not create, or the UI does not offer creating (EditDraftCreateAccess.MayCreate;
+    /// 0.4.0-preview.1): shown, with 開く disabled (EditDraftListItemControllerBlazor turns this set into the action's
+    /// TargetObjectsCriteria). 開く re-checks everything anyway.
+    /// </summary>
+    [Browsable(false)] public HashSet<Guid> NotOpenable { get; } = new();
 }

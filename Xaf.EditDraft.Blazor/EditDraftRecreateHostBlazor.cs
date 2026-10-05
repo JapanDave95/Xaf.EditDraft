@@ -12,11 +12,11 @@ namespace Xaf.EditDraft.Blazor;
 /// NEW records — the XAF side of a recreate (EditDraftRecreate.Run in Core decides the order; design
 /// docs/edit-draft-new-records-design-2026-10-02.md §4.4): reads the draft through the owner-scoped writer, answers "already
 /// saved?" through a SECURED object space, asks the security questions, builds the candidate in its own object space and
-/// shows it in a MODAL window (owner D6, like today's 開く). Owner, record access and member write permission through the
+/// shows it in a MODAL window (owner D6, like today's 開く). Owner, access check and member write permission through the
 /// Core seams; "now" from the host clock; texts from EditDraftTexts.
-/// SINGLE-MODEL parts (owner review, D14): <see cref="MayCreate"/> (S1/S2, EditDraftCreateAccess), <see cref="IsScopeVisible"/>
-/// (S5 i, the record-access seam), the candidate's IsVisible (S5 ii), and the owner predicate of the read and of the claim
-/// (EditDraftWriter.ReadOwn / TryClaimNew).
+/// SINGLE-MODEL parts (owner review, D14): <see cref="MayCreate"/> (S1/S2, EditDraftCreateAccess), the candidate's
+/// MayRecreate (EditDraftServices.MayRecreate on the filled, uncommitted object: XAF security plus the host's
+/// IEditDraftAccessCheck), and the owner predicate of the read and of the claim (EditDraftWriter.ReadOwn / TryClaimNew).
 /// </summary>
 internal sealed class EditDraftRecreateHostBlazor : IEditDraftRecreateHost
 {
@@ -35,7 +35,7 @@ internal sealed class EditDraftRecreateHostBlazor : IEditDraftRecreateHost
         _writer = new EditDraftWriter(application.ServiceProvider);
     }
 
-    public EditDraftOwnerInfo CurrentOwner() => EditDraftServices.CurrentOwner(_application.ServiceProvider, _application);
+    public EditDraftOwnerInfo CurrentOwner(EditDraftTypePolicy policy) => EditDraftServices.CurrentOwner(_application.ServiceProvider, _application, policy);
 
     public DateTime Now() => EditDraftClock.Now(EditDraftServices.Clock(_application.ServiceProvider));
 
@@ -48,7 +48,7 @@ internal sealed class EditDraftRecreateHostBlazor : IEditDraftRecreateHost
             if (d == null) return null;
             return new EditDraftRecreateDraft
             {
-                DraftOid = d.Oid, Revision = d.Revision, ObjectType = d.ObjectType, TargetOid = d.TargetOid, ScopeOid = d.ScopeOid,
+                DraftOid = d.Oid, Revision = d.Revision, ObjectType = d.ObjectType, TargetOid = d.TargetOid,
                 ContextText = d.ContextText, ViewId = d.ViewId, LastCapturedOn = d.LastCapturedOn, EntryCount = d.EntryCount,
                 Live = !d.HasExpired(now), PayloadReadable = d.IsPayloadReadable, PayloadJson = d.Payload
             };
@@ -73,9 +73,6 @@ internal sealed class EditDraftRecreateHostBlazor : IEditDraftRecreateHost
     }
 
     public bool MayCreate(EditDraftTypePolicy policy) => EditDraftCreateAccess.MayCreate(_application, policy);
-
-    public bool IsScopeVisible(EditDraftTypePolicy policy, Guid scopeOid) =>
-        EditDraftServices.RecordAccess(_application.ServiceProvider).IsScopeVisible(_application, policy, scopeOid);
 
     public IEditDraftRecreateCandidate CreateCandidate(EditDraftTypePolicy policy)
     {
@@ -125,8 +122,8 @@ internal sealed class EditDraftRecreateHostBlazor : IEditDraftRecreateHost
             return EditDraftRestorer.ApplyNew(policy, _os, _record, payload, p => EditDraftMemberAccess.CanWrite(_os, _record, p));
         }
 
-        public bool IsVisible(EditDraftTypePolicy policy) =>
-            EditDraftServices.RecordAccess(_host._application.ServiceProvider).IsRecordVisible(_host._application, policy, _record);
+        /// <summary>The filled object, still uncommitted in its own object space: XAF security on its values plus the host's check.</summary>
+        public bool MayRecreate(EditDraftTypePolicy policy) => EditDraftServices.MayRecreate(_host._application, policy, _record);
 
         public bool Show(EditDraftTypePolicy policy, EditDraftPendingAdoption adoption)
         {

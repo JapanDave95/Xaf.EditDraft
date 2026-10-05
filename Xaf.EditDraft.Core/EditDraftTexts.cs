@@ -134,7 +134,6 @@ public sealed class EditDraftTextSet
     public string RecreateCancel { get; init; }
     public string RecreateTypeNotAllowed { get; init; }
     public string RecreateNoPermission { get; init; }
-    public string RecreateSubSectionNotVisible { get; init; }
     public string RecreateClaimLost { get; init; }
     public string RecreateFailed { get; init; }
     public string RecreateNotAttached { get; init; }
@@ -238,7 +237,7 @@ public sealed class EditDraftTextSet
         DraftUnreadable = "この入力控は読み取れません。",
         DraftTypeUnknown = "この入力控の記録種別が分かりません。",
         RecordNotFound = "元の記録が見つかりません（削除されたか、表示できません）。",
-        RecordNotVisible = "この入力控はこのログインでは戻せません（事業所の権限）。",
+        RecordNotVisible = "この入力控はこのログインでは戻せません（権限がありません）。",
         NothingSelected = "戻す項目が選ばれていません。",
         ApplyScreenChanged = "この入力控は戻せません（画面が変わりました）。",
         ApplyViewNotEditable = "この画面は編集できないため、入力控は戻せません。",
@@ -267,7 +266,6 @@ public sealed class EditDraftTextSet
         RecreateCancel = "やめる",
         RecreateTypeNotAllowed = "この種類の新規の入力控からは記録を作成できません。",
         RecreateNoPermission = "この記録を作成する権限がありません。",
-        RecreateSubSectionNotVisible = "この入力控の記録の事業所は表示できません。",
         RecreateClaimLost = "この入力控は戻せません（ほかの画面で戻されたか、変更されたか、期限切れです）。",
         RecreateFailed = "入力控から記録を作成できませんでした。入力控は残っています。",
         RecreateNotAttached = "入力控を新しい画面に引き継げなかったため、作成した記録を保存せずに閉じました。入力控は残っています。もう一度開いてください。",
@@ -365,7 +363,7 @@ public sealed class EditDraftTextSet
         DraftUnreadable = "This draft cannot be read.",
         DraftTypeUnknown = "The record type of this draft is not known.",
         RecordNotFound = "The original record was not found (it was deleted or cannot be shown).",
-        RecordNotVisible = "This draft cannot be restored for this login (no permission to see the record).",
+        RecordNotVisible = "This draft cannot be restored for this login (no permission).",
         NothingSelected = "No field is selected.",
         ApplyScreenChanged = "This draft cannot be put back (the screen changed).",
         ApplyViewNotEditable = "This draft cannot be put back because the screen cannot be edited.",
@@ -394,7 +392,6 @@ public sealed class EditDraftTextSet
         RecreateCancel = "Cancel",
         RecreateTypeNotAllowed = "A record of this type cannot be created from a draft.",
         RecreateNoPermission = "You do not have permission to create this record.",
-        RecreateSubSectionNotVisible = "This login cannot see records in the scope of this draft's record.",
         RecreateClaimLost = "This draft cannot be put back (it was restored or changed on another screen, or it has expired).",
         RecreateFailed = "The record could not be created from the draft. The draft has been kept.",
         RecreateNotAttached = "The draft could not be handed to the new screen, so the created record was closed without saving. The draft has been kept; open it again.",

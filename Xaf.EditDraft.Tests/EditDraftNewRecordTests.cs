@@ -23,7 +23,7 @@ namespace Xaf.EditDraft.Tests
     // (tests a1): E01-E44 reused or changed per the rulings, N01-N33 added; the design's test ids T1-T16 are named beside them.
     // Logic runs against pure code (EditDraftCaptureRules, EditDraftNewRecordRules, EditDraftRecreate with a fake host) or an
     // in-memory object space over TEST-ONLY types; controller wiring is pinned by source scans; reloads, tabs and popups are
-    // the Dev2 browser pass. The security checks (EditDraftCreateAccess, IsScopeVisible) are SINGLE-MODEL: Claude's alone.
+    // the Dev2 browser pass. The security checks (EditDraftCreateAccess, MayRecreate) are SINGLE-MODEL: Claude's alone.
 
     /// <summary>A test-only record whose construction defaults depend on a clock, like 残業・有給 (日付 = today, times on 日付).</summary>
     public class EditDraftNewProbe : BaseObject
@@ -108,7 +108,6 @@ namespace Xaf.EditDraft.Tests
         public static EditDraftTypePolicy Policy(bool allowNew = true, string[] getters = null) => new(typeof(EditDraftNewProbe))
         {
             PolicyId = "test:New",
-            OwnerKind = EditDraftOwnerKind.Login,
             MemberDeclaringBase = typeof(EditDraftNewProbe),
             ApprovedViewIds = new HashSet<string> { View },
             ListViewIds = new HashSet<string> { List },
@@ -174,8 +173,8 @@ namespace Xaf.EditDraft.Tests
             var policy = NewProbe.Policy();
             EditDraftCaptureController.IsAdmittedView(policy, NewProbe.View, true, isNew: true).Should().BeFalse("the existing-record rule (used by the restore offer) is unchanged");
             EditDraftCaptureController.IsAdmittedView(policy, NewProbe.View, true, isNew: false).Should().BeTrue();
-            var chart = new EditDraftTypePolicy(typeof(EditDraftNewProbe)) { PolicyId = "chart", OwnerKind = EditDraftOwnerKind.HostDefined, AllowNewRecords = true };
-            EditDraftCaptureController.IsAdmittedViewIncludingNew(chart, NewProbe.View, true, true).Should().BeFalse("a chart (F2) policy never enters the generic capture");
+            var chart = new EditDraftTypePolicy(typeof(EditDraftNewProbe)) { PolicyId = "chart", AllowNewRecords = true };   // no decision table (0.4.0-preview.1: no owner kind)
+            EditDraftCaptureController.IsAdmittedViewIncludingNew(chart, NewProbe.View, true, true).Should().BeFalse("a policy without a decision table never enters the generic capture");
             EditDraftCaptureController.IsAdmittedViewIncludingNew(null, NewProbe.View, true, true).Should().BeFalse("an unregistered type");
             EditDraftListAdmission.IsAdmittedList(policy, NewProbe.List, true, true, isNew: true).Should().BeFalse("inline new rows in a list stay out (design §3)");
             new EditDraftTypePolicy(typeof(EditDraftNewProbe)).AllowNewRecords.Should().BeFalse("opt-in: off by default");
@@ -614,8 +613,9 @@ namespace Xaf.EditDraft.Tests
             EditDraftNewRecordRules.StateText(Guid.Empty, true).Should().Be("新規・破棄済み");
             var list = Wave1.Source("Xaf.EditDraft.Blazor/EditDraftListControllerBlazor.cs");
             list.Should().Contain("StateText = EditDraftNewRecordRules.StateText(d.TargetOid, d.DeletedOn != null),");
-            var open = list.Substring(list.IndexOf("internal void OpenDraft(Guid draftOid)", StringComparison.Ordinal));
-            open.IndexOf("if (EditDraftNewRecordRules.IsNewRecordDraft(targetOid)) { Recreate(draftOid, proceedWhenSavedCheckFails: false); return; }", StringComparison.Ordinal)
+            // 0.4.0-preview.1: OpenDraft and Recreate carry the row's type (the owner seam is asked per type).
+            var open = list.Substring(list.IndexOf("internal void OpenDraft(Guid draftOid, string objectType)", StringComparison.Ordinal));
+            open.IndexOf("if (EditDraftNewRecordRules.IsNewRecordDraft(targetOid)) { Recreate(draftOid, objectType, proceedWhenSavedCheckFails: false); return; }", StringComparison.Ordinal)
                 .Should().BeGreaterThan(0).And.BeLessThan(open.IndexOf("os.GetObjectByKey(policy.Type, targetOid)", StringComparison.Ordinal),
                     "a 「新規」 row never goes through the existing-record open (no lookup by an empty Oid)");
             open.Should().Contain("var draft = writer.ReadOwn(readSpace, draftOid, owner.Oid);", "the exact row, owner-scoped");
@@ -667,7 +667,7 @@ namespace Xaf.EditDraft.Tests
                 Filled = payload;
                 return EditDraftNewApplyResult_Of(payload);
             }
-            public bool IsVisible(EditDraftTypePolicy policy) { _host.Calls.Add("visible"); return _host.FilledVisible; }
+            public bool MayRecreate(EditDraftTypePolicy policy) { _host.Calls.Add("mayRecreate"); return _host.FilledPermitted; }
             public bool Show(EditDraftTypePolicy policy, EditDraftPendingAdoption adoption)
             {
                 _host.Calls.Add("show");
@@ -689,11 +689,12 @@ namespace Xaf.EditDraft.Tests
         public sealed class FakeHost : IEditDraftRecreateHost
         {
             public readonly List<string> Calls = new();
-            public EditDraftOwnerInfo Owner = new(Guid.NewGuid(), true);
+            public EditDraftOwnerInfo Owner = new(Guid.NewGuid());
             public EditDraftRecreateDraft Draft;
             public EditDraftTypePolicy PolicyValue = NewProbe.Policy();
+            public readonly List<EditDraftTypePolicy> OwnerAskedFor = new();
             public Func<Guid, bool?> Saved = _ => false;
-            public bool Permitted = true, SubSectionVisible = true, FilledVisible = true, ScreenAttaches = true, FillThrows, ShowThrows, CandidateFails, GuardViolated;
+            public bool Permitted = true, FilledPermitted = true, ScreenAttaches = true, FillThrows, ShowThrows, CandidateFails, GuardViolated;
             public Action OnCreate;   // e.g. the clock moves while the candidate is built
             public DateTime ClaimNow;
             public int Revision = 4;   // the row's current revision (the claim is fenced on it)
@@ -701,13 +702,12 @@ namespace Xaf.EditDraft.Tests
             public FakeCandidate Candidate;
             public DateTime NowValue = new(2026, 10, 3, 9, 0, 0);
 
-            public EditDraftOwnerInfo CurrentOwner() { Calls.Add("owner"); return Owner; }
+            public EditDraftOwnerInfo CurrentOwner(EditDraftTypePolicy policy) { Calls.Add("owner"); OwnerAskedFor.Add(policy); return Owner; }
             public DateTime Now() => NowValue;
             public EditDraftRecreateDraft ReadDraft(Guid draftOid, Guid ownerOid, DateTime now) { Calls.Add("read"); return Draft != null && ownerOid == Owner.Oid ? Draft : null; }
             public EditDraftTypePolicy Policy(string objectType) { Calls.Add("policy"); return PolicyValue; }
             public bool? IsSaved(EditDraftTypePolicy policy, Guid oid) { Calls.Add("saved"); return Saved(oid); }
             public bool MayCreate(EditDraftTypePolicy policy) { Calls.Add("mayCreate"); return Permitted; }
-            public bool IsScopeVisible(EditDraftTypePolicy policy, Guid scopeOid) { Calls.Add("subSection"); return SubSectionVisible; }
             public IEditDraftRecreateCandidate CreateCandidate(EditDraftTypePolicy policy)
             {
                 Calls.Add("create");
@@ -728,7 +728,9 @@ namespace Xaf.EditDraft.Tests
 
         private static readonly Guid History = Guid.NewGuid();
 
-        private static FakeHost Host(Action<EditDraftPayload> shape = null, Guid? subSection = null, bool live = true, Guid? target = null, int revision = 4)
+        private const string ProbeType = nameof(EditDraftNewProbe);
+
+        private static FakeHost Host(Action<EditDraftPayload> shape = null, bool live = true, Guid? target = null, int revision = 4)
         {
             var payload = new EditDraftPayload { TypeName = nameof(EditDraftNewProbe) };
             payload.Upsert("Reason", "string", "Reason", true, null, null, "typed", "typed");
@@ -739,7 +741,7 @@ namespace Xaf.EditDraft.Tests
             host.Draft = new EditDraftRecreateDraft
             {
                 DraftOid = Guid.NewGuid(), Revision = revision, ObjectType = nameof(EditDraftNewProbe), TargetOid = target ?? Guid.Empty,
-                ScopeOid = subSection ?? Guid.Empty, LastCapturedOn = new DateTime(2026, 10, 2, 18, 21, 0), Live = live, PayloadReadable = true,
+                LastCapturedOn = new DateTime(2026, 10, 2, 18, 21, 0), Live = live, PayloadReadable = true,
                 PayloadJson = payload.ToJson(), EntryCount = payload.Count
             };
             return host;
@@ -748,10 +750,12 @@ namespace Xaf.EditDraft.Tests
         [Test]
         public void T12_N12_N19_E20_the_steps_run_in_the_designed_order_and_success_needs_the_screen_s_acknowledgement()
         {
-            var host = Host(subSection: Guid.NewGuid());
-            var r = EditDraftRecreate.Run(host, host.Draft.DraftOid);
+            var host = Host();
+            var r = EditDraftRecreate.Run(host, host.Draft.DraftOid, ProbeType);
             r.Outcome.Should().Be(EditDraftRecreateOutcome.Created);
-            host.Calls.Should().Equal("owner", "read", "policy", "saved", "mayCreate", "subSection", "create", "claim", "fill", "visible", "show");
+            // 0.4.0-preview.1: the type's policy first (the owner seam is asked per type); no scope step; step 8 is the access
+            // check on the filled, uncommitted object (MayRecreate).
+            host.Calls.Should().Equal("policy", "owner", "read", "saved", "mayCreate", "create", "claim", "fill", "mayRecreate", "show");
             host.Candidate.Disposed.Should().BeFalse("the shown screen owns the candidate now");
             var claimed = EditDraftPayload.FromJson<EditDraftPayload>(host.ClaimedJson);
             claimed.ProvisionalOids.Should().Equal(new[] { host.Candidate.Oid, History }, "ONE statement claims and stores the candidate's Oid at the head of prov (D11)");
@@ -766,11 +770,22 @@ namespace Xaf.EditDraft.Tests
         }
 
         [Test]
-        public void T12_E29_N18_an_empty_stored_office_is_not_asked_but_the_filled_record_always_is()
+        public void ACC_the_owner_seam_is_asked_with_the_type_s_policy_and_a_draft_of_another_type_is_not_live()
         {
-            var host = Host(subSection: Guid.Empty);
-            EditDraftRecreate.Run(host, host.Draft.DraftOid).Outcome.Should().Be(EditDraftRecreateOutcome.Created);
-            host.Calls.Should().NotContain("subSection").And.Contain("visible");
+            // 0.4.0-preview.1 (owner ruling 2026-10-05): the owner seam receives the policy, so a host can name an owner per type.
+            var host = Host();
+            EditDraftRecreate.Run(host, host.Draft.DraftOid, ProbeType).Outcome.Should().Be(EditDraftRecreateOutcome.Created);
+            host.OwnerAskedFor.Should().Equal(new[] { host.PolicyValue }, "asked once, with the registered policy of the draft's type");
+
+            var other = Host();
+            other.Draft = new EditDraftRecreateDraft
+            {
+                DraftOid = other.Draft.DraftOid, Revision = other.Draft.Revision, ObjectType = "SomethingElse", TargetOid = Guid.Empty,
+                Live = true, PayloadReadable = true, PayloadJson = other.Draft.PayloadJson, EntryCount = other.Draft.EntryCount
+            };
+            var r = EditDraftRecreate.Run(other, other.Draft.DraftOid, ProbeType);
+            r.Outcome.Should().Be(EditDraftRecreateOutcome.NotLive, "the row read under the type's owner must be of that type");
+            other.Claims.Should().Be(0);
         }
 
         private static IEnumerable<TestCaseData> RefusalsBeforeTheClaim()
@@ -786,13 +801,12 @@ namespace Xaf.EditDraft.Tests
             yield return new TestCaseData((Action<FakeHost>)(h => h.Saved = o => o == History), EditDraftRecreateOutcome.AlreadySaved).SetName("T12_refusal_already_saved");
             yield return new TestCaseData((Action<FakeHost>)(h => h.Saved = _ => null), EditDraftRecreateOutcome.SavedCheckFailed).SetName("T12_refusal_saved_check_failed_asks");
             yield return new TestCaseData((Action<FakeHost>)(h => h.Permitted = false), EditDraftRecreateOutcome.NotPermitted).SetName("T12_refusal_create_not_permitted");
-            yield return new TestCaseData((Action<FakeHost>)(h => { h.Draft = Clone(h.Draft, subSection: Guid.NewGuid()); h.SubSectionVisible = false; }), EditDraftRecreateOutcome.SubSectionNotVisible).SetName("T12_refusal_office_not_visible");
             yield return new TestCaseData((Action<FakeHost>)(h => h.CandidateFails = true), EditDraftRecreateOutcome.CandidateFailed).SetName("T12_refusal_candidate_failed");
         }
 
-        private static EditDraftRecreateDraft Clone(EditDraftRecreateDraft d, bool? live = null, bool? readable = null, string json = null, Guid? target = null, Guid? subSection = null) => new()
+        private static EditDraftRecreateDraft Clone(EditDraftRecreateDraft d, bool? live = null, bool? readable = null, string json = null, Guid? target = null) => new()
         {
-            DraftOid = d.DraftOid, Revision = d.Revision, ObjectType = d.ObjectType, TargetOid = target ?? d.TargetOid, ScopeOid = subSection ?? d.ScopeOid,
+            DraftOid = d.DraftOid, Revision = d.Revision, ObjectType = d.ObjectType, TargetOid = target ?? d.TargetOid,
             LastCapturedOn = d.LastCapturedOn, Live = live ?? d.Live, PayloadReadable = readable ?? d.PayloadReadable, PayloadJson = json ?? d.PayloadJson, EntryCount = d.EntryCount
         };
 
@@ -801,10 +815,10 @@ namespace Xaf.EditDraft.Tests
         {
             var host = Host();
             arrange(host);
-            var r = EditDraftRecreate.Run(host, Guid.NewGuid());
+            var r = EditDraftRecreate.Run(host, Guid.NewGuid(), ProbeType);
             r.Outcome.Should().Be(expected);
             host.Claims.Should().Be(0, "nothing is claimed");
-            host.Calls.Should().NotContain(new[] { "claim", "fill", "visible", "show" });
+            host.Calls.Should().NotContain(new[] { "claim", "fill", "mayRecreate", "show" });
             r.ClaimedRevision.Should().Be(0);
             host.Revision.Should().Be(4, "the row is unchanged");
             if (host.Candidate != null) host.Candidate.Disposed.Should().BeTrue();
@@ -814,7 +828,7 @@ namespace Xaf.EditDraft.Tests
         public void T12_N15_a_draft_with_no_restorable_typed_entry_gets_the_read_only_outcome_without_a_candidate()
         {
             var host = Host(p => { p.Entries.RemoveAll(e => e.Path == "Reason"); p.Upsert("Locked", "string", "Locked", true, null, null, "l", "l"); });
-            var r = EditDraftRecreate.Run(host, host.Draft.DraftOid);
+            var r = EditDraftRecreate.Run(host, host.Draft.DraftOid, ProbeType);
             r.Outcome.Should().Be(EditDraftRecreateOutcome.NothingRestorable);
             host.Calls.Should().NotContain("saved").And.NotContain("create").And.NotContain("claim");
             EditDraftNewRecordRules.UnavailableTyped(r.Policy, r.Payload).Select(e => e.Path).Should().Equal("Locked");
@@ -825,19 +839,19 @@ namespace Xaf.EditDraft.Tests
         {
             var host = Host();
             host.Saved = _ => null;
-            EditDraftRecreate.Run(host, host.Draft.DraftOid, proceedWhenSavedCheckFails: true).Outcome.Should().Be(EditDraftRecreateOutcome.Created);
+            EditDraftRecreate.Run(host, host.Draft.DraftOid, ProbeType, proceedWhenSavedCheckFails: true).Outcome.Should().Be(EditDraftRecreateOutcome.Created);
             var found = Host();
             found.Saved = o => o == History;
-            EditDraftRecreate.Run(found, found.Draft.DraftOid, proceedWhenSavedCheckFails: true).Outcome.Should().Be(EditDraftRecreateOutcome.AlreadySaved, "a found record is definitive");
+            EditDraftRecreate.Run(found, found.Draft.DraftOid, ProbeType, proceedWhenSavedCheckFails: true).Outcome.Should().Be(EditDraftRecreateOutcome.AlreadySaved, "a found record is definitive");
             found.Claims.Should().Be(0);
         }
 
         private static IEnumerable<TestCaseData> FailuresAfterTheClaim()
         {
             yield return new TestCaseData((Action<FakeHost>)(h => h.FillThrows = true), EditDraftRecreateOutcome.FillFailed, new[] { "claim", "fill" }).SetName("T12_failure_fill");
-            yield return new TestCaseData((Action<FakeHost>)(h => h.FilledVisible = false), EditDraftRecreateOutcome.FilledNotVisible, new[] { "claim", "fill", "visible" }).SetName("T12_failure_filled_office_not_visible");
-            yield return new TestCaseData((Action<FakeHost>)(h => h.ShowThrows = true), EditDraftRecreateOutcome.ShowFailed, new[] { "claim", "fill", "visible", "show" }).SetName("T12_failure_show");
-            yield return new TestCaseData((Action<FakeHost>)(h => h.ScreenAttaches = false), EditDraftRecreateOutcome.NotAcknowledged, new[] { "claim", "fill", "visible", "show" }).SetName("T12_failure_not_acknowledged");
+            yield return new TestCaseData((Action<FakeHost>)(h => h.FilledPermitted = false), EditDraftRecreateOutcome.FilledNotPermitted, new[] { "claim", "fill", "mayRecreate" }).SetName("T12_failure_filled_record_not_permitted");
+            yield return new TestCaseData((Action<FakeHost>)(h => h.ShowThrows = true), EditDraftRecreateOutcome.ShowFailed, new[] { "claim", "fill", "mayRecreate", "show" }).SetName("T12_failure_show");
+            yield return new TestCaseData((Action<FakeHost>)(h => h.ScreenAttaches = false), EditDraftRecreateOutcome.NotAcknowledged, new[] { "claim", "fill", "mayRecreate", "show" }).SetName("T12_failure_not_acknowledged");
         }
 
         [TestCaseSource(nameof(FailuresAfterTheClaim))]
@@ -846,12 +860,12 @@ namespace Xaf.EditDraft.Tests
         {
             var host = Host();
             arrange(host);
-            var r = EditDraftRecreate.Run(host, host.Draft.DraftOid);
+            var r = EditDraftRecreate.Run(host, host.Draft.DraftOid, ProbeType);
             r.Outcome.Should().Be(expected);
             r.Outcome.Should().NotBe(EditDraftRecreateOutcome.Created);
             host.Candidate.Disposed.Should().BeTrue("discarded unsaved");
             host.Calls.Last().Should().Be("dispose");
-            host.Calls.Where(c => c != "dispose").Skip(6).Should().Equal(reached, "owner, read, policy, saved, mayCreate, create, then the steps reached");
+            host.Calls.Where(c => c != "dispose").Skip(6).Should().Equal(reached, "policy, owner, read, saved, mayCreate, create, then the steps reached");
             host.Revision.Should().Be(5, "the claim stands: the row stays live at its new revision (the next 開く re-reads it)");
             r.ClaimedRevision.Should().Be(5);
         }
@@ -861,8 +875,8 @@ namespace Xaf.EditDraft.Tests
         {
             var host = Host();
             var stale = host.Draft;
-            EditDraftRecreate.Run(host, stale.DraftOid).Outcome.Should().Be(EditDraftRecreateOutcome.Created);
-            var loser = EditDraftRecreate.Run(host, stale.DraftOid);   // the same revision 4, read before the winner's claim
+            EditDraftRecreate.Run(host, stale.DraftOid, ProbeType).Outcome.Should().Be(EditDraftRecreateOutcome.Created);
+            var loser = EditDraftRecreate.Run(host, stale.DraftOid, ProbeType);   // the same revision 4, read before the winner's claim
             loser.Outcome.Should().Be(EditDraftRecreateOutcome.ClaimLost);
             host.Candidate.Disposed.Should().BeTrue("the loser's candidate is discarded: nothing applied, shown or saved");
             host.Calls.TakeLast(3).Should().Equal("create", "claim", "dispose");
@@ -871,7 +885,7 @@ namespace Xaf.EditDraft.Tests
                 DraftOid = stale.DraftOid, Revision = host.Revision, ObjectType = stale.ObjectType, TargetOid = Guid.Empty, Live = true, PayloadReadable = true,
                 PayloadJson = EditDraftPayload.FromJson<EditDraftPayload>(host.ClaimedJson).ToJson(), EntryCount = stale.EntryCount, LastCapturedOn = stale.LastCapturedOn
             };
-            EditDraftRecreate.Run(host, stale.DraftOid).Outcome.Should().Be(EditDraftRecreateOutcome.Created, "sequential opens each follow the current revision; no lifetime lock (D11 residual)");
+            EditDraftRecreate.Run(host, stale.DraftOid, ProbeType).Outcome.Should().Be(EditDraftRecreateOutcome.Created, "sequential opens each follow the current revision; no lifetime lock (D11 residual)");
             EditDraftPayload.FromJson<EditDraftPayload>(host.ClaimedJson).ProvisionalOids.Should().HaveCount(3, "original, first recreation, second recreation");
         }
     }
@@ -976,7 +990,6 @@ namespace Xaf.EditDraft.Tests
             ja.RecreateWarning.Should().Be("元の画面がまだ開いている場合は、そちらで保存してください。");
             ja.RecreateAlreadySaved.Should().Be("この入力控の記録はすでに保存されています。");
             ja.RecreateNoPermission.Should().Be("この記録を作成する権限がありません。");
-            ja.RecreateSubSectionNotVisible.Should().Be("この入力控の記録の事業所は表示できません。");
             ja.RecreateClaimLost.Should().Be("この入力控は戻せません（ほかの画面で戻されたか、変更されたか、期限切れです）。");
             string.Format(ja.Recreated, new DateTime(2026, 10, 2, 18, 21, 0)).Should().Be("入力控（入力 2026/10/02 18:21）から記録を作成しました。まだ保存されていません — 内容を確認して保存してください。");
             string.Format(ja.RecreatedPartly, new DateTime(2026, 10, 2, 18, 21, 0), 2).Should().Contain("（2 項目は戻せませんでした）");
@@ -996,30 +1009,23 @@ namespace Xaf.EditDraft.Tests
         }
 
         [Test]
-        public void SEC_D14_create_access_decision_and_the_office_seam_defaults_fail_closed()
+        public void SEC_D14_create_access_decision_fails_closed_and_the_recreate_host_asks_the_access_check_on_the_filled_record()
         {
-            // SINGLE-MODEL (Claude only; owner review D14).
+            // SINGLE-MODEL (Claude only; owner review D14). 0.4.0-preview.1: the scope check is gone (its two assertions are
+            // removed with it); the filled record is asked EditDraftServices.MayRecreate.
             EditDraftCreateAccess.Decide(true, true, true, true).Should().BeTrue();
             foreach (var (n, l, d, g) in new[] { (false, true, true, true), (true, false, true, true), (true, true, false, true), (true, true, true, false) })
                 EditDraftCreateAccess.Decide(n, l, d, g).Should().BeFalse($"allowNew={n} listAllowNew={l} detailAllowEdit={d} granted={g}");
             EditDraftCreateAccess.MayCreate(null, NewProbe.Policy()).Should().BeFalse("no application");
-            ((IEditDraftRecordAccess)new HostWithoutOfficeRule()).IsScopeVisible(null, NewProbe.Policy(), Guid.NewGuid())
-                .Should().BeFalse("a host that does not implement the 事業所-by-Oid check refuses (fail closed)");
-            XafSecurityEditDraftRecordAccess.Instance.IsScopeVisible(null, NewProbe.Policy(), Guid.NewGuid()).Should().BeFalse("a missing argument");
             var recreateHost = Wave1.Source("Xaf.EditDraft.Blazor/EditDraftRecreateHostBlazor.cs");
             recreateHost.Should().Contain("public bool MayCreate(EditDraftTypePolicy policy) => EditDraftCreateAccess.MayCreate(_application, policy);")
-                .And.Contain("EditDraftServices.RecordAccess(_application.ServiceProvider).IsScopeVisible(_application, policy, scopeOid)")
-                .And.Contain(".IsRecordVisible(_host._application, policy, _record)")
+                .And.Contain("public bool MayRecreate(EditDraftTypePolicy policy) => EditDraftServices.MayRecreate(_host._application, policy, _record);")
                 .And.Contain("TargetWindow = TargetWindow.NewModalWindow", "owner D6: a modal window, like today's 開く")
                 .And.Contain("var d = _writer.ReadOwn(readSpace, draftOid, ownerOid);   // owner-scoped (single-model)");
+            recreateHost.Should().NotContain("RecordAccess").And.NotContain("IsScopeVisible");
             var seam = Wave1.Source("Xaf.EditDraft.Core/EditDraftAccessSeam.cs");
             seam.Should().Contain("if (application.Security is IRequestSecurity)")
                 .And.Contain("DataManipulationRight.HasPermissionTo(policy.Type, null, null, objectSpace, SecurityOperations.Create)", "the call KB fix-531 uses");
-        }
-
-        private sealed class HostWithoutOfficeRule : IEditDraftRecordAccess
-        {
-            public bool IsRecordVisible(XafApplication application, EditDraftTypePolicy policy, object record) => true;
         }
     }
 
@@ -1104,7 +1110,7 @@ namespace Xaf.EditDraft.Tests
             };
             var later = host.NowValue.AddMinutes(3);
             host.OnCreate = () => host.NowValue = later;   // the clock moves while the candidate is built
-            EditDraftRecreate.Run(host, host.Draft.DraftOid).Outcome.Should().Be(EditDraftRecreateOutcome.Created);
+            EditDraftRecreate.Run(host, host.Draft.DraftOid, nameof(EditDraftNewProbe)).Outcome.Should().Be(EditDraftRecreateOutcome.Created);
             host.ClaimNow.Should().Be(later, "the [ExpiresOn] > now fence is tested at the claim");
         }
 
@@ -1119,7 +1125,7 @@ namespace Xaf.EditDraft.Tests
                 DraftOid = Guid.NewGuid(), Revision = 4, ObjectType = nameof(EditDraftNewProbe), TargetOid = Guid.Empty, Live = true, PayloadReadable = true,
                 PayloadJson = payload.ToJson(), EntryCount = 1
             };
-            var r = EditDraftRecreate.Run(host, host.Draft.DraftOid);
+            var r = EditDraftRecreate.Run(host, host.Draft.DraftOid, nameof(EditDraftNewProbe));
             r.Outcome.Should().Be(EditDraftRecreateOutcome.Created, "the record is on screen, unsaved, and holds the draft");
             r.GuardViolated.Should().BeTrue();
             var list = Wave1.Source("Xaf.EditDraft.Blazor/EditDraftListControllerBlazor.cs");
