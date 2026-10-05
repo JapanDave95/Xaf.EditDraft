@@ -1,0 +1,11 @@
+{
+  "name": "xaf-editdraft-journal-tests",
+  "private": true,
+  "description": "node:test + jsdom tests of the Xaf.EditDraft client-side input journal module (Xaf.EditDraft.Blazor/wwwroot/edit-draft-journal.js), milestone M1. It mirrors the host application's jsdom harness pattern: jsdom is the only dependency.",
+  "scripts": {
+    "test": "node --test \"test/*.test.js\""
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  }
+}

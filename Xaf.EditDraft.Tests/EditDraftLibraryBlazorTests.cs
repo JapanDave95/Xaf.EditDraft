@@ -36,7 +36,10 @@ namespace Xaf.EditDraft.Tests
         {
             nameof(EditDraftListCaptureControllerBlazor), nameof(EditDraftRestoreControllerBlazor), nameof(EditDraftRestorePopupControllerBlazor),
             nameof(EditDraftReadOnlyViewControllerBlazor), nameof(EditDraftListControllerBlazor), nameof(EditDraftListItemControllerBlazor),
-            nameof(EditDraftListViewControllerBlazor), nameof(EditDraftListBadgeControllerBlazor), nameof(EditDraftRestoreItemListControllerBlazor)
+            nameof(EditDraftListViewControllerBlazor), nameof(EditDraftListBadgeControllerBlazor), nameof(EditDraftRestoreItemListControllerBlazor),
+            // Expectation changed by owner ruling 2026-10-04 ("Yes, all six as proposed"; client journal M1, run
+            // 2026-10-04-edit-draft-journal-m1-96623a): the journal attribute controller is the tenth controller.
+            nameof(EditDraftJournalAttributeControllerBlazor)
         };
 
         private static readonly Type[] PopupClasses =
