@@ -143,6 +143,10 @@ public sealed class EditDraftTextSet
     public string NotAppliedLead { get; init; }
     public string NotAppliedViewCaption { get; init; }
 
+    // ---- Client-side input journal (phase 2; owner decision 10 default, 2026-10-03). ----
+    /// <summary>The row label of a value recovered from the browser journal (typed, never posted or saved).</summary>
+    public string JournalRowLabel { get; init; }
+
     // ---- Model captions (milestone M3): class and member captions of the popup/list classes and the store base. ----
     public string CaptionRestorePlan { get; init; }
     public string CaptionRestorePlanItems { get; init; }
@@ -270,6 +274,7 @@ public sealed class EditDraftTextSet
         SavedRecordNotOpened = "保存済みの記録を開けませんでした。",
         NotAppliedLead = "戻せなかった入力が {0} 件あります（表示のみ）。必要なら内容を見て入力し直してください。保存すると、この入力控は削除されます。",
         NotAppliedViewCaption = "戻せなかった入力",
+        JournalRowLabel = "入力中（未確定）",
         CaptionRestorePlan = "保存されていない入力",
         CaptionRestorePlanItems = "内容",
         CaptionReadOnlyView = "戻せない入力",
@@ -396,6 +401,7 @@ public sealed class EditDraftTextSet
         SavedRecordNotOpened = "The saved record could not be opened.",
         NotAppliedLead = "{0} field(s) could not be put back (display only). Read the text and type it again if needed. Saving deletes this draft.",
         NotAppliedViewCaption = "Input that could not be put back",
+        JournalRowLabel = "Being typed (not confirmed)",
         CaptionRestorePlan = "Unsaved input",
         CaptionRestorePlanItems = "Fields",
         CaptionReadOnlyView = "Input that cannot be restored",

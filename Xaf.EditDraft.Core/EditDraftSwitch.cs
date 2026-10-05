@@ -80,6 +80,31 @@ public static class EditDraftSwitch
         catch { return false; }
     }
 
+    /// <summary>
+    /// Client-side input journal (phase 2, milestone M1; M1 brief 2026-10-04): ONE global key. The journal attribute goes on
+    /// a policy's editors only when this key AND the type key are the boolean true, and for a never-saved record the
+    /// new-record key too. The global capture key (<see cref="EnabledKey"/>) is NOT read: the browser copy is independent
+    /// of server capture (the brief's dev-host check runs with capture off and the journal on). Fail closed; off in
+    /// Production until the browser pass (owner decision 14).
+    /// </summary>
+    public const string JournalKey = "EditDraftCapture:Journal:Enabled";
+
+    /// <summary>Pure decision for the client journal: the journal key and the type key, plus the new-record key for a never-saved record.</summary>
+    public static bool DecideJournal(string journalRaw, string typeRaw, string newRaw, bool isNew) =>
+        IsOn(journalRaw) && IsOn(typeRaw) && (!isNew || IsOn(newRaw));
+
+    public static bool IsJournalEnabled(IServiceProvider services, string policyId, bool isNew)
+    {
+        if (string.IsNullOrEmpty(policyId)) return false;
+        try
+        {
+            var configuration = services?.GetService<IConfiguration>();
+            return configuration != null && DecideJournal(configuration[In(services, JournalKey)], configuration[In(services, TypeKey(policyId))],
+                                                          configuration[In(services, NewRecordsKey)], isNew);
+        }
+        catch { return false; }
+    }
+
     public static bool IsListEnabled(IServiceProvider services, string policyId)
     {
         if (string.IsNullOrEmpty(policyId)) return false;

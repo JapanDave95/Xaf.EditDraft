@@ -164,6 +164,12 @@ public sealed class EditDraftTypePolicy
     /// </summary>
     public IReadOnlyList<string> NewRecordReconstructionOrder { get; init; } = Array.Empty<string>();
 
+    /// <summary>
+    /// Client-side journal (design Q2): DateTime members whose editor edits a time of day, journaled ONLY when listed here
+    /// (their setters differ: one re-dates the value, another keeps the date). Empty = no DateTime member is journaled.
+    /// </summary>
+    public IReadOnlySet<string> JournalTimeOfDayMembers { get; init; } = NoNames;
+
     /// <summary>Every capturable member, reconstruction context first. Discovered once.</summary>
     public IReadOnlyList<EditDraftMemberSpec> Members => _members.Value;
 

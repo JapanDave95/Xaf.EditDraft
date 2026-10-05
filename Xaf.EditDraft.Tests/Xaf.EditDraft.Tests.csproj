@@ -14,6 +14,9 @@
         <RootNamespace>Xaf.EditDraft.Tests</RootNamespace>
         <AssemblyName>Xaf.EditDraft.Tests</AssemblyName>
         <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+        <!-- Client journal M1: js/ holds the node:test + jsdom suite of the browser module (npm test, not MSBuild); the
+             packages npm installs under js/node_modules are not project items. -->
+        <DefaultItemExcludes>$(DefaultItemExcludes);js/node_modules/**</DefaultItemExcludes>
     </PropertyGroup>
 
     <ItemGroup>

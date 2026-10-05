@@ -64,6 +64,18 @@ public class EditDraftCaptureController : ObjectViewController<DetailView, objec
     /// <summary>True while a capture of this screen is admitted (policy, view, root, existing record). Switches and owner are checked per event.</summary>
     public bool IsAdmitted => _policy != null && _record != null;
 
+    /// <summary>
+    /// Client journal (design S11): the canonical raw of <paramref name="path"/> in this screen's baseline snapshot (taken when
+    /// the record was bound and again after each save). False when the screen is not admitted or the snapshot lacks the member.
+    /// </summary>
+    public bool TryGetBaselineRaw(string path, out string raw)
+    {
+        raw = null;
+        if (!IsAdmitted || path == null || !_baseline.TryGetValue(path, out var entry)) return false;
+        raw = entry.Raw;
+        return true;
+    }
+
     /// <summary>The pure admission rule (view part), tested without XAF.</summary>
     public static bool IsAdmittedView(EditDraftTypePolicy policy, string viewId, bool isRoot, bool isNew) =>
         EditDraftTypePolicy.IsGeneric(policy) && isRoot && !isNew
