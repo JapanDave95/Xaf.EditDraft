@@ -8,7 +8,7 @@ user who typed them, expire, and are never applied without the user's confirmati
 Status: extracted from the CareCrew application on 2026-10-03, where it runs behind configuration switches. This
 repository is the source of truth for the library from that date; CareCrew consumes the package. Version
 0.2.0-preview.1 closed the library gaps found by the sample consumer (see "Status of the gaps"). Version
-0.3.0-preview.1 adds the client-side input journal, off by default and not yet connected to restore (see the
+0.3.0-preview.2 adds the client-side input journal, off by default and not yet connected to restore (see the
 `docs/edit-draft-client-journal-*` write-ups).
 
 ## Projects
@@ -42,7 +42,7 @@ for public packages: a consumer needs a GitHub personal access token (classic) w
    (the Blazor package depends on Core at the same version):
 
    ```xml
-   <PackageReference Include="Xaf.EditDraft.Blazor" Version="0.3.0-preview.1" />
+   <PackageReference Include="Xaf.EditDraft.Blazor" Version="0.3.0-preview.2" />
    ```
 
 3. The packages declare the DevExpress packages they need (26.1.4) as dependencies and do not contain them. DevExpress

@@ -1,7 +1,7 @@
 # Xaf.EditDraft consumer guide
 
 How to add Xaf.EditDraft to a DevExpress XAF Blazor application, what the library checks at startup, and what stays the
-application's responsibility. Version 0.3.0-preview.1 (the client-side input journal it adds is off by default and
+application's responsibility. Version 0.3.0-preview.2 (the client-side input journal it adds is off by default and
 not covered here; see the `edit-draft-client-journal-*` write-ups). The working example is `samples/Xaf.EditDraft.Sample` (one class,
 `Note`); each step below names the sample file that does it.
 

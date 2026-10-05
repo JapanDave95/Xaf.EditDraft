@@ -119,16 +119,23 @@ namespace Xaf.EditDraft.Tests
         }
 
         [Test]
-        public void G13_T47_T72_T74_version_0_2_0_preview_1_with_release_notes()
+        public void G13_T47_T72_T74_the_version_is_set_once_and_the_release_notes_and_assemblies_follow_it()
         {
+            // Version-agnostic since 0.3.0-preview.2 (owner ruling 2026-10-05): the pin of the literal 0.2.0-preview.1
+            // broke the 0.3.0-preview.1 release run. What it protects stays: one <Version>, release notes that start
+            // with that version, and assemblies built from it.
             var props = RepoFile("Directory.Build.props");
-            props.Should().Contain("<Version>0.2.0-preview.1</Version>");
+            var match = Regex.Match(props, @"<Version>(\d+)\.(\d+)\.(\d+)(-[0-9A-Za-z.]+)?</Version>");
+            match.Success.Should().BeTrue("Directory.Build.props sets one semantic <Version>");
+            Regex.Matches(props, @"<Version>\d").Count.Should().Be(1, "the version is set in one place");
+            var version = match.Value.Substring("<Version>".Length, match.Value.Length - "<Version>".Length * 2 - 1);
             var notes = Regex.Match(props, "<PackageReleaseNotes>(.*?)</PackageReleaseNotes>", RegexOptions.Singleline).Groups[1].Value;
-            notes.Should().Contain("0.2.0-preview.1");
+            notes.Should().StartWith(version + " (", "the release notes begin with the version being released");
+            var numeric = new Version(int.Parse(match.Groups[1].Value), int.Parse(match.Groups[2].Value), int.Parse(match.Groups[3].Value), 0);
             foreach (var assembly in new[] { Core, Blazor })
             {
-                assembly.GetName().Version.Should().Be(new Version(0, 2, 0, 0), assembly.GetName().Name);
-                assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Should().StartWith("0.2.0-preview.1");
+                assembly.GetName().Version.Should().Be(numeric, assembly.GetName().Name);
+                assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Should().StartWith(version);
             }
         }
 
