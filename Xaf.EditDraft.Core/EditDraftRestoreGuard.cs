@@ -16,7 +16,7 @@ namespace Xaf.EditDraft.Core;
 ///  - a commit or rollback of a DIFFERENT object space is not seen.
 /// The engine never rolls back as error recovery.
 ///
-/// Milestone 1: built and tested; NOT opened by the カルテ入力控 chart restore (no behaviour change there).
+/// Opened by the restore (EditDraftRestoreControllerBlazor) and the recreate (EditDraftRecreateHostBlazor).
 /// </summary>
 public sealed class EditDraftRestoreGuard : IDisposable
 {

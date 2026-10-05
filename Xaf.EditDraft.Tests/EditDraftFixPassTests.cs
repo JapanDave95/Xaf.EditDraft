@@ -43,7 +43,7 @@ namespace Xaf.EditDraft.Tests
         public EditDraftDboNamedStore(Session session) : base(session) { }
     }
 
-    /// <summary>The store of the F2 retry test only, so no other test's remembered state can hide its checks.</summary>
+    /// <summary>The store of the retry test (F2_T11) only, so no other test's remembered state can hide its checks.</summary>
     public class EditDraftRecheckStore : EditDraftStoreBase
     {
         public EditDraftRecheckStore(Session session) : base(session) { }
@@ -146,7 +146,7 @@ namespace Xaf.EditDraft.Tests
             }
         }
 
-        // ---- F2 (Codex C2): only a passed check is remembered --------------------------------------------------------------
+        // ---- Codex C2 (F2_T11): only a passed check is remembered ----------------------------------------------------------
 
         [Test]
         public void F2_T11_a_failed_database_check_and_a_failed_role_scan_are_not_remembered_and_run_again_at_the_next_setup()

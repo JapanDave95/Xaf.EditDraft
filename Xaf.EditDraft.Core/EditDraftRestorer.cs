@@ -200,8 +200,8 @@ public static class EditDraftRestorer
     /// Wave 1 (existing records only): the paths of <paramref name="chosenPaths"/> that may be assigned
     /// to an EXISTING record. Group expansion is applied first, then every 戻せません member
     /// (<see cref="EditDraftTypePolicy.NotRestorableOnExisting"/>) and every path without a member spec
-    /// is dropped. <see cref="Apply"/> itself assigns whatever it is given (the chart NEW-record path
-    /// needs that), so the generic controllers call <see cref="ApplyExisting"/>, which enforces the
+    /// is dropped. <see cref="Apply"/> itself assigns whatever it is given (a caller that builds its own
+    /// list relies on that), so the generic controllers call <see cref="ApplyExisting"/>, which enforces the
     /// disposition at the engine, not only in the popup's checkbox state (Codex diag C2).
     /// </summary>
     public static List<string> AssignableOnExisting(EditDraftTypePolicy policy, IEnumerable<string> chosenPaths, EditDraftPayload payload)

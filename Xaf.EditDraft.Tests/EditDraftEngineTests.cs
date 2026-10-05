@@ -21,12 +21,10 @@ namespace Xaf.EditDraft.Tests
     // Labels En / Mn refer to them. The engine is exercised with TEST-ONLY types and policies in a
     // registry of its own; nothing here registers a production type. XPO paths run against an
     // in-memory object space (no database, no host). Controller and browser behaviour is NOT covered
-    // here (capture, the claim, the popup): that is the Dev2 browser pass.
-    // Library milestone M3 (run 2026-10-02-editdraft-m3-1b4d82): moved here from NursingHome_Chart.Rostering.Tests
-    // (EditDraftEngineTests.cs) with only the namespace changed — the tests that need the two library assemblies only.
-    // The tests that use the application's registry, chart types or chart payload stay in that project.
+    // here (capture, the claim, the popup): that is the browser pass.
+    // Library milestone M3 (run 2026-10-02-editdraft-m3-1b4d82): the tests that need the two library assemblies only.
 
-    /// <summary>A test-only record with two setter cascades of the accident kind, an outside member and a locked one.</summary>
+    /// <summary>A test-only record with two setter cascades (a driver that fills another member only when it is empty), an outside member and a locked one.</summary>
     public class EditDraftProbeA : BaseObject
     {
         public EditDraftProbeA(Session session) : base(session) { }
@@ -278,7 +276,7 @@ namespace Xaf.EditDraft.Tests
             EditDraftRestorer.ApplyOrder(A, new[] { "When", "Text", "Note" })
                 .Should().Equal(new[] { "Text", "Note", "When", "When" }, "only the second group is touched; its dependent comes again at the end");
             EditDraftRestorer.ApplyOrder(A, new[] { "Number", "Note" })
-                .Should().Equal(new[] { "Note", "Number", "Number" }, "a dependent without its driver is still repeated, as the meal members are today");
+                .Should().Equal(new[] { "Note", "Number", "Number" }, "a dependent without its driver is still repeated at the end");
             EditDraftRestorer.ApplyOrder(A, new[] { "Note", "Status" }).Should().Equal("Note", "Status");
         }
 
@@ -547,7 +545,7 @@ namespace Xaf.EditDraft.Tests
         }
     }
 
-    /// <summary>D12: the commit / rollback cancel guard (design §4.1 layer 2). Built in milestone 1; not opened by the chart restore.</summary>
+    /// <summary>D12: the commit / rollback cancel guard (design §4.1 layer 2). Built in milestone 1.</summary>
     [TestFixture]
     public class EditDraftRestoreGuardTests
     {

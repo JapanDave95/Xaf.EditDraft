@@ -10,12 +10,10 @@ using Xaf.EditDraft.Core;
 
 namespace Xaf.EditDraft.Tests
 {
-    // Xaf.EditDraft library, milestone M1 (run 2026-10-01-editdraft-m1-c3f4de): the seams Core exposes and CareCrew's
-    // implementation of them. Expectations from the Codex requirement-only list of this run (tests a1): E9-E18, E21, E22.
+    // Xaf.EditDraft library, milestone M1 (run 2026-10-01-editdraft-m1-c3f4de): the seams Core exposes. Expectations from
+    // the Codex requirement-only list of this run (tests a1): E9-E18, E21, E22.
     // The owner and record-access seams (design §4.11) are SINGLE-MODEL: their checks here are Claude's alone.
-    // Library milestone M3 (run 2026-10-02-editdraft-m3-1b4d82): moved here from NursingHome_Chart.Rostering.Tests
-    // (EditDraftLibrarySeamTests.cs) with only the namespace changed — the tests of the library's own seams. The tests of
-    // the application's implementation of them (E11, E12_E13, E14_SEC6, E17_E18, E21) stay in that project.
+    // Library milestone M3 (run 2026-10-02-editdraft-m3-1b4d82): the tests of the library's own seams.
 
     /// <summary>A service provider of fixed instances (no container): what a host's DI answers.</summary>
     internal sealed class FixedServices : IServiceProvider
@@ -144,7 +142,7 @@ namespace Xaf.EditDraft.Tests
                 EditDraftComparison.StatusText(EditDraftItemStatus.Clean, false).Should().Be("Can be restored");
                 EditDraftComparison.StatusText(EditDraftItemStatus.Clean, true).Should().Be("Can be restored (other records change too)");
                 EditDraftDisplay.ChangeText(null, "x", false).Should().Be("(unknown) → x");
-                EditDraftProvenance.Origin(true, "Overtime").Should().Be("From the list (Overtime)");
+                EditDraftProvenance.Origin(true, "Notes").Should().Be("From the list (Notes)");
                 EditDraftCaptureController.ContextTextFor("ToDo", new DateTime(2026, 9, 30)).Should().Be("ToDo / 2026/09/30");
 
                 EditDraftTexts.Use((EditDraftTextSet)null);
@@ -156,7 +154,7 @@ namespace Xaf.EditDraft.Tests
                 Thread.CurrentThread.CurrentUICulture = culture;
                 Thread.CurrentThread.CurrentCulture = culture;
             }
-            EditDraftCaptureController.ContextTextFor("苦情対応", new DateTime(2026, 9, 30)).Should().Be("苦情対応／2026/09/30", "CareCrew (ja) is unchanged");
+            EditDraftCaptureController.ContextTextFor("メモ", new DateTime(2026, 9, 30)).Should().Be("メモ／2026/09/30", "the Japanese set's separator");
         }
     }
 

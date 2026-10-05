@@ -15,11 +15,9 @@ namespace Xaf.EditDraft.Tests
     //   W47-W57 run 2026-10-01-editdraft-wave1-ea729d, tests a2 (the D16/D17 addendum)
     // Labels Wn refer to them. Logic tests run against pure code or an in-memory object space; scan
     // tests read source text. Controller timing (arming, the popup, the guard inside the dispatcher)
-    // and every behaviour marked B in the design are the Dev2 browser pass, not this file.
-    // Library milestone M3 (run 2026-10-02-editdraft-m3-1b4d82): moved here from NursingHome_Chart.Rostering.Tests
-    // (EditDraftWave1Tests.cs) with only the namespace changed — the wave-1 tests on the library's own rules and source.
-    // The tests on the application's wave-1 classes, policies, files and the NHM mirror stay in that project. The helper
-    // below is the part of that project's Wave1 helper these tests use (repository root, source text, payload).
+    // and every behaviour marked B in the design are the browser pass, not this file.
+    // Library milestone M3 (run 2026-10-02-editdraft-m3-1b4d82): the wave-1 tests on the library's own rules and source.
+    // The helper below gives the repository root, a library source file's text and a test payload.
 
     internal static class Wave1
     {
@@ -35,7 +33,7 @@ namespace Xaf.EditDraft.Tests
         public static string Source(string rel)
         {
             var path = Path.Combine(Root(), rel.Replace('/', Path.DirectorySeparatorChar));
-            if (!File.Exists(path)) Assert.Ignore($"{rel} is not in this repository (CareCrew-only host file).");
+            if (!File.Exists(path)) Assert.Fail($"{rel} does not exist in the repository");
             return File.ReadAllText(path);
         }
 
@@ -69,11 +67,11 @@ namespace Xaf.EditDraft.Tests
         {
             EditDraftSwitch.TypeKey("ToDo").Should().Be("EditDraftCapture:Types:ToDo:Enabled");
             EditDraftSwitch.EnabledKey.Should().Be("EditDraftCapture:Enabled");
-            EditDraftSwitch.TypeKey("ToDo").Should().NotBe(EditDraftSwitch.TypeKey("TenantCase"));
+            EditDraftSwitch.TypeKey("ToDo").Should().NotBe(EditDraftSwitch.TypeKey("Note"));
         }
 
-        // W10 (EditDraftOwnerRule, the first host's D6 staff/GeneralUser rule) was deleted in 0.4.0-preview.1 with the rule
-        // itself (owner ruling 2026-10-05: the library keeps no host owner rule; a host implements IEditDraftOwnerResolver).
+        // W10 (EditDraftOwnerRule) was deleted in 0.4.0-preview.1 with the rule itself (owner ruling 2026-10-05: the library
+        // keeps no host owner rule; a host implements IEditDraftOwnerResolver).
 
         [Test]
         public void W20b_no_owner_at_apply_time_refuses()
@@ -172,9 +170,8 @@ namespace Xaf.EditDraft.Tests
         [Test]
         public void W38b_the_five_mutations_each_name_the_owner_including_the_multi_line_supersede()
         {
-            // W38 above is RED on its statement COUNT: the supersede statement is assigned to a variable and ends
-            // in ';', which its regex (the chart C28 shape) does not match — a test defect, escalated, not revised.
-            // Each mutation is asserted here by its own text. Owner ruling 2026-10-03 (new-record capture): the
+            // Each mutation is asserted by its own text, not by a statement count: the supersede statement is assigned
+            // to a variable and ends in ';', which a count by regex does not match. Owner ruling 2026-10-03 (new-record capture): the
             // new-record claim TryClaimNew is the fifth statement, fenced on Oid, Revision, Owner, ExpiresOn and
             // TargetOid = Empty like the others.
             var writer = Wave1.Source(Writer);

@@ -5,10 +5,9 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Xaf.EditDraft.Core;
 
 /// <summary>
-/// 入力控 on/off for the generic (non-chart) types — design §6, owner decision D5. A type is captured
+/// 入力控 on/off for the registered generic types — design §6, owner decision D5. A type is captured
 /// only when BOTH "EditDraftCapture:Enabled" and "EditDraftCapture:Types:&lt;PolicyId&gt;:Enabled" are
-/// the boolean true; missing, empty, unparsable or unreadable = OFF (fail closed; <see cref="IsOn"/> is the
-/// parse of CareCrew's CareTreeDraftCaptureSwitch, copied). The chart key TenantChartDraftCapture:Enabled is NOT read here.
+/// the boolean true; missing, empty, unparsable or unreadable = OFF (fail closed; see <see cref="IsOn"/>).
 /// Re-read at every use.
 ///
 /// Library (milestone M1): the section is the host's choice (<see cref="EditDraftSwitchOptions"/> in the service
@@ -33,8 +32,7 @@ public static class EditDraftSwitch
 
     /// <summary>
     /// FAILS CLOSED: true only for a value that parses as the boolean true (bool.TryParse after Trim: case-insensitive,
-    /// surrounding whitespace ignored). Missing, empty, "1", "yes", "on" or anything else is OFF. The same answer as
-    /// CareCrew's CareTreeDraftCaptureSwitch.IsOn for the same input (library design §4.11 SEC-6).
+    /// surrounding whitespace ignored). Missing, empty, "1", "yes", "on" or anything else is OFF (library design §4.11 SEC-6).
     /// </summary>
     public static bool IsOn(string raw) => raw != null && bool.TryParse(raw.Trim(), out var value) && value;
 
@@ -141,8 +139,8 @@ public static class EditDraftSwitch
     /// Restore and the 「入力控」 list: available exactly while dbo.EditDraft EXISTS, whatever the
     /// switches say — switching capture off (globally or per type) must not hide drafts still inside
     /// their seven days (design §6), and a database without the table shows nothing (Codex review C5:
-    /// the chart switch answers true on "global on" before probing, which would show the entries on a
-    /// development database whose table the owner has not created yet). Probe cached five minutes.
+    /// answering true on "global on" before probing would show the entries on a development database
+    /// whose table has not been created yet). Probe cached five minutes.
     /// </summary>
     public static bool IsRestoreAvailable(IServiceProvider services)
     {

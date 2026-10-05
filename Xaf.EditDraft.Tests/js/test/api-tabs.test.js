@@ -135,7 +135,7 @@ test('T30 coverage groups attributed editors by view and context, counts invalid
     h.addEditor(t, { d: { m: 'Description' } });
     h.addEditor(t, { d: { m: 'Start', k: 'time', f: 'HH:mm' } });
     h.addEditor(t, { d: { m: 'Description', ctx: 'ffffffffffffffffffffffffffffffff' } });            // an inactive MDI tab of the same view
-    h.addEditor(t, { d: { m: 'Name', w: 'ShiftType_DetailView' } });
+    h.addEditor(t, { d: { m: 'Name', w: 'Order_DetailView' } });
     h.addEditor(t, { raw: '{broken', d: { m: 'Broken' } });
     const nofield = t.doc.createElement('dxbl-combo-box');
     nofield.setAttribute('data-editdraft', JSON.stringify(h.descriptor({ m: 'ReadOnlyLookup', k: 'combo' })));
@@ -146,7 +146,7 @@ test('T30 coverage groups attributed editors by view and context, counts invalid
     assert.deepEqual(g('ToDo_DetailView', h.CTX).members.map(m => m.m).sort(), ['Description', 'ReadOnlyLookup', 'Start']);
     assert.equal(g('ToDo_DetailView', h.CTX).members.find(m => m.m === 'ReadOnlyLookup').field, false);
     assert.deepEqual(g('ToDo_DetailView', 'ffffffffffffffffffffffffffffffff').members.map(m => m.m), ['Description']);
-    assert.deepEqual(g('ShiftType_DetailView', h.CTX).members.map(m => m.m), ['Name']);
+    assert.deepEqual(g('Order_DetailView', h.CTX).members.map(m => m.m), ['Name']);
     assert.ok(!JSON.stringify(c).includes('"val"'), 'no values');
     t.close();
 });

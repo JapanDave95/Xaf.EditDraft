@@ -13,8 +13,7 @@ using Xaf.EditDraft.Core;
 namespace Xaf.EditDraft.Blazor;
 
 /// <summary>
-/// 入力控 CAPTURE on ListViews (generic edit-draft engine, wave 1b; design
-/// docs/generic-edit-draft-wave1b-design-2026-10-01.md §3; owner B1, B3, B7). Beside the DetailView capture,
+/// 入力控 CAPTURE on ListViews (generic edit-draft engine, wave 1b; owner B1, B3, B7). Beside the DetailView capture,
 /// which is unchanged. A row inline-edited in an admitted list becomes a draft of the SAME shape as a
 /// DetailView draft (same payload, writer and dbo.EditDraft table; ViewId = the list id), restored through the
 /// record's root DetailView (B2 — nothing is ever applied into a grid row).

@@ -178,7 +178,8 @@ test('N3 mutation audit: capture, a retry, an emptied field, eviction, list and 
         seed(w, { load: 'loadaa', m: 'AA', at: now - 2 * 60 * MIN });                // a load id that starts with A's
         w.storage.map.set(LEGACY + 'ns1', String(now - 2 * 60 * MIN) + '|loadb|1');
         w.storage.map.set(LEGACY + 'ns2', 'garbage');
-        // 'CareCrew_InputJournal' is the first host's real localStorage key, which the library must never touch.
+        // GUARD: 'CareCrew_InputJournal' is a real application's own localStorage key outside the library's prefix; the
+        // library must never touch it.
         w.storage.map.set('CareCrew_InputJournal', '{"other":"journal"}');
         w.storage.map.set('XafEditDraft.j0|ns1|loada|' + h.CTX + '|Old|1', '{"at":1,"val":"keep"}');
         w.storage.map.set('XafEditDraft.j2|ns1|loada|' + h.CTX + '|New|1', '{"at":1,"val":"keep"}');

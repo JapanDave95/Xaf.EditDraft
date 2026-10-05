@@ -25,8 +25,8 @@ public sealed class EditDraftEntry
 
 /// <summary>
 /// The payload of an edit draft (入力控). Pure. The baseline of an entry is fixed at the FIRST capture
-/// of that member; later edits move only the value (the same rule as the attendance store — a
-/// drifting baseline would make every conflict test answer "clean").
+/// of that member; later edits move only the value (a drifting baseline would make every conflict
+/// test answer "clean").
 /// Every serialised property is declared HERE, in this order, so a derived payload writes the same text.
 /// </summary>
 public class EditDraftPayload

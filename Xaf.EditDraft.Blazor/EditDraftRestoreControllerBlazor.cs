@@ -13,7 +13,7 @@ using Xaf.EditDraft.Core;
 namespace Xaf.EditDraft.Blazor;
 
 /// <summary>
-/// AUTO-OFFER for the registered non-chart types (generic edit-draft engine, wave 1): when an EXISTING
+/// AUTO-OFFER for the registered generic types (generic edit-draft engine, wave 1): when an EXISTING
 /// record opens in an approved root DetailView and the logged-in user has live 入力控 drafts for it, a
 /// popup lists every drafted member against the record as it is NOW. Owner D16: ALL live drafts of the
 /// record (type + TargetOid + owner) are offered together, newest first, each with its provenance line;
@@ -460,7 +460,7 @@ public class EditDraftRestoreControllerBlazor : ObjectViewController<DetailView,
             var stored = freshSpace.GetObjectByKey(record.GetType(), (record as BaseObject)?.Oid ?? Guid.Empty);
             if (stored == null) return safe;
             // KB fix-529: the screen's value is the one the writing getters filled; the fresh read gets the same fill
-            // before comparing. Accepted residual (chart branch, Codex C2): a stored value CLEARED to empty after the
+            // before comparing. Accepted residual (Codex C2): a stored value CLEARED to empty after the
             // popup opened reads as the fill and is not detected; the run is logged so it is visible.
             var ran = EditDraftMembers.RunInitializingGetters(_policy, stored);
             if (ran > 0) EditDraftLog.Info($"[EditDraft] apply re-check: {ran} initializing getter(s) run on the fresh read of {_policy.TypeName} before comparing {chosen.Count} member(s)");

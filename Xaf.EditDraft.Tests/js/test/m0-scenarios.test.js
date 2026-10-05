@@ -3,8 +3,8 @@
 // expectations T43-T58 (collaborator run 2026-10-04-edit-draft-journal-m1-96623a, `tests` a1) and run here against the
 // M1 module with real DOM events in jsdom (the M0 harness used a hand-made mock DOM against the spike).
 // Two M1 differences from the spike, both from the M0 write-up: no animation-frame read (a composition has ONE later read,
-// so S4b/S4c count one drop per stale session), and the install report covers the library's own entries only (S13: the
-// host's chart journal is not read by the library).
+// so S4b/S4c count one drop per stale session), and the install report covers the library's own entries only (S13: an
+// application's own journal is not read by the library).
 'use strict';
 
 const { test } = require('node:test');

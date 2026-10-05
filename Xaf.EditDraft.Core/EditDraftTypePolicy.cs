@@ -47,7 +47,10 @@ public sealed class EditDraftTypePolicy
     public IReadOnlySet<string> Excluded { get; init; } = NoNames;
     public IReadOnlyList<string> ExcludedPrefixes { get; init; } = Array.Empty<string>();
 
-    /// <summary>Seeded for a NEW record at first capture; applied first, in this order (chart types only).</summary>
+    /// <summary>
+    /// Context members, in this order: proposed even when not browsable, listed first, and applied first on an existing
+    /// record (<see cref="EditDraftRestorer.ApplyOrder"/>). A new record's seed is <see cref="NewRecordReconstructionOrder"/>.
+    /// </summary>
     public IReadOnlyList<string> ReconstructionOrder { get; init; } = Array.Empty<string>();
 
     /// <summary>(companion property, value member): a named path only, no traversal.</summary>
@@ -90,12 +93,12 @@ public sealed class EditDraftTypePolicy
     /// <summary>Members shown but not restorable (戻せません) on an EXISTING record.</summary>
     public IReadOnlySet<string> NotRestorableOnExisting { get; init; } = NoNames;
 
-    /// <summary>DetailView ids in which capture and restore may run. Null = no allowlist (the chart types, as today).</summary>
+    /// <summary>DetailView ids in which capture and restore may run. Null = no allowlist.</summary>
     public IReadOnlySet<string> ApprovedViewIds { get; init; }
 
-    // ---- wave 1 (non-chart types); all null/empty for the chart policies -----------------------
+    // ---- wave 1 (generic types); all null/empty for a policy without a decision table -----------
 
-    /// <summary>The per-member decision table (T3 gate). Null for the chart types (owner Q1: their name list stays).</summary>
+    /// <summary>The per-member decision table (T3 gate). Null = a policy without a decision table, which the library never admits (<see cref="IsGeneric"/>).</summary>
     public IReadOnlyDictionary<string, EditDraftMemberDecision> Decisions { get; init; }
 
     /// <summary>The date shown beside the type caption in the list's 対象 column (design §3 S4c: caption + date, never a name). Null = none.</summary>
@@ -117,11 +120,10 @@ public sealed class EditDraftTypePolicy
 
     /// <summary>
     /// Getters that WRITE (KB fix-529; owner ruling 2026-10-01 "align with fix-529"): read-only properties
-    /// whose getter fills another member when it is empty (chart example: TenantChartAccident.AccidentDateTime
-    /// fills AccidentTime). The capture runs them ONCE, under capture suppression, BEFORE it takes the baseline,
-    /// so the fill is baseline, not an edit; the restore re-check runs them on its fresh database read. Same
-    /// concept as TenantChartDraftPolicy.InitializingGetters on the chart branch. Empty for the wave-1 types
-    /// (no writing getter found in their sources). A name that does not resolve is ignored.
+    /// whose getter fills another member when it is empty (example: an Order's read-only StartDateTime that fills
+    /// StartTime from Date when StartTime is empty). The capture runs them ONCE, under capture suppression, BEFORE it
+    /// takes the baseline, so the fill is baseline, not an edit; the restore re-check runs them on its fresh database
+    /// read. Empty = none. A name that does not resolve is ignored.
     /// </summary>
     public IReadOnlyList<string> InitializingGetters { get; init; } = Array.Empty<string>();
 
@@ -137,8 +139,8 @@ public sealed class EditDraftTypePolicy
     /// <summary>
     /// NEW records (design §4.2.3): the members seeded (Seeded = true) at a new record's FIRST genuine edit and applied first,
     /// in this order, when the draft is recreated (EditDraftRestorer.ApplyNew) — the context the record's construction
-    /// defaults depend on (残業・有給: 職員, 日付, 開始時刻, 終了時刻; 日付 before the times). Kept apart from
-    /// <see cref="ReconstructionOrder"/> (the chart types' list), which also orders the EXISTING-record apply and admits
+    /// defaults depend on (example: an Order with Customer, Date, Start and End; Date before the times). Kept apart from
+    /// <see cref="ReconstructionOrder"/>, which also orders the EXISTING-record apply and admits
     /// non-browsable members: this list changes neither. Only members the policy admits are seeded. Empty = no seed.
     /// </summary>
     public IReadOnlyList<string> NewRecordReconstructionOrder { get; init; } = Array.Empty<string>();

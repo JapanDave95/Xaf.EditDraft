@@ -12,7 +12,9 @@ repository is the source of truth for the library from that date; CareCrew consu
 `docs/edit-draft-client-journal-*` write-ups). Version 0.4.0-preview.1 (breaking) leaves access to XAF security: who may
 restore or recreate a record is decided by the application's roles and permissions, plus one optional host check
 (`IEditDraftAccessCheck`); the scope and owner-kind concepts of the first host are removed (see
-`docs/xaf-native-access-2026-10-05.md` and the consumer guide's upgrade section).
+`docs/xaf-native-access-2026-10-05.md` and the consumer guide's upgrade section). Version 0.4.1-preview.1 is a cleanup
+with no API change: the library source, texts and tests no longer name the first host's classes, files, screens or
+projects, and the Japanese `PersonalLoginOnly` text is reworded (`docs/decouple-cleanup-2026-10-05.md`).
 
 ## Projects
 
@@ -45,7 +47,7 @@ for public packages: a consumer needs a GitHub personal access token (classic) w
    (the Blazor package depends on Core at the same version):
 
    ```xml
-   <PackageReference Include="Xaf.EditDraft.Blazor" Version="0.4.0-preview.1" />
+   <PackageReference Include="Xaf.EditDraft.Blazor" Version="0.4.1-preview.1" />
    ```
 
 3. The packages declare the DevExpress packages they need (26.1.4) as dependencies and do not contain them. DevExpress
@@ -78,8 +80,9 @@ dotnet test Xaf.EditDraft.Tests
 dotnet test samples/Xaf.EditDraft.Sample/Xaf.EditDraft.Sample.Tests
 ```
 
-Some tests in `Xaf.EditDraft.Tests` compare the library against files of its first host application and are
-skipped (`Assert.Ignore`) when those files are not in the repository.
+No test in `Xaf.EditDraft.Tests` depends on a file of another repository. The tests that read this repository's files
+find it by walking up to `.git`, so they are skipped only when run outside a git checkout (for example from a source
+archive).
 
 ## Publishing a version
 

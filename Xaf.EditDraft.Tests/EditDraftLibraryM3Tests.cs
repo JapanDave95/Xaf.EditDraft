@@ -250,7 +250,7 @@ namespace Xaf.EditDraft.Tests
         }
 
         [Test]
-        public void C42_CareCrew_s_Japanese_set_gives_every_model_caption_of_today_byte_for_byte()
+        public void C42_the_Japanese_set_gives_every_model_caption_byte_for_byte()
         {
             string Ja(Type t, string member) => EditDraftModelCaptions.Find(All, t, member, EditDraftTextSet.Japanese);
             Ja(typeof(EditDraftRestorePlan), null).Should().Be("保存されていない入力");
@@ -430,28 +430,18 @@ namespace Xaf.EditDraft.Tests
         }
 
         [Test]
-        public void C25_C31_the_project_uses_the_versions_the_application_tests_pin_adds_no_package_and_is_in_the_solution_once()
+        public void C25_C31_the_project_references_the_two_library_projects_links_no_source_and_is_in_the_solution_once()
         {
+            // 0.4.1-preview.1 (owner instruction 2026-10-05, cleanup pass): the comparison with another repository's test
+            // project and solution is removed (it was skipped here, so its own-project checks below never ran); the checks
+            // on this repository's own files stay.
             var root = Wave1.Root();
             var mine = File.ReadAllText(Path.Combine(root, "Xaf.EditDraft.Tests", "Xaf.EditDraft.Tests.csproj"));
-            // The application's test project and solution exist only in the CareCrew repository; outside it this test
-            // is skipped (owner ruling 2026-10-03), the same way the other host-file comparisons are.
-            var theirs = Wave1.Source("NursingHome_Chart.Rostering.Tests/NursingHome_Chart.Rostering.Tests.csproj");
-            static Dictionary<string, string> Packages(string csproj) => Regex.Matches(Regex.Replace(csproj, "<!--.*?-->", string.Empty, RegexOptions.Singleline),
-                    "<PackageReference Include=\"([^\"]+)\" Version=\"([^\"]+)\"").ToDictionary(m => m.Groups[1].Value, m => m.Groups[2].Value);
-            var pinned = Packages(theirs);
-            var used = Packages(mine);
-            used.Should().NotBeEmpty();
-            foreach (var (id, version) in used)
-            {
-                pinned.Should().ContainKey(id, id + " is already pinned by NursingHome_Chart.Rostering.Tests (no new package)");
-                pinned[id].Should().Be(version, id + ": the same version");
-            }
             mine.Should().Contain("<TargetFramework>net8.0</TargetFramework>").And.Contain("<ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>");
             Regex.Matches(mine, "<ProjectReference Include=\"([^\"]+)\"").Select(m => m.Groups[1].Value)
                 .Should().Equal(@"..\Xaf.EditDraft.Core\Xaf.EditDraft.Core.csproj", @"..\Xaf.EditDraft.Blazor\Xaf.EditDraft.Blazor.csproj");
             mine.Should().NotContain("<Compile Include").And.NotContain("Link=");
-            var sln = Wave1.Source("CareCrew.sln");
+            var sln = Wave1.Source("Xaf.EditDraft.sln");
             Regex.Matches(sln, "\"Xaf\\.EditDraft\\.Tests\", \"Xaf\\.EditDraft\\.Tests\\\\Xaf\\.EditDraft\\.Tests\\.csproj\"").Count.Should().Be(1);
         }
     }

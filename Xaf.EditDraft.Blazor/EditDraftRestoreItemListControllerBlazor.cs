@@ -12,9 +12,8 @@ namespace Xaf.EditDraft.Blazor;
 
 /// <summary>
 /// The item grid of the generic 入力控 restore popup: one checkbox column that toggles on one click, members of one
-/// setter group ticking TOGETHER, no list chrome. Before M2 the generic popup's rows were the chart row type and the
-/// chart's item controller (TenantChartDraftRestoreItemListControllerBlazor) did this; this is the same behaviour for
-/// the library's row type (milestone M2). The chart popup keeps its own controller.
+/// setter group ticking TOGETHER, no list chrome (milestone M2). A host popup with its own row type keeps its own
+/// controller.
 /// </summary>
 public class EditDraftRestoreItemListControllerBlazor : ObjectViewController<ListView, EditDraftRestoreItem>
 {

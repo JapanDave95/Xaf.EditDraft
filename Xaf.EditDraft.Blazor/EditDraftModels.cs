@@ -15,7 +15,7 @@ namespace Xaf.EditDraft.Blazor;
 /// The 入力控 restore popup for the generic types. A SEPARATE class from any plan class a host keeps for its own
 /// drafts on purpose: a host's popup controller targets its own class and routes 破棄 to its own owner and writer;
 /// this plan never activates it. The rows are the library's <see cref="EditDraftRestoreItem"/>
-/// (milestone M2; before M2 they reused the chart row type), ticked by EditDraftRestoreItemListControllerBlazor.
+/// (milestone M2), ticked by EditDraftRestoreItemListControllerBlazor.
 /// Non-persistent; the controller re-checks owner, revision, permissions and the record's access rule before
 /// anything is applied.
 ///

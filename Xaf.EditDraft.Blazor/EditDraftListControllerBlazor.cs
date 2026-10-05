@@ -12,10 +12,10 @@ using Xaf.EditDraft.Core;
 namespace Xaf.EditDraft.Blazor;
 
 /// <summary>
-/// 「入力控」 (owner D4): the logged-in user's own drafts of the registered non-chart types, opened from
-/// the 復元 section of the gear panel through its own staff-accessible bridge (every type), or from the
-/// main-header action 「入力控」 FILTERED to the type whose ListView is the active tab (owner D14; the
-/// pattern of TenantChartDraftListControllerBlazor:34-246). Opening a draft opens the EXISTING record in
+/// 「入力控」 (owner D4): the logged-in user's own drafts of the registered generic types, opened through
+/// EditDraftListBridge from wherever the host places it (every type), or from the
+/// main-header action 「入力控」 FILTERED to the type whose ListView is the active tab (owner D14).
+/// Opening a draft opens the EXISTING record in
 /// its approved DetailView and its screen offers exactly that draft (D16: alone, even when siblings are
 /// live). NEW records (owner D4 (a), 2026-10-03): a draft of a never-saved record is listed as 「新規」 and its 開く recreates
 /// the record from the draft (EditDraftRecreate, Core; design docs/edit-draft-new-records-design-2026-10-02.md §4.4).
@@ -135,7 +135,7 @@ public class EditDraftListControllerBlazor : WindowController
         _header = null;
     }
 
-    // Retained fix-506 workaround (same as the chart action): one explicit header render after the first render.
+    // Retained fix-506 workaround: one explicit header render after the first render.
     private void OnHeaderFirstRender(object sender, EventArgs e)
     {
         try

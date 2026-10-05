@@ -12,11 +12,10 @@ namespace Xaf.EditDraft.Tests
 {
     // Xaf.EditDraft library, milestone M1 (run 2026-10-01-editdraft-m1-c3f4de; design docs/xaf-editdraft-library-design-2026-10-01.md
     // §4.7). Expectations from the Codex requirement-only list of this run (tests a1): E5, E6, E7, E19, E20.
-    // The library must compile and be exercised as its OWN assembly, with no reference to the application.
-    // Library milestone M3 (run 2026-10-02-editdraft-m3-1b4d82): E5, E6 and the module test E8 moved here from
-    // NursingHome_Chart.Rostering.Tests (EditDraftLibraryIsolationTests.cs) with only the namespace changed, except E6's
-    // InternalsVisibleTo list, which names this test project too (it exercises the internal writer). E7, the host
-    // registration test E8 and E19_E20 stay in that project (they use the application's types and files).
+    // The library must compile and be exercised as its OWN assembly, with no reference to an application.
+    // GUARD: the assembly-name prefixes below are the application assemblies the library must never reference.
+    // Library milestone M3 (run 2026-10-02-editdraft-m3-1b4d82): E6's InternalsVisibleTo list names this test project too
+    // (it exercises the internal writer).
 
     [TestFixture]
     public class EditDraftLibraryIsolationTests
@@ -49,9 +48,8 @@ namespace Xaf.EditDraft.Tests
                 .Should().BeEquivalentTo(new[] { "DevExpress.ExpressApp", "DevExpress.ExpressApp.Xpo", "DevExpress.Persistent.Base", "DevExpress.Persistent.BaseImpl.Xpo", "Newtonsoft.Json" },
                     "design §3: the brief's list plus Persistent.Base, BaseImpl.Xpo (BaseObject) and Newtonsoft.Json, all already pinned centrally");
             // Owner decision O-3 (2026-10-02, "writer goes internal in M2"): the writer is internal, visible to the library's
-            // Blazor part and to this test project, which exercises it; still no application (CareCrew.*) assembly is granted
-            // the internals. Expectation changed by gap G13 (run 2026-10-04-editdraft-close-gaps-08c338): the first host's test
-            // project NursingHome_Chart.Rostering.Tests is no longer a friend.
+            // Blazor part and to this test project, which exercises it; no application assembly is granted the internals.
+            // Expectation changed by gap G13 (run 2026-10-04-editdraft-close-gaps-08c338): no other assembly is a friend.
             Core.GetCustomAttributes<InternalsVisibleToAttribute>().Select(a => a.AssemblyName)
                 .Should().BeEquivalentTo(new[] { "Xaf.EditDraft.Blazor", "Xaf.EditDraft.Tests" })
                 .And.NotContain(n => n.StartsWith("CareCrew"), "no application assembly is granted the library's internals");

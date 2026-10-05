@@ -17,8 +17,8 @@ namespace Xaf.EditDraft.Blazor;
 
 /// <summary>
 /// 入力控 row badge and 「入力控を開く」 on the ListViews of the generic types (wave 1b; owner D17, B2, B4, B6;
-/// design §4, §7 S2). Active on a ROOT ListView whose id is in a generic policy's ListViewIds (the capture list
-/// StaffOverTimeHoliday_ListView and the non-editable main lists alike), for an owner (the owner seam's answer for the
+/// design §4, §7 S2). Active on a ROOT ListView whose id is in a generic policy's ListViewIds (a list that edits in
+/// place and a non-editable list alike), for an owner (the owner seam's answer for the
 /// policy), while dbo.EditDraft exists (switches do not hide drafts).
 ///
 /// BADGE: a CSS class on the data row (GridModel.CustomizeElement) when the row's Oid is in a per-screen set

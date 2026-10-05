@@ -138,7 +138,7 @@ namespace Xaf.EditDraft.Tests
             var refPolicy = new EditDraftTypePolicy(typeof(EditDraftNewRef)) { PolicyId = "test:Ref", Decisions = EditDraftDecisions.Table() };
             var hostOwn = new EditDraftTypePolicy(typeof(EditDraftTestStore)) { PolicyId = "host:Own" };   // no decision table: not generic
             var registry = EditDraftRegistry.Create(r => { r.Register(probe); r.Register(refPolicy); r.Register(hostOwn); });
-            Guid login = Guid.NewGuid(), staff = Guid.NewGuid();
+            Guid login = Guid.NewGuid(), secondOwner = Guid.NewGuid();
 
             // One owner for every type (the library default's shape): one owner to read, asked once per policy and once for
             // the type-not-registered bucket.
@@ -150,16 +150,16 @@ namespace Xaf.EditDraft.Tests
             asked.Should().HaveCount(3, "answers are cached for one call");
             single.Lists(login, probe.TypeName).Should().BeTrue();
             single.Lists(login, "TypeNoLongerRegistered").Should().BeTrue("the owner named for no policy");
-            single.Lists(staff, probe.TypeName).Should().BeFalse();
+            single.Lists(secondOwner, probe.TypeName).Should().BeFalse();
             single.Lists(Guid.Empty, probe.TypeName).Should().BeFalse();
 
             // A host that names another owner for one type: both owners are read, each row only under its type's owner.
-            var perType = new EditDraftOwnersByType(registry, p => new EditDraftOwnerInfo(ReferenceEquals(p, refPolicy) ? staff : login));
-            perType.ToRead(null).Should().BeEquivalentTo(new[] { login, staff });
-            perType.ToRead(refPolicy.TypeName).Should().Equal(staff);
-            perType.Lists(staff, refPolicy.TypeName).Should().BeTrue();
+            var perType = new EditDraftOwnersByType(registry, p => new EditDraftOwnerInfo(ReferenceEquals(p, refPolicy) ? secondOwner : login));
+            perType.ToRead(null).Should().BeEquivalentTo(new[] { login, secondOwner });
+            perType.ToRead(refPolicy.TypeName).Should().Equal(secondOwner);
+            perType.Lists(secondOwner, refPolicy.TypeName).Should().BeTrue();
             perType.Lists(login, refPolicy.TypeName).Should().BeFalse("a row of that type stored under the login is not listed for that type");
-            perType.Lists(staff, probe.TypeName).Should().BeFalse();
+            perType.Lists(secondOwner, probe.TypeName).Should().BeFalse();
 
             // No owner, and an exception in the seam, read nothing.
             new EditDraftOwnersByType(registry, _ => EditDraftOwnerInfo.None).ToRead(null).Should().BeEmpty();
@@ -217,20 +217,24 @@ namespace Xaf.EditDraft.Tests
         [Test]
         public void NA8_no_text_and_no_library_source_names_a_host_term_and_the_refusals_say_no_permission()
         {
+            // GUARD. 0.4.1-preview.1 (owner instruction 2026-10-05, cleanup pass): 職員 joins 事業所 in the texts, the source
+            // list below also holds the application names the cleanup removed, and project files are scanned too.
             foreach (var set in new[] { EditDraftTextSet.Japanese, EditDraftTextSet.English })
                 foreach (var p in typeof(EditDraftTextSet).GetProperties().Where(p => p.PropertyType == typeof(string)))
-                    ((string)p.GetValue(set)).Should().NotContain("事業所", p.Name);
+                    foreach (var word in new[] { "事業所", "職員" })
+                        ((string)p.GetValue(set)).Should().NotContain(word, p.Name);
             EditDraftTextSet.Japanese.RecordNotVisible.Should().Be("この入力控はこのログインでは戻せません（権限がありません）。");
             EditDraftTextSet.English.RecordNotVisible.Should().Be("This draft cannot be restored for this login (no permission).");
             EditDraftTextSet.Japanese.RecreateNoPermission.Should().Be("この記録を作成する権限がありません。");
             EditDraftTextSet.English.RecreateNoPermission.Should().Be("You do not have permission to create this record.");
 
-            var words = new[] { "事業所", "SubSection", "StaffMember", "GeneralUser", "HostDefined", "OwnerKind" };
+            var words = new[] { "事業所", "SubSection", "StaffMember", "GeneralUser", "HostDefined", "OwnerKind",
+                                "CareCrew", "NursingHome", "TenantChart", "職員", "ケア樹", "CareTree", "Progress.", "Llamachant" };
             var sep = Path.DirectorySeparatorChar;
             foreach (var project in new[] { "Xaf.EditDraft.Core", "Xaf.EditDraft.Blazor" })
                 foreach (var file in Directory.GetFiles(Path.Combine(Wave1.Root(), project), "*.*", SearchOption.AllDirectories)
                              .Where(f => !f.Contains(sep + "bin" + sep) && !f.Contains(sep + "obj" + sep))
-                             .Where(f => f.EndsWith(".cs") || f.EndsWith(".js") || f.EndsWith(".css") || f.EndsWith(".xafml")))
+                             .Where(f => f.EndsWith(".cs") || f.EndsWith(".js") || f.EndsWith(".css") || f.EndsWith(".xafml") || f.EndsWith(".razor") || f.EndsWith(".csproj")))
                 {
                     var text = File.ReadAllText(file);
                     foreach (var word in words) text.Should().NotContain(word, Path.GetFileName(file));

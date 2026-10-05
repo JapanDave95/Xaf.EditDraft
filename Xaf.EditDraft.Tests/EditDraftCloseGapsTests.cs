@@ -51,18 +51,22 @@ namespace Xaf.EditDraft.Tests
                 text.Should().NotContainEquivalentOf("personal login", $"English.{key}");
                 text.Should().NotContainEquivalentOf("office", $"English.{key}");
             }
-            // The three strings G9 names are reworded (owner-ruled expectation change: the gap list).
+            // GUARD: the three strings G9 names are reworded (owner-ruled expectation change: the gap list).
             EditDraftTextSet.English.PersonalLoginOnly.Should().NotBe("Drafts are available to a personal login only.");
             EditDraftTextSet.English.RecordNotVisible.Should().NotBe("This draft cannot be restored for this login (事業所 permission).");
-            // 0.4.0-preview.1: RecreateSubSectionNotVisible is removed (owner ruling 2026-10-05); its assertion went with it.
+            // 0.4.0-preview.1 removed the third G9 text with its member (owner ruling 2026-10-05); its assertion went with it.
         }
 
         [Test]
-        public void G9_T36_the_Japanese_wording_is_unchanged()
+        public void G9_T36_the_Japanese_wording_is_pinned_and_names_no_host_concept()
         {
+            // Renamed in 0.4.1-preview.1 (was G9_T36_the_Japanese_wording_is_unchanged): two of the three texts changed by
+            // owner rulings, so the name states what the test pins now.
             var ja = EditDraftTextSet.Japanese;
-            ja.PersonalLoginOnly.Should().Be("この画面の入力控は、職員個人のログインで使えます。");
-            // Expectation changed by owner ruling 2026-10-05 (0.4.0-preview.1: no 事業所 in the library); RecreateSubSectionNotVisible is removed.
+            // Expectation changed by owner instruction 2026-10-05 (0.4.1-preview.1, "make the Japanese text generic"): the text
+            // names no kind of login and says what the English text says.
+            ja.PersonalLoginOnly.Should().Be("このログインでは入力控を使えません。");
+            // Expectation changed by owner ruling 2026-10-05 (0.4.0-preview.1: no host scope term in the library); the third G9 text is removed.
             ja.RecordNotVisible.Should().Be("この入力控はこのログインでは戻せません（権限がありません）。");
             ja.ListLead.Should().Be("保存されていない入力です。選んで「開く」を押すと記録に戻せます（戻した内容はまだ保存されません）。保存期限を過ぎると削除されます。");
         }

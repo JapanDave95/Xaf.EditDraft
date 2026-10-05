@@ -20,10 +20,9 @@ namespace Xaf.EditDraft.Tests
     // Codex requirement-only list of this run (tests a1, E1-E34), written before any code was shown to it; labels En refer
     // to them. The library is exercised as its OWN assemblies (ProjectReference), never as linked source.
     // Runtime behaviour in a host (controller activation, popup rendering, the static asset being served) is the M4 browser pass.
-    // Library milestone M3 (run 2026-10-02-editdraft-m3-1b4d82): moved here from NursingHome_Chart.Rostering.Tests
-    // (EditDraftLibraryBlazorTests.cs) with only the namespace changed, except E6_E7_D9 (owner ruling O-7: the six text
-    // lines name the library label editor's alias). The tests that read the host's files or use the application's types
-    // (E3, E4 host registration, E8_D9, E23, E14_O2, E17_O3, E24) stay in that project.
+    // Library milestone M3 (run 2026-10-02-editdraft-m3-1b4d82): E6_E7_D9 follows owner ruling O-7 (the six text lines name
+    // the library label editor's alias). GUARD: E1_E2 and E2 list the application assembly prefixes and tokens the library
+    // must never reference.
 
     [TestFixture]
     public class EditDraftLibraryBlazorTests
@@ -151,7 +150,7 @@ namespace Xaf.EditDraft.Tests
                                     (typeof(EditDraftReadOnlyView), "Lead"), (typeof(EditDraftReadOnlyView), "Provenance"), (typeof(EditDraftList), "Lead") };
             foreach (var t in PopupClasses)
             {
-                t.BaseType.Should().Be(typeof(NonPersistentBaseObject), t.Name + ": the base the replaced Llamachant NPOBase derived from");
+                t.BaseType.Should().Be(typeof(NonPersistentBaseObject), t.Name + ": XAF's own non-persistent base, no third-party base");
                 foreach (var p in t.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
                 {
                     // Owner ruling O-7 (2026-10-02, library M3): the six text lines use the library's own label editor; every
@@ -214,7 +213,7 @@ namespace Xaf.EditDraft.Tests
                 var code = string.Join("\n", Code(file).Split('\n').Where(l => !l.Contains("XafDisplayName(")));
                 code.Should().NotContain("DateTime.Now", Path.GetFileName(file) + ": 'now' comes from the host clock");
                 code.Should().NotContain("EditDraftOwner.").And.NotContain("EditDraftAccess.").And.NotContain("EditDraftWavePolicies", Path.GetFileName(file));
-                foreach (var ui in new[] { "この入力控はこのログインでは戻せません（事業所の権限）。", "入力控を開く", "\"破棄\"", "はい（選択した項目を戻す）", "保存されていない入力が見つかりました", "\"閉じる\"", "\"入力控\"" })
+                foreach (var ui in new[] { "この入力控はこのログインでは戻せません（権限がありません）。", "入力控を開く", "\"破棄\"", "はい（選択した項目を戻す）", "保存されていない入力が見つかりました", "\"閉じる\"", "\"入力控\"" })
                     code.Should().NotContain(ui, Path.GetFileName(file) + ": UI text comes from EditDraftTexts");
             }
         }
@@ -225,7 +224,7 @@ namespace Xaf.EditDraft.Tests
             var ja = EditDraftTextSet.Japanese;
             new[] { ja.ListCaption, ja.ActionOpen, ja.ActionDiscard, ja.ActionSelectAll, ja.RowOpenAction, ja.OfferOk, ja.OfferLater, ja.Close, ja.RecordNotVisible }
                 .Should().Equal("入力控", "開く", "破棄", "すべて選択", "入力控を開く", "はい（選択した項目を戻す）", "あとで", "閉じる",
-                    "この入力控はこのログインでは戻せません（権限がありません）。");   // expectation changed by owner rulings 2026-10-02 (E22b) and 2026-10-05 (no 事業所)
+                    "この入力控はこのログインでは戻せません（権限がありません）。");   // expectation changed by owner rulings 2026-10-02 (E22b) and 2026-10-05 (no host scope term)
             ja.OfferLeadCount.Should().Be("前回この記録に入力され、保存されていない内容が {0} 件あります。");
             ja.OfferProvenance.Should().Be("{0} {1}／入力 {2:yyyy/MM/dd HH:mm}（{3} 項目）／{4}");
             ja.AppliedPartly.Should().Be("{0} 件を戻しました。{1} 件は戻せませんでした（その後に変更されたか、参照先がありません）。内容を確認してください。");
@@ -244,15 +243,15 @@ namespace Xaf.EditDraft.Tests
         public void E22b_RecordNotVisible_says_the_draft_cannot_be_restored_for_this_login_and_the_refusal_log_line_is_unchanged()
         {
             // Expectation changed by owner ruling 2026-10-02 ("the refusal toast reworded to say the draft cannot be restored
-            // for this login (事業所)"); run 2026-10-02-time-editor-o3s-impl-3ad204, Codex tests a1 T23-T25.
-            // Expectation changed again by owner ruling 2026-10-05 (0.4.0-preview.1: no 事業所 in the library; the check is
-            // XAF security plus the optional IEditDraftAccessCheck, so the reason is "no permission").
+            // for this login"); Codex tests a1 T23-T25 of that run.
+            // Expectation changed again by owner ruling 2026-10-05 (0.4.0-preview.1: no host scope term in the library; the check
+            // is XAF security plus the optional IEditDraftAccessCheck, so the reason is "no permission").
             EditDraftTextSet.Japanese.RecordNotVisible.Should().Be("この入力控はこのログインでは戻せません（権限がありません）。");
             // Expectation changed by gap G9 (run 2026-10-04-editdraft-close-gaps-08c338): no host term in the English set.
             EditDraftTextSet.English.RecordNotVisible.Should().Be("This draft cannot be restored for this login (no permission).");
             Wave1.Source("Xaf.EditDraft.Blazor/EditDraftRestoreControllerBlazor.cs").Should().Contain(
                 "EditDraftLog.Info($\"[EditDraft] offer refused at '{trigger}': record {S(recordOid)} of {_policy.TypeName}: this login may not restore onto it\");",
-                "T25: the log line (reworded by the 2026-10-05 ruling: no 事業所)");
+                "T25: the log line (reworded by the 2026-10-05 ruling: no host scope term)");
             // T24: the list open, the badge open, the offer and the apply all show the text through EditDraftTexts. Counted per
             // file (diffreview a1 C5): losing one of the two restore-controller sites must fail, not only losing both.
             // The list controller has two sites since new-record capture: the 開く path and the 「新規」 recreate path
