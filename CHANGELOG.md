@@ -4,7 +4,10 @@ All versions are pre-releases. Packages are published to this repository's GitHu
 is pushed (see README, "Publishing a version"). The package release notes (`<PackageReleaseNotes>` in
 `Directory.Build.props`) carry the same content in one paragraph per version.
 
-## 0.4.1-preview.1 — 2026-10-05
+Each section is headed `## <version> — <yyyy-mm-dd> — <short label>`. The publish workflow refuses a tag whose version
+has no section, and creates the GitHub Release from the section: title `<version> — <label>`, body the section text.
+
+## 0.4.1-preview.1 — 2026-10-05 — no first-host traces
 
 Removes all first-host traces from the library source and tests (`docs/decouple-cleanup-2026-10-05.md`).
 
@@ -14,7 +17,7 @@ Removes all first-host traces from the library source and tests (`docs/decouple-
 - The test that compared against the first host's files now checks this repository's own project and solution, so it
   runs instead of skipping.
 
-## 0.4.0-preview.1 — 2026-10-05 — breaking
+## 0.4.0-preview.1 — 2026-10-05 — XAF-native access (breaking)
 
 Access to drafts is decided by XAF security plus one optional host check; the library no longer knows a host's scope or
 owner kind (`docs/xaf-native-access-2026-10-05.md`).
@@ -54,7 +57,7 @@ owner kind (`docs/xaf-native-access-2026-10-05.md`).
 
 Upgrade steps: `docs/consumer-guide.md`, "Upgrading from 0.3.0-preview.x".
 
-## 0.3.0-preview.2 — 2026-10-05
+## 0.3.0-preview.2 — 2026-10-05 — client-side input journal (off by default)
 
 Adds the client-side input journal, off by default (`docs/edit-draft-client-journal-design-2026-10-03.md` and the
 M1/M1b write-ups). What a user is typing in a focused editor is kept in the browser, so it survives a refresh, a lost
@@ -77,7 +80,7 @@ matching. Enabling the switch journals typing but does not restore it yet.
 No package was published for this tag: the release run stopped at a test that pinned the previous version number. That
 test now follows the version instead. The same content shipped as 0.3.0-preview.2.
 
-## 0.2.0-preview.1 — 2026-10-04
+## 0.2.0-preview.1 — 2026-10-04 — the library gaps closed
 
 Closes the 15 gaps found by running the library from a second, independent application
 (`docs/close-gaps-2026-10-04.md`).
@@ -109,7 +112,7 @@ Closes the 15 gaps found by running the library from a second, independent appli
 
 Unchanged: SQL Server only, XPO, Guid keys, DevExpress 26.1.4 as the tested floor, the Japanese text set.
 
-## 0.1.0-preview.1 — 2026-10-04
+## 0.1.0-preview.1 — 2026-10-04 — first preview
 
 First package release: draft capture and restore for DevExpress XAF Blazor applications on XPO, extracted on 2026-10-03
 from the application where it was built and is in use behind configuration switches. Includes server-side capture of

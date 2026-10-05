@@ -94,7 +94,13 @@ not match, and a tag is the only trigger (no manual run). Symbol packages are ke
 because GitHub Packages does not accept them. It needs one repository secret, `DEVEXPRESS_LICENSE`: the contents of
 the licence-holder's `DevExpress_License.txt` (DevExpress.com Download Manager → "Download License Key"), which the
 job exposes as the `DevExpress_License` environment variable so the DevExpress build analyzers can license the build.
-To release: bump `<Version>`, commit, `git tag v<Version>`, `git push --tags`.
+After a successful publish, a second job creates the GitHub Release from the version's `CHANGELOG.md` section (marked
+pre-release for versions such as `-preview.1`) and attaches the `.nupkg` files; it is the only job allowed to write to
+the repository, and it runs no repository code.
+
+To release: add a `CHANGELOG.md` section headed `## <version> — <yyyy-mm-dd> — <short label>` (the label becomes the
+Release title; the workflow refuses a tag without a section), bump `<Version>`, commit, `git tag v<Version>`,
+`git push --tags`.
 
 ## Design and history
 
