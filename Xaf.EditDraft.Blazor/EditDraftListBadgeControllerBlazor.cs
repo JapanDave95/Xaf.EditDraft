@@ -18,8 +18,8 @@ namespace Xaf.EditDraft.Blazor;
 /// <summary>
 /// 入力控 row badge and 「入力控を開く」 on the ListViews of the generic types (wave 1b; owner D17, B2, B4, B6;
 /// design §4, §7 S2). Active on a ROOT ListView whose id is in a generic policy's ListViewIds (the capture list
-/// StaffOverTimeHoliday_ListView and the non-editable main lists alike), for an owner (D6: never a GeneralUser
-/// login), while dbo.EditDraft exists (switches do not hide drafts).
+/// StaffOverTimeHoliday_ListView and the non-editable main lists alike), for an owner (the owner seam's answer for the
+/// policy), while dbo.EditDraft exists (switches do not hide drafts).
 ///
 /// BADGE: a CSS class on the data row (GridModel.CustomizeElement) when the row's Oid is in a per-screen set
 /// built from ONE owner-scoped metadata query (EditDraftWriter.ListOwnTargets): presence only — no value, count
@@ -34,7 +34,7 @@ namespace Xaf.EditDraft.Blazor;
 /// (EditDraftRowOpenRule, per row through ListEditorInlineActionControl.CustomizeInlineActionButton). The toolbar button
 /// is unchanged: shown while the screen has badged rows, enabled for a selected row that has one.
 ///
-/// Library milestone M2: owner and record access through the Core seams, "now" from the host clock, texts from
+/// Library milestone M2: owner and access check through the Core seams, "now" from the host clock, texts from
 /// EditDraftTexts, log lines through EditDraftLog (same text). The row class is styled by the library's static web
 /// asset _content/Xaf.EditDraft.Blazor/edit-draft-row-badge.css, which the host page links.
 /// </summary>
@@ -85,9 +85,9 @@ public class EditDraftListBadgeControllerBlazor : ObjectViewController<ListView,
             EditDraftLog.Info($"[EditDraft] row badges off view={View.Id}: restore not available (table absent)");
             return;
         }
-        if (EditDraftServices.CurrentOwner(Application?.ServiceProvider, Application).IsNone)
+        if (EditDraftServices.CurrentOwner(Application?.ServiceProvider, Application, policy).IsNone)
         {
-            EditDraftLog.Info($"[EditDraft] row badges off view={View.Id}: no owner (not logged in, or a GeneralUser login — D6)");
+            EditDraftLog.Info($"[EditDraft] row badges off view={View.Id}: no owner (not logged in, or the owner seam named none)");
             return;
         }
         _policy = policy;
@@ -227,7 +227,7 @@ public class EditDraftListBadgeControllerBlazor : ObjectViewController<ListView,
     {
         if (_policy == null) return;
         _lastReadFailed = true;   // until a read completes below
-        var owner = EditDraftServices.CurrentOwner(Application?.ServiceProvider, Application);
+        var owner = EditDraftServices.CurrentOwner(Application?.ServiceProvider, Application, _policy);
         if (owner.IsNone) { _lastReadFailed = false; _set.Replace(null); UpdateActionState(); if (rerender) Rerender(); return; }
         try
         {
@@ -269,7 +269,7 @@ public class EditDraftListBadgeControllerBlazor : ObjectViewController<ListView,
         {
             try
             {
-                var owner = EditDraftServices.CurrentOwner(Application?.ServiceProvider, Application);
+                var owner = EditDraftServices.CurrentOwner(Application?.ServiceProvider, Application, _policy);
                 if (owner.IsNone) return;
                 var writer = new EditDraftWriter(Application.ServiceProvider);
                 using var readSpace = writer.CreateReadSpace(out var scope);
@@ -376,14 +376,14 @@ public class EditDraftListBadgeControllerBlazor : ObjectViewController<ListView,
 
     private void OpenRecord(Guid oid)
     {
-        var owner = EditDraftServices.CurrentOwner(Application?.ServiceProvider, Application);
+        var owner = EditDraftServices.CurrentOwner(Application?.ServiceProvider, Application, _policy);
         if (owner.IsNone) { Message(EditDraftTexts.Of(t => t.PersonalLoginOnly), InformationType.Warning); return; }
         var detailViewId = _policy.ApprovedViewIds?.FirstOrDefault();
         if (string.IsNullOrEmpty(detailViewId)) return;
         var os = Application.CreateObjectSpace(_policy.Type);
         var target = os.GetObjectByKey(_policy.Type, oid);
         if (target == null) { os.Dispose(); Message(EditDraftTexts.Of(t => t.RecordNotFound), InformationType.Warning); return; }
-        if (!EditDraftServices.RecordAccess(Application?.ServiceProvider).IsRecordVisible(Application, _policy, target)) { os.Dispose(); Message(EditDraftTexts.Of(t => t.RecordNotVisible), InformationType.Warning); return; }
+        if (!EditDraftServices.MayRestore(Application, _policy, target)) { os.Dispose(); Message(EditDraftTexts.Of(t => t.RecordNotVisible), InformationType.Warning); return; }
         EditDraftLog.Info($"[EditDraft] row 開く: opening the existing {_policy.TypeName} in {detailViewId} (root, own ObjectSpace); its screen offers every live draft of the record");
         var view = Application.CreateDetailView(os, detailViewId, true, target);
         Application.ShowViewStrategy.ShowView(new ShowViewParameters(view) { TargetWindow = TargetWindow.NewModalWindow }, new ShowViewSource(Frame, null));

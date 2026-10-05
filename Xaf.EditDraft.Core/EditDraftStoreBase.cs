@@ -15,10 +15,12 @@ namespace Xaf.EditDraft.Core;
 /// a table. No library type is named <c>EditDraft</c> (a type of that name under the Xaf namespace tree
 /// collides with the namespace Xaf.EditDraft, CS0118).
 ///
-/// The 19 members, their sizes and the four named indexes are the ones the library's first host declared before the
+/// The 17 members, their sizes and the four named indexes are the ones the library's first host declared before the
 /// extraction (milestone M1), so the table, columns and indexes of an existing database stay valid (no migration).
-/// Two members were renamed on 2026-10-04 (gap G8) and keep their column names through [Persistent]:
-/// <see cref="OwnerFlag"/> (column LoginIsStaffMember) and <see cref="ScopeOid"/> (column SubSectionOid).
+/// 0.4.0-preview.1 removed two members the library no longer uses (OwnerFlag and ScopeOid; their column names are in
+/// docs/consumer-guide.md, "Upgrading from 0.3.0-preview.1"): the library neither reads nor writes those columns. A host
+/// whose existing table has them declares them on its own store class with the same column names and types if it wants
+/// XPO to keep mapping them (XPO never drops a column on its own); XPO then inserts their default values for new rows.
 ///
 /// SECURITY: the payload is the typed text in readable JSON. Deny the store class to every role
 /// (EditDraftSecurity.DenyStoreToAllRoles in the ModuleUpdater), exclude it from the audit trail if the application
@@ -68,15 +70,6 @@ public abstract class EditDraftStoreBase : BaseObject
     [ModelDefault("Caption", "Owner")]
     public Guid OwnerUserOid { get => _OwnerUserOid; set => SetPropertyValue(nameof(OwnerUserOid), ref _OwnerUserOid, value); }
 
-    private bool _OwnerFlag;
-    /// <summary>
-    /// A host-defined flag recorded with the owner by the host's owner resolver (EditDraftOwnerInfo.OwnerFlag; the library
-    /// default resolver records false). Record only; never used for access. Column "LoginIsStaffMember" (gap G8: the member
-    /// was renamed, the column was not, so an existing store table needs no migration).
-    /// </summary>
-    [Persistent("LoginIsStaffMember")]
-    public bool OwnerFlag { get => _OwnerFlag; set => SetPropertyValue(nameof(OwnerFlag), ref _OwnerFlag, value); }
-
     // ---- target -----------------------------------------------------------------------------
 
     private string _ObjectType;
@@ -89,15 +82,6 @@ public abstract class EditDraftStoreBase : BaseObject
     /// <summary>The existing record the draft edits. Never Guid.Empty for existing-record drafts.</summary>
     [Indexed(Name = "iEditDraft_Target")]
     public Guid TargetOid { get => _TargetOid; set => SetPropertyValue(nameof(TargetOid), ref _TargetOid, value); }
-
-    private Guid _ScopeOid;
-    /// <summary>
-    /// The record's access scope at capture (EditDraftTypePolicy.ScopeOf), for the visibility re-check of a new record
-    /// (IEditDraftRecordAccess.IsScopeVisible). Guid.Empty = the type has none. Column "SubSectionOid" (gap G8: the member
-    /// was renamed, the column was not).
-    /// </summary>
-    [Persistent("SubSectionOid")]
-    public Guid ScopeOid { get => _ScopeOid; set => SetPropertyValue(nameof(ScopeOid), ref _ScopeOid, value); }
 
     private string _ContextText;
     /// <summary>Short display text taken at capture: the type caption and a date. Never a person's name (design §3 S4).</summary>

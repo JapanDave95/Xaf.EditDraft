@@ -199,7 +199,7 @@ namespace Xaf.EditDraft.Tests
             var writer = new EditDraftWriter(new FixedServices());
             writer.TableExists().Should().BeFalse();
             writer.Create(new EditDraftSeed { OwnerUserOid = Guid.NewGuid(), TargetOid = Guid.NewGuid() }, "{}", 0, DateTime.Now).Should().Be(Guid.Empty);
-            writer.TrySupersede(Guid.NewGuid(), 1, Guid.NewGuid(), "{}", 0, Guid.Empty, "", DateTime.Now).Should().BeFalse();
+            writer.TrySupersede(Guid.NewGuid(), 1, Guid.NewGuid(), "{}", 0, "", DateTime.Now).Should().BeFalse();
             writer.ReadRowState(Guid.NewGuid(), 1, Guid.NewGuid(), DateTime.Now).Should().Be(EditDraftRowState.ReadFailed, "a failed read is never 'row gone'");
             writer.TryClaim(Guid.NewGuid(), 1, Guid.NewGuid(), Guid.NewGuid(), DateTime.Now).Should().Be(0);
             writer.DeleteOwn(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid()).Should().Be(-1);
@@ -217,32 +217,34 @@ namespace Xaf.EditDraft.Tests
         public void SEC1_SEC2_the_library_defaults_fail_closed_without_a_login_and_hosts_override_them()
         {
             // No XAF security in this process: SecuritySystem.CurrentUserId is not a Guid -> no owner.
-            XafLoginEditDraftOwnerResolver.Instance.Current((DevExpress.ExpressApp.IObjectSpace)null).IsNone.Should().BeTrue();
-            XafLoginEditDraftOwnerResolver.Instance.Current((DevExpress.ExpressApp.XafApplication)null).IsNone.Should().BeTrue();
+            XafLoginEditDraftOwnerResolver.Instance.Current((DevExpress.ExpressApp.IObjectSpace)null, null).IsNone.Should().BeTrue();
+            XafLoginEditDraftOwnerResolver.Instance.Current((DevExpress.ExpressApp.XafApplication)null, null).IsNone.Should().BeTrue();
             EditDraftServices.Owner(null).Should().BeSameAs(XafLoginEditDraftOwnerResolver.Instance);
-            EditDraftServices.CurrentOwner(new FixedServices().Add<IEditDraftOwnerResolver>(new ThrowingOwner()), (DevExpress.ExpressApp.IObjectSpace)null).IsNone
+            EditDraftServices.CurrentOwner(new FixedServices().Add<IEditDraftOwnerResolver>(new ThrowingOwner()), (DevExpress.ExpressApp.IObjectSpace)null, null).IsNone
                 .Should().BeTrue("an exception inside a resolver is no owner");
-            EditDraftServices.CurrentOwner(new FixedServices().Add<IEditDraftOwnerResolver>(new ThrowingOwner()), (DevExpress.ExpressApp.XafApplication)null).IsNone
+            EditDraftServices.CurrentOwner(new FixedServices().Add<IEditDraftOwnerResolver>(new ThrowingOwner()), (DevExpress.ExpressApp.XafApplication)null, null).IsNone
                 .Should().BeTrue("the same for the application overload");
-            var me = new EditDraftOwnerInfo(Guid.NewGuid(), true);
-            EditDraftServices.CurrentOwner(new FixedServices().Add<IEditDraftOwnerResolver>(new FixedOwner(me)), (DevExpress.ExpressApp.IObjectSpace)null).Should().Be(me);
+            var me = new EditDraftOwnerInfo(Guid.NewGuid());
+            EditDraftServices.CurrentOwner(new FixedServices().Add<IEditDraftOwnerResolver>(new FixedOwner(me)), (DevExpress.ExpressApp.IObjectSpace)null, null).Should().Be(me);
 
-            EditDraftServices.RecordAccess(null).Should().BeSameAs(XafSecurityEditDraftRecordAccess.Instance);
-            XafSecurityEditDraftRecordAccess.Instance.IsRecordVisible(null, null, new object()).Should().BeFalse("a missing argument is not visible");
+            // 0.4.0-preview.1: the record-access seam is gone; with no host check registered, XAF security alone decides, and a
+            // missing argument is a refusal.
+            EditDraftServices.AccessCheck(null).Should().BeNull();
+            EditDraftServices.MayRestore(null, null, new object()).Should().BeFalse("a missing argument is a refusal");
         }
 
         private sealed class ThrowingOwner : IEditDraftOwnerResolver
         {
-            public EditDraftOwnerInfo Current(DevExpress.ExpressApp.IObjectSpace objectSpace) => throw new InvalidOperationException();
-            public EditDraftOwnerInfo Current(DevExpress.ExpressApp.XafApplication application) => throw new InvalidOperationException();
+            public EditDraftOwnerInfo Current(DevExpress.ExpressApp.IObjectSpace objectSpace, EditDraftTypePolicy policy) => throw new InvalidOperationException();
+            public EditDraftOwnerInfo Current(DevExpress.ExpressApp.XafApplication application, EditDraftTypePolicy policy) => throw new InvalidOperationException();
         }
 
         private sealed class FixedOwner : IEditDraftOwnerResolver
         {
             private readonly EditDraftOwnerInfo _owner;
             public FixedOwner(EditDraftOwnerInfo owner) { _owner = owner; }
-            public EditDraftOwnerInfo Current(DevExpress.ExpressApp.IObjectSpace objectSpace) => _owner;
-            public EditDraftOwnerInfo Current(DevExpress.ExpressApp.XafApplication application) => _owner;
+            public EditDraftOwnerInfo Current(DevExpress.ExpressApp.IObjectSpace objectSpace, EditDraftTypePolicy policy) => _owner;
+            public EditDraftOwnerInfo Current(DevExpress.ExpressApp.XafApplication application, EditDraftTypePolicy policy) => _owner;
         }
     }
 }

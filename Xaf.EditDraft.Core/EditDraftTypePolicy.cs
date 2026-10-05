@@ -15,18 +15,6 @@ public sealed record EditDraftGroup(string Id, IReadOnlyList<string> Members)
 }
 
 /// <summary>
-/// Who owns a draft of this type (design §3). Only <see cref="Login"/> takes part in the library's generic capture, restore
-/// and drafts list (EditDraftTypePolicy.IsGeneric).
-/// </summary>
-public enum EditDraftOwnerKind
-{
-    /// <summary>The host decides the owner and handles such drafts itself; the generic engine does not admit the policy.</summary>
-    HostDefined,
-    /// <summary>The XAF login owns the draft (the library default owner seam).</summary>
-    Login
-}
-
-/// <summary>
 /// The audited, per-type decisions of the generic edit-draft engine (design §1.3). A type takes part
 /// only when a policy for it is in the <see cref="EditDraftRegistry"/>; nothing here is inherited from
 /// another type's policy (owner Q1: per-type lists).
@@ -102,8 +90,6 @@ public sealed class EditDraftTypePolicy
     /// <summary>Members shown but not restorable (戻せません) on an EXISTING record.</summary>
     public IReadOnlySet<string> NotRestorableOnExisting { get; init; } = NoNames;
 
-    public EditDraftOwnerKind OwnerKind { get; init; } = EditDraftOwnerKind.Login;
-
     /// <summary>DetailView ids in which capture and restore may run. Null = no allowlist (the chart types, as today).</summary>
     public IReadOnlySet<string> ApprovedViewIds { get; init; }
 
@@ -111,13 +97,6 @@ public sealed class EditDraftTypePolicy
 
     /// <summary>The per-member decision table (T3 gate). Null for the chart types (owner Q1: their name list stays).</summary>
     public IReadOnlyDictionary<string, EditDraftMemberDecision> Decisions { get; init; }
-
-    /// <summary>
-    /// The record's access scope as a Guid (for example the Oid of the department or office the record belongs to), stored
-    /// with the draft (EditDraftStoreBase.ScopeOid) and asked of IEditDraftRecordAccess.IsScopeVisible before a NEW record is
-    /// recreated from a draft. Null = the type has none.
-    /// </summary>
-    public Func<object, Guid> ScopeOf { get; init; }
 
     /// <summary>The date shown beside the type caption in the list's 対象 column (design §3 S4c: caption + date, never a name). Null = none.</summary>
     public Func<object, DateTime?> ContextDateOf { get; init; }
@@ -151,7 +130,7 @@ public sealed class EditDraftTypePolicy
     /// <summary>
     /// NEW records (owner D9): when true, a never-saved record of this type is captured in its approved root DetailView too
     /// (while EditDraftCapture:NewRecords:Enabled is on) and can be recreated from the 「入力控」 list. Default false: no
-    /// type takes part unless its policy opts in. Read for generic (login-owned) policies only.
+    /// type takes part unless its policy opts in. Read for generic policies (IsGeneric) only.
     /// </summary>
     public bool AllowNewRecords { get; init; }
 
@@ -183,9 +162,11 @@ public sealed class EditDraftTypePolicy
     public bool IsNotRestorableOnExisting(string path) => NotRestorableOnExisting.Contains(path);
 
     /// <summary>
-    /// True for a login-owned, decision-tabled policy (a generic type), false for a host-defined-owner policy or null:
-    /// the admission rule of the generic capture, restore and list (in the application's wave list until M1).
+    /// True for a policy with a decision table (a generic type), false for a policy without one or null: the admission rule
+    /// of the generic capture, restore and list. A host may keep policies without a decision table in the same registry for
+    /// its own code; the library never admits them. (0.4.0-preview.1: the owner kind is gone; who owns a draft is the owner
+    /// seam's answer, IEditDraftOwnerResolver, asked with the policy.)
     /// </summary>
     public static bool IsGeneric(EditDraftTypePolicy policy) =>
-        policy != null && policy.OwnerKind == EditDraftOwnerKind.Login && policy.Decisions != null;
+        policy != null && policy.Decisions != null;
 }

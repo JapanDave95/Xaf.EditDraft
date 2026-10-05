@@ -9,7 +9,9 @@ namespace Xaf.EditDraft.Sample.Module.EditDrafts;
 ///
 /// What each line decides:
 /// - PolicyId "Note": the per-type switch key is EditDraftCapture:Types:Note:Enabled (appsettings.json).
-/// - OwnerKind Login: the XAF login owns the draft (the library's default owner seam; no custom resolver).
+/// - Owner and access: nothing to declare here. The XAF login owns the draft (the library's default owner seam; no custom
+///   resolver), and who may restore or recreate a Note is decided by XAF security (roles and their Note permissions; see
+///   the RestrictedNotes role in DatabaseUpdate/Updater.cs). No IEditDraftAccessCheck is registered.
 /// - MemberDeclaringBase Note: only members declared on Note are candidates, not BaseObject's Oid and lock field.
 /// - ApprovedViewIds / ListViewIds: the XAF-generated view ids of Note (ClassName_DetailView / ClassName_ListView).
 ///   Capture and the offer run only in the approved root DetailView; the header action and the row badges use the ListView.
@@ -18,7 +20,7 @@ namespace Xaf.EditDraft.Sample.Module.EditDrafts;
 /// - Decisions: one line per member reflection proposes, written with the library helpers (EditDraftDecisions.Restorable
 ///   etc.). Every Note setter is SetPropertyValue only, so all four are Restorable (label "A"). A member added to Note later
 ///   is NOT captured until it gets a line here.
-/// - ScopeOf, ContextDateOf, Groups, NewRecordReconstructionOrder: not needed for Note (left at their defaults).
+/// - ContextDateOf, Groups, NewRecordReconstructionOrder: not needed for Note (left at their defaults).
 /// </summary>
 public static class NoteEditDraftPolicy
 {
@@ -31,7 +33,6 @@ public static class NoteEditDraftPolicy
     public static EditDraftTypePolicy Create() => new(typeof(Note))
     {
         PolicyId = Id,
-        OwnerKind = EditDraftOwnerKind.Login,
         MemberDeclaringBase = typeof(Note),
         ApprovedViewIds = new HashSet<string>(StringComparer.Ordinal) { DetailViewId },
         ListViewIds = new HashSet<string>(StringComparer.Ordinal) { ListViewId },

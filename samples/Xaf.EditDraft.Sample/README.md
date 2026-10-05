@@ -35,7 +35,7 @@ In this order; the file in this sample is given for each step.
    non-persistent base; your class is the persistent one and its name is the table name (`dbo.SampleEditDraft`
    here). Sample: `Xaf.EditDraft.Sample.Module/BusinessObjects/SampleEditDraft.cs`.
 3. **A policy per type** (`EditDraftTypePolicy`): the type, a `PolicyId`, the approved DetailView id(s), the ListView
-   id(s), the owner kind, and one decision per member (`EditDraftDecisions.Table(...)` with the library helpers such as
+   id(s), and one decision per member (`EditDraftDecisions.Table(...)` with the library helpers such as
    `EditDraftDecisions.Restorable`). A type without a policy is never captured. A member without a decision is never
    captured. Sample: `Xaf.EditDraft.Sample.Module/EditDrafts/NoteEditDraftPolicy.cs`.
 4. **Three service registrations**: `services.AddEditDraftStore<SampleEditDraft>()`,
@@ -73,8 +73,8 @@ Nothing below is registered by the sample; each is the library default.
 
 | Seam | Default | To change it |
 |---|---|---|
-| Owner of a draft | The XAF login's key, when it is a non-empty Guid. No login, no draft. | Register an `IEditDraftOwnerResolver` |
-| Record access | XAF security only; records are loaded through a secured object space first | Register an `IEditDraftRecordAccess` |
+| Owner of a draft | The XAF login's key, when it is a non-empty Guid. No login, no draft. | Register an `IEditDraftOwnerResolver` (asked with the policy) |
+| Access | XAF security only: Write on a saved Note, Create, Write and Read on a recreated one (see "Try it", restricted user) | Register an `IEditDraftAccessCheck` (asked in addition; it can only narrow) |
 | Switch section | `EditDraftCapture` | Register `new EditDraftSwitchOptions { Section = "..." }` |
 | Store table schema | `dbo` | `[Persistent("myschema.SampleEditDraft")]` on the store class |
 | Clock | `TimeProvider.System`, local time | Register a `TimeProvider` |
@@ -92,8 +92,9 @@ From the repository root:
    `dotnet run --project samples/Xaf.EditDraft.Sample/Xaf.EditDraft.Sample.Blazor.Server -- --updateDatabase --forceUpdate --silent`
 3. Start: `dotnet run --project samples/Xaf.EditDraft.Sample/Xaf.EditDraft.Sample.Blazor.Server`, then open
    `http://localhost:5006`.
-4. Log in as `Admin` or `User`, both with an empty password. These test users are created by the template's
-   updater in Debug builds only. `User` has the `Default` role (Notes only); `Admin` is an administrator.
+4. Log in as `Admin`, `User` or `Restricted`, all with an empty password. These test users are created by the
+   updater in Debug builds only. `User` has the `Default` role (Notes only); `Admin` is an administrator; `Restricted`
+   has the `RestrictedNotes` role: it reads and creates Notes but may edit only Notes whose Priority is not High.
 
 In this repository, builds and test runs by tools must use `--artifacts-path artifacts/claude-test/<run-id>` and a
 dev host must use `artifacts/claude-devhost-<port>` (repository rule; Visual Studio stays open on the main tree).
@@ -109,6 +110,11 @@ Captions are the English text set's.
   popup **Unsaved input was found** offers the typed values; press **Yes (put the selected fields back)**. The values
   are filled in, not saved.
 - Saving a Note deletes its draft. A draft is kept for 7 days from the first capture and is then hidden.
+- **Access is XAF security** (log in as `Restricted`): type into a Low Note and leave without saving; then, as `Admin`,
+  set that Note's Priority to High and save. As `Restricted` again, opening the Note shows "This draft cannot be
+  restored for this login (no permission)." instead of the offer, and the Drafts list shows its record as "(cannot be
+  shown)". A new Note typed with Priority High and left unsaved cannot be recreated from the Drafts list: Open shows
+  "You do not have permission to create this record." A Low one is recreated as usual.
 
 ## Security
 
@@ -157,4 +163,9 @@ The tests check that the sample references the two libraries and no CareCrew ass
 switch values, the store deny, and that the sample uses the library's helpers. `SampleSqlServerTests` runs the library's
 SQL Server parts (provider check, table check, the probe in a quoted schema, the retention sweep at the exact cutoff
 across owners and with the application clock) against a throwaway LocalDB database it creates and drops; it is skipped
-where LocalDB is not installed. The tests do not run a browser; capture and restore are checked by hand (see "Try it").
+where LocalDB is not installed. `SampleXafNativeAccessTests` logs the sample's users on through XAF's own security
+(`SecurityStrategyComplex`, a secured object space, an in-memory store) and checks that the `RestrictedNotes` role's
+object criterion decides restore and recreate, that an administrator is unaffected, and that an extra
+`IEditDraftAccessCheck` narrows but cannot widen; `SampleLegacyColumnsTests` (LocalDB) checks a store class that keeps
+the two columns earlier versions declared. The tests do not run a browser; capture and restore are checked by hand (see
+"Try it").

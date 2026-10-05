@@ -19,8 +19,11 @@ namespace Xaf.EditDraft.Blazor;
 /// its approved DetailView and its screen offers exactly that draft (D16: alone, even when siblings are
 /// live). NEW records (owner D4 (a), 2026-10-03): a draft of a never-saved record is listed as 「新規」 and its 開く recreates
 /// the record from the draft (EditDraftRecreate, Core; design docs/edit-draft-new-records-design-2026-10-02.md §4.4).
-/// Every read is owner-scoped (single-model predicates in EditDraftWriter).
-/// Library milestone M2: owner and record access through the Core seams, "now" from the host clock, texts from
+/// Every read is owner-scoped (single-model predicates in EditDraftWriter). 0.4.0-preview.1: the owner seam is asked per
+/// type, the list reads each distinct owner it names and shows a row only when its stored owner is the owner named for
+/// its type; the access check is EditDraftServices.MayRestore / MayRecreate (XAF security plus the host's
+/// IEditDraftAccessCheck).
+/// Library milestone M2: owner and access check through the Core seams, "now" from the host clock, texts from
 /// EditDraftTexts, log lines through EditDraftLog (same text).
 /// </summary>
 public class EditDraftListControllerBlazor : WindowController
@@ -237,12 +240,12 @@ public class EditDraftListControllerBlazor : WindowController
         catch (Exception ex) { ReportFailure("list open", ex); }
     }
 
-    internal void OpenDraftDeferred(Guid draftOid)
+    internal void OpenDraftDeferred(Guid draftOid, string objectType)
     {
         EditDraftLog.Info($"[EditDraft] list 開く queued for {draftOid}");
         void Run()
         {
-            try { OpenDraft(draftOid); }
+            try { OpenDraft(draftOid, objectType); }
             catch (Exception ex) { ReportFailure("list 開く", ex); }
         }
         var context = System.Threading.SynchronizationContext.Current ?? _circuit;
@@ -261,15 +264,13 @@ public class EditDraftListControllerBlazor : WindowController
 
     internal void ShowList(bool includeDiscarded, string objectTypeFilter)
     {
-        var owner = EditDraftServices.CurrentOwner(Application?.ServiceProvider, Application);
-        if (owner.IsNone)
+        var list = new EditDraftList { IncludeDiscarded = includeDiscarded, ObjectTypeFilter = objectTypeFilter };
+        if (!Fill(list))
         {
-            EditDraftLog.Info($"[EditDraft] list refused: no owner (not logged in, or a GeneralUser login — D6)");
+            EditDraftLog.Info($"[EditDraft] list refused: no owner (not logged in, or the owner seam named none)");
             Message(EditDraftTexts.Of(t => t.PersonalLoginOnly), InformationType.Warning);
             return;
         }
-        var list = new EditDraftList { IncludeDiscarded = includeDiscarded, ObjectTypeFilter = objectTypeFilter };
-        Fill(list, owner.Oid);
         var space = Application.CreateObjectSpace(typeof(EditDraftList));
         var view = Application.CreateDetailView(space, list);
         var policy = objectTypeFilter == null ? null : EditDraftServices.Registry(Application?.ServiceProvider).Find(objectTypeFilter);
@@ -278,27 +279,52 @@ public class EditDraftListControllerBlazor : WindowController
         EditDraftLog.Info($"[EditDraft] list opened: {list.Items.Count} draft(s) shown includeDiscarded={includeDiscarded} filter={objectTypeFilter ?? "all"}");
     }
 
-    internal void Fill(EditDraftList list, Guid ownerOid)
+    /// <summary>
+    /// Fills the list with the login's drafts (of <see cref="EditDraftList.ObjectTypeFilter"/>, or of every type). The owner
+    /// seam is asked per type (0.4.0-preview.1): each distinct owner it names is read, owner in the query, and a row is shown
+    /// only when its stored owner is the owner named for its type. False when the seam names no owner at all (nothing read).
+    /// A 「新規」 row whose type this login may not create, or the UI does not offer creating, is shown with 開く disabled
+    /// (<see cref="EditDraftList.NotOpenable"/>; type-level EditDraftCreateAccess.MayCreate).
+    /// </summary>
+    internal bool Fill(EditDraftList list)
     {
+        var services = Application?.ServiceProvider;
+        var registry = EditDraftServices.Registry(services);
+        var owners = new EditDraftOwnersByType(registry, p => EditDraftServices.CurrentOwner(services, Application, p));
+        var toRead = owners.ToRead(list.ObjectTypeFilter);
+        if (toRead.Count == 0) return false;   // nothing changed
         list.Items.Clear();
+        list.ObjectTypes.Clear();
+        list.NotOpenable.Clear();
         var writer = new EditDraftWriter(Application.ServiceProvider);
         using var readSpace = writer.CreateReadSpace(out var scope);
         using (scope)
         {
-            var rows = writer.ListOwn(readSpace, ownerOid, list.ObjectTypeFilter, list.IncludeDiscarded, Now(), out var readFailed);
-            EditDraftLog.Info($"[EditDraft] list: {rows.Count} row(s) read for owner {EditDraftCaptureController.Short(ownerOid)} filter={list.ObjectTypeFilter ?? "all"} readFailed={readFailed}");
+            var now = Now();
+            var rows = new List<EditDraftStoreBase>();
+            var readFailed = false;
+            foreach (var ownerOid in toRead)
+            {
+                rows.AddRange(writer.ListOwn(readSpace, ownerOid, list.ObjectTypeFilter, list.IncludeDiscarded, now, out var failed));
+                readFailed |= failed;
+            }
+            rows = rows.Where(d => owners.Lists(d.OwnerUserOid, d.ObjectType)).OrderByDescending(d => d.LastCapturedOn).ToList();
+            EditDraftLog.Info($"[EditDraft] list: {rows.Count} row(s) read for owner(s) {string.Join(",", toRead.Select(EditDraftCaptureController.Short))} filter={list.ObjectTypeFilter ?? "all"} readFailed={readFailed}");
             if (readFailed)
             {
                 list.Lead = EditDraftTexts.Of(t => t.ListReadFailed);
-                return;
+                return true;
             }
             var spaces = new Dictionary<Type, IObjectSpace>();
+            var creatable = new Dictionary<EditDraftTypePolicy, bool>();
             try
             {
                 foreach (var d in rows)
                 {
-                    var policy = EditDraftServices.Registry(Application?.ServiceProvider).Find(d.ObjectType);   // mapped only through the registry
+                    var policy = registry.Find(d.ObjectType);   // mapped only through the registry
                     var typeCaption = policy == null ? d.ObjectType : CaptionHelper.GetClassCaption(policy.Type.FullName);
+                    list.ObjectTypes[d.Oid] = d.ObjectType;
+                    if (EditDraftNewRecordRules.IsNewRecordDraft(d.TargetOid) && !MayCreateNew(policy, creatable)) list.NotOpenable.Add(d.Oid);
                     list.Items.Add(new EditDraftListItem
                     {
                         DraftOid = d.Oid,
@@ -318,12 +344,21 @@ public class EditDraftListControllerBlazor : WindowController
         list.Lead = list.Items.Count == 0
             ? EditDraftTexts.Of(t => t.ListEmpty)
             : EditDraftTexts.Of(t => t.ListLead);
+        return true;
+    }
+
+    /// <summary>A 「新規」 row can be opened: the login may create the type and the UI offers creating it (cached per policy for one fill).</summary>
+    private bool MayCreateNew(EditDraftTypePolicy policy, Dictionary<EditDraftTypePolicy, bool> cache)
+    {
+        if (policy == null) return false;
+        if (!cache.TryGetValue(policy, out var ok)) cache[policy] = ok = EditDraftCreateAccess.MayCreate(Application, policy);
+        return ok;
     }
 
     /// <summary>
-    /// 対象: the record's display text resolved NOW through a SECURED object space (the person sees a name
-    /// only if they may read the record), else the stored context text (type caption + date; never a name),
-    /// else 「（表示できません）」. A type no longer registered shows the stored context text only.
+    /// 対象: the record's display text resolved NOW through a SECURED object space, shown only when the login may restore
+    /// onto the record (EditDraftServices.MayRestore), else 「（表示できません）」; for a 「新規」 row, or a type no longer
+    /// registered, the stored context text (type caption + date; never a name).
     /// </summary>
     private string ResolveTarget(EditDraftTypePolicy policy, Guid targetOid, string contextText, Dictionary<Type, IObjectSpace> spaces)
     {
@@ -333,7 +368,7 @@ public class EditDraftListControllerBlazor : WindowController
         {
             if (!spaces.TryGetValue(policy.Type, out var space)) spaces[policy.Type] = space = Application.CreateObjectSpace(policy.Type);
             var record = space.GetObjectByKey(policy.Type, targetOid);
-            if (record == null || !EditDraftServices.RecordAccess(Application?.ServiceProvider).IsRecordVisible(Application, policy, record)) return notShown;
+            if (record == null || !EditDraftServices.MayRestore(Application, policy, record)) return notShown;
             var text = EditDraftDisplay.TextOf(record);
             return string.IsNullOrEmpty(text) ? (contextText ?? notShown) : text;
         }
@@ -344,31 +379,32 @@ public class EditDraftListControllerBlazor : WindowController
     // Open one draft: the EXISTING record, whose screen offers exactly this draft
     // ---------------------------------------------------------------------------------------
 
-    internal void OpenDraft(Guid draftOid)
+    /// <summary>開く on a list row: <paramref name="objectType"/> is the row's type, so the owner seam is asked for that type's owner.</summary>
+    internal void OpenDraft(Guid draftOid, string objectType)
     {
         EditDraftLog.Info($"[EditDraft] list 開く: draft {draftOid}");
-        var owner = EditDraftServices.CurrentOwner(Application?.ServiceProvider, Application);
+        var owner = EditDraftServices.CurrentOwnerOfType(Application?.ServiceProvider, Application, objectType);
         if (owner.IsNone) { Message(EditDraftTexts.Of(t => t.PersonalLoginOnly), InformationType.Warning); return; }
 
         var writer = new EditDraftWriter(Application.ServiceProvider);
-        string objectType; Guid targetOid;
+        Guid targetOid;
         using (var readSpace = writer.CreateReadSpace(out var scope))
         using (scope)
         {
             var draft = writer.ReadOwn(readSpace, draftOid, owner.Oid);            // owner-scoped (single-model)
-            if (draft == null || draft.HasExpired(Now())) { Message(EditDraftTexts.Of(t => t.DraftCannotOpen), InformationType.Warning); return; }
+            if (draft == null || draft.HasExpired(Now()) || draft.ObjectType != objectType) { Message(EditDraftTexts.Of(t => t.DraftCannotOpen), InformationType.Warning); return; }
             if (!draft.IsPayloadReadable) { Message(EditDraftTexts.Of(t => t.DraftUnreadable), InformationType.Warning); return; }
-            objectType = draft.ObjectType; targetOid = draft.TargetOid;
+            targetOid = draft.TargetOid;
         }
         // NEW records (owner D4 (a)): a 「新規」 row has no record to open; its 開く recreates one from the draft.
-        if (EditDraftNewRecordRules.IsNewRecordDraft(targetOid)) { Recreate(draftOid, proceedWhenSavedCheckFails: false); return; }
+        if (EditDraftNewRecordRules.IsNewRecordDraft(targetOid)) { Recreate(draftOid, objectType, proceedWhenSavedCheckFails: false); return; }
         var policy = EditDraftServices.Registry(Application?.ServiceProvider).Find(objectType);
         if (!EditDraftTypePolicy.IsGeneric(policy)) { Message(EditDraftTexts.Of(t => t.DraftTypeUnknown), InformationType.Warning); return; }
 
         var os = Application.CreateObjectSpace(policy.Type);
         var target = os.GetObjectByKey(policy.Type, targetOid);
         if (target == null) { os.Dispose(); Message(EditDraftTexts.Of(t => t.RecordNotFound), InformationType.Warning); return; }
-        if (!EditDraftServices.RecordAccess(Application?.ServiceProvider).IsRecordVisible(Application, policy, target)) { os.Dispose(); Message(EditDraftTexts.Of(t => t.RecordNotVisible), InformationType.Warning); return; }
+        if (!EditDraftServices.MayRestore(Application, policy, target)) { os.Dispose(); Message(EditDraftTexts.Of(t => t.RecordNotVisible), InformationType.Warning); return; }
         Application.ServiceProvider.GetService<EditDraftOfferRequests>()?.RequestOffer(target, draftOid);
         EditDraftLog.Info($"[EditDraft] list 開く {draftOid}: opening the existing {policy.TypeName} in {policy.ApprovedViewIds.First()}; its screen offers this draft");
         var view = Application.CreateDetailView(os, policy.ApprovedViewIds.First(), true, target);
@@ -385,11 +421,11 @@ public class EditDraftListControllerBlazor : WindowController
     /// record in a modal window with the D11 warning and, read-only, the typed entries it could not put back; or the D9
     /// read-only display, the already-saved notice, the question when the saved check failed, or a refusal message.
     /// </summary>
-    internal void Recreate(Guid draftOid, bool proceedWhenSavedCheckFails)
+    internal void Recreate(Guid draftOid, string objectType, bool proceedWhenSavedCheckFails)
     {
         var circuit = System.Threading.SynchronizationContext.Current ?? _circuit;
         var host = new EditDraftRecreateHostBlazor(Application, Frame, circuit, (text, type) => Message(text, type));
-        var r = EditDraftRecreate.Run(host, draftOid, proceedWhenSavedCheckFails);
+        var r = EditDraftRecreate.Run(host, draftOid, objectType, proceedWhenSavedCheckFails);
         switch (r.Outcome)
         {
             case EditDraftRecreateOutcome.Created:
@@ -424,16 +460,15 @@ public class EditDraftListControllerBlazor : WindowController
                 // やめる and 破棄 create nothing.
                 ShowDraftEntries(r, TypedPaths(r), EditDraftTexts.Of(t => t.RecreateSavedCheckFailedCaption), EditDraftTexts.Of(t => t.RecreateSavedCheckFailed),
                     notRestorableSuffix: false, allowDiscard: true, okCaption: EditDraftTexts.Of(t => t.RecreateAnyway),
-                    ok: shown => { if (!shown.Answered) Defer(() => Recreate(draftOid, proceedWhenSavedCheckFails: true)); }, cancelCaption: EditDraftTexts.Of(t => t.RecreateCancel));
+                    ok: shown => { if (!shown.Answered) Defer(() => Recreate(draftOid, objectType, proceedWhenSavedCheckFails: true)); }, cancelCaption: EditDraftTexts.Of(t => t.RecreateCancel));
                 return;
             case EditDraftRecreateOutcome.NoOwner: Message(EditDraftTexts.Of(t => t.PersonalLoginOnly), InformationType.Warning); return;
             case EditDraftRecreateOutcome.NotLive: Message(EditDraftTexts.Of(t => t.DraftCannotOpen), InformationType.Warning); return;
             case EditDraftRecreateOutcome.Unreadable: Message(EditDraftTexts.Of(t => t.DraftUnreadable), InformationType.Warning); return;
             case EditDraftRecreateOutcome.NotNewRecord:
             case EditDraftRecreateOutcome.TypeNotAllowed: Message(EditDraftTexts.Of(t => t.RecreateTypeNotAllowed), InformationType.Warning); return;
-            case EditDraftRecreateOutcome.NotPermitted: Message(EditDraftTexts.Of(t => t.RecreateNoPermission), InformationType.Warning); return;
-            case EditDraftRecreateOutcome.SubSectionNotVisible:
-            case EditDraftRecreateOutcome.FilledNotVisible: Message(EditDraftTexts.Of(t => t.RecreateSubSectionNotVisible), InformationType.Warning); return;
+            case EditDraftRecreateOutcome.NotPermitted:
+            case EditDraftRecreateOutcome.FilledNotPermitted: Message(EditDraftTexts.Of(t => t.RecreateNoPermission), InformationType.Warning); return;
             case EditDraftRecreateOutcome.ClaimLost: Message(EditDraftTexts.Of(t => t.RecreateClaimLost), InformationType.Warning); return;
             case EditDraftRecreateOutcome.NotAcknowledged: Message(EditDraftTexts.Of(t => t.RecreateNotAttached), InformationType.Warning); return;
             default: Message(EditDraftTexts.Of(t => t.RecreateFailed), InformationType.Error); return;
@@ -464,6 +499,7 @@ public class EditDraftListControllerBlazor : WindowController
         var display = new EditDraftReadOnlyView
         {
             OwnerOid = r.OwnerOid,
+            ObjectType = r.Draft?.ObjectType,
             Lead = lead,
             Provenance = string.Format(EditDraftTexts.Of(t => t.OfferProvenance), string.Empty, typeCaption, r.Draft?.LastCapturedOn ?? default,
                 r.Draft?.EntryCount ?? 0, EditDraftProvenance.Resolve(Application?.Model, r.Draft?.ViewId)).Trim(),
@@ -489,7 +525,7 @@ public class EditDraftListControllerBlazor : WindowController
         var os = Application.CreateObjectSpace(policy.Type);
         var target = os.GetObjectByKey(policy.Type, oid);
         if (target == null) { os.Dispose(); Message(EditDraftTexts.Of(t => t.SavedRecordNotOpened), InformationType.Warning); return; }
-        if (!EditDraftServices.RecordAccess(Application?.ServiceProvider).IsRecordVisible(Application, policy, target)) { os.Dispose(); Message(EditDraftTexts.Of(t => t.RecordNotVisible), InformationType.Warning); return; }
+        if (!EditDraftServices.MayRestore(Application, policy, target)) { os.Dispose(); Message(EditDraftTexts.Of(t => t.RecordNotVisible), InformationType.Warning); return; }
         EditDraftLog.Info($"[EditDraft] list 開く: opening the saved {policy.TypeName} the already-saved check found");
         var view = Application.CreateDetailView(os, detailViewId, true, target);
         Application.ShowViewStrategy.ShowView(new ShowViewParameters(view) { TargetWindow = TargetWindow.NewModalWindow }, new ShowViewSource(Frame, null));

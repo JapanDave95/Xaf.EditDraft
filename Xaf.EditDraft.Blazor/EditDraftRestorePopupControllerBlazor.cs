@@ -10,10 +10,10 @@ namespace Xaf.EditDraft.Blazor;
 
 /// <summary>
 /// 破棄 and すべて選択 on the generic 入力控 restore popup (the OK/Cancel pair carries はい/あとで).
-/// Targets EditDraftRestorePlan ONLY, so the chart popup controller (TenantChartDraftRestorePlan, F2
-/// author, chart writer) never acts on a generic plan and this one never acts on a chart plan: exactly
-/// one handler per plan (design §1.2). 破棄 soft-discards EVERY draft shown (D16), owner-scoped in the
-/// writer's statement, through the generic store and owner.
+/// Targets EditDraftRestorePlan ONLY, so a host's own popup controller for its own plan class never acts on
+/// a generic plan and this one never acts on the host's: exactly one handler per plan (design §1.2).
+/// 破棄 soft-discards EVERY draft shown (D16), owner-scoped in the writer's statement, through the generic
+/// store and the owner the owner seam names for the plan's type.
 /// Library milestone M2: owner through the Core owner seam, "now" from the host clock, texts from EditDraftTexts,
 /// log lines through EditDraftLog (same text).
 /// </summary>
@@ -64,7 +64,7 @@ public class EditDraftRestorePopupControllerBlazor : ObjectViewController<Detail
         var ok = 0;
         try
         {
-            var owner = EditDraftServices.CurrentOwner(Application?.ServiceProvider, Application);
+            var owner = EditDraftServices.CurrentOwnerOfType(Application?.ServiceProvider, Application, plan.ObjectType);
             if (!owner.IsNone && owner.Oid == plan.OwnerOid)
             {
                 var writer = new EditDraftWriter(Application.ServiceProvider);
@@ -109,7 +109,7 @@ public class EditDraftReadOnlyViewControllerBlazor : ObjectViewController<Detail
             var ok = 0;
             try
             {
-                var owner = EditDraftServices.CurrentOwner(Application?.ServiceProvider, Application);
+                var owner = EditDraftServices.CurrentOwnerOfType(Application?.ServiceProvider, Application, view.ObjectType);
                 if (!owner.IsNone && owner.Oid == view.OwnerOid)
                 {
                     var writer = new EditDraftWriter(Application.ServiceProvider);

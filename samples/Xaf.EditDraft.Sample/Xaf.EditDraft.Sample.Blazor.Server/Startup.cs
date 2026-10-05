@@ -90,8 +90,9 @@ public class Startup
     /// Xaf.EditDraft: the three registrations a consumer must make, plus two optional ones. Nothing else is registered, so
     /// every other seam is the library default:
     /// - owner: the XAF login's Guid (XafLoginEditDraftOwnerResolver), no owner without a Guid login;
-    /// - record access: XAF security only (XafSecurityEditDraftRecordAccess); records are always loaded through a secured
-    ///   object space first;
+    /// - access: XAF security only (XafSecurityEditDraftAccessCheck; no IEditDraftAccessCheck is registered): restoring needs
+    ///   Write on the record loaded through the secured object space, recreating needs Create, Write and Read on the rebuilt
+    ///   record (the RestrictedNotes role in the Updater shows a role object criterion doing this);
     /// - switches: the configuration section "EditDraftCapture" (appsettings.json);
     /// - store table schema: "dbo" (SampleEditDraft has no [Persistent("schema.table")] mapping);
     /// - clock: TimeProvider.System; log sink: the application's ILogger, category "Xaf.EditDraft"; texts: English.

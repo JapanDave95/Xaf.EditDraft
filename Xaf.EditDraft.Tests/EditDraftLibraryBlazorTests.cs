@@ -200,12 +200,14 @@ namespace Xaf.EditDraft.Tests
         [Test]
         public void E19_the_moved_controllers_use_the_Core_seams_and_no_application_helper_clock_or_literal_UI_text()
         {
+            // 0.4.0-preview.1 (owner ruling 2026-10-05): the owner seam takes the policy, and the record-access seam is replaced
+            // by EditDraftServices.MayRestore (XAF security plus the optional IEditDraftAccessCheck); the pins follow the calls.
             var restore = Wave1.Source("Xaf.EditDraft.Blazor/EditDraftRestoreControllerBlazor.cs");
-            restore.Should().Contain("EditDraftServices.CurrentOwner(Application?.ServiceProvider, ObjectSpace)")
-                .And.Contain("EditDraftServices.RecordAccess(Application?.ServiceProvider).IsRecordVisible(Application, _policy, record)")
+            restore.Should().Contain("EditDraftServices.CurrentOwner(Application?.ServiceProvider, ObjectSpace, _policy)")
+                .And.Contain("EditDraftServices.MayRestore(Application, _policy, record)")
                 .And.Contain("EditDraftMemberAccess.NotWritable(ObjectSpace, record, allPaths)");
             Wave1.Source("Xaf.EditDraft.Blazor/EditDraftListControllerBlazor.cs")
-                .Should().Contain("EditDraftServices.RecordAccess(Application?.ServiceProvider).IsRecordVisible(Application, policy, target)");
+                .Should().Contain("EditDraftServices.MayRestore(Application, policy, target)");
             foreach (var file in LibrarySources("Xaf.EditDraft.Blazor").Where(f => f.EndsWith(".cs")))
             {
                 // Owner ruling 2026-10-02 (O-6): model captions ([XafDisplayName]) stay Japanese until the M3 localisation.
@@ -223,7 +225,7 @@ namespace Xaf.EditDraft.Tests
             var ja = EditDraftTextSet.Japanese;
             new[] { ja.ListCaption, ja.ActionOpen, ja.ActionDiscard, ja.ActionSelectAll, ja.RowOpenAction, ja.OfferOk, ja.OfferLater, ja.Close, ja.RecordNotVisible }
                 .Should().Equal("入力控", "開く", "破棄", "すべて選択", "入力控を開く", "はい（選択した項目を戻す）", "あとで", "閉じる",
-                    "この入力控はこのログインでは戻せません（事業所の権限）。");   // expectation changed by owner ruling 2026-10-02 (E22b)
+                    "この入力控はこのログインでは戻せません（権限がありません）。");   // expectation changed by owner rulings 2026-10-02 (E22b) and 2026-10-05 (no 事業所)
             ja.OfferLeadCount.Should().Be("前回この記録に入力され、保存されていない内容が {0} 件あります。");
             ja.OfferProvenance.Should().Be("{0} {1}／入力 {2:yyyy/MM/dd HH:mm}（{3} 項目）／{4}");
             ja.AppliedPartly.Should().Be("{0} 件を戻しました。{1} 件は戻せませんでした（その後に変更されたか、参照先がありません）。内容を確認してください。");
@@ -243,12 +245,14 @@ namespace Xaf.EditDraft.Tests
         {
             // Expectation changed by owner ruling 2026-10-02 ("the refusal toast reworded to say the draft cannot be restored
             // for this login (事業所)"); run 2026-10-02-time-editor-o3s-impl-3ad204, Codex tests a1 T23-T25.
-            EditDraftTextSet.Japanese.RecordNotVisible.Should().Be("この入力控はこのログインでは戻せません（事業所の権限）。");
+            // Expectation changed again by owner ruling 2026-10-05 (0.4.0-preview.1: no 事業所 in the library; the check is
+            // XAF security plus the optional IEditDraftAccessCheck, so the reason is "no permission").
+            EditDraftTextSet.Japanese.RecordNotVisible.Should().Be("この入力控はこのログインでは戻せません（権限がありません）。");
             // Expectation changed by gap G9 (run 2026-10-04-editdraft-close-gaps-08c338): no host term in the English set.
-            EditDraftTextSet.English.RecordNotVisible.Should().Be("This draft cannot be restored for this login (no permission to see the record).");
+            EditDraftTextSet.English.RecordNotVisible.Should().Be("This draft cannot be restored for this login (no permission).");
             Wave1.Source("Xaf.EditDraft.Blazor/EditDraftRestoreControllerBlazor.cs").Should().Contain(
-                "EditDraftLog.Info($\"[EditDraft] offer refused at '{trigger}': record {S(recordOid)} of {_policy.TypeName} is not visible to this login (事業所 rule)\");",
-                "T25: the log line text is unchanged");
+                "EditDraftLog.Info($\"[EditDraft] offer refused at '{trigger}': record {S(recordOid)} of {_policy.TypeName}: this login may not restore onto it\");",
+                "T25: the log line (reworded by the 2026-10-05 ruling: no 事業所)");
             // T24: the list open, the badge open, the offer and the apply all show the text through EditDraftTexts. Counted per
             // file (diffreview a1 C5): losing one of the two restore-controller sites must fail, not only losing both.
             // The list controller has two sites since new-record capture: the 開く path and the 「新規」 recreate path
