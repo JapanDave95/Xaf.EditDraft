@@ -3,17 +3,12 @@ using System;
 namespace Xaf.EditDraft.Core;
 
 /// <summary>
-/// COPY of the application's AttendanceDraftSlot&lt;TSnapshot&gt; (CareCrew.Blazor.Server/Infrastructure), owner decision
-/// D5 (milestone M1): the write slot of ONE editing context, XAF-free. 勤怠 and the chart capture keep the
-/// application's copy; from "public sealed class" on, this file is the same text with the type renamed
-/// (pinned by EditDraftLibraryIsolationTests). The original description follows.
+/// The write slot of ONE editing context (owner decision D5, milestone M1): the draft-row state of one
+/// capture controller activation, kept XAF-free so the ordering rules can be unit-tested without XAF.
+/// <typeparamref name="TSnapshot"/> is the prepared, immutable data of one write.
 ///
-/// The draft-row state of ONE 勤怠管理 editor activation (AttendanceDraftCaptureControllerBlazor),
-/// kept XAF-free so the ordering rules can be unit-tested (NursingHome_Chart.Rostering.Tests links
-/// this file). <typeparamref name="TSnapshot"/> is the prepared, immutable data of one write.
-///
-/// Why it exists (KB fix-507, owner "5= fix the bug", 2026-09-25): the controller used to keep the
-/// draft Oid and revision in fields that the off-circuit worker read and wrote with no ordering
+/// Why it exists (KB fix-507): a capture controller that kept the
+/// draft Oid and revision in fields that the off-circuit worker read and wrote had no ordering
 /// against a save. A save that landed while the FIRST write (the create) was still running found
 /// no Oid, deleted nothing, and the create then published its Oid — leaving a draft of edits that
 /// were already saved. A second write could also start while the first was running (two creates,
@@ -156,7 +151,7 @@ public sealed class DraftWriteSlot<TSnapshot> where TSnapshot : class
 
     /// <summary>
     /// As <see cref="ForgetGoneRow(WriteTicket)"/>; with <paramref name="freshStart"/> the content the
-    /// slot holds must NOT come back either (カルテ入力控: the row was 破棄'd or expired — design §4.8,
+    /// slot holds must NOT come back either (for example the row was 破棄'd or expired — design §4.8,
     /// Codex diff review C5). The pending snapshot is dropped and every write is refused, WITHOUT
     /// being kept, until the owner calls <see cref="AcknowledgeFreshStart"/> after starting new content.
     /// </summary>
@@ -201,7 +196,7 @@ public sealed class DraftWriteSlot<TSnapshot> where TSnapshot : class
     public void AcknowledgeFreshStart() { lock (_gate) _needsFreshStart = false; }
 
     /// <summary>
-    /// Takes over an EXISTING row that was claimed for this screen (カルテ入力控 restore, 2026-09-28):
+    /// Takes over an EXISTING row that was claimed for this screen (a restore that claimed the row):
     /// later writes supersede it at <paramref name="revision"/>. Only while no write is running and no
     /// row is held — otherwise false and nothing changes.
     /// </summary>

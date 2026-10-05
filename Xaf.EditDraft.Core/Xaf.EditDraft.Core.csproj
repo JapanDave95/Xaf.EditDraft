@@ -1,9 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
-    <!-- Xaf.EditDraft.Core: the platform-agnostic part of the edit-draft (入力控) engine, extracted from
-         CareCrew.Blazor.Server (milestone M1, docs/xaf-editdraft-library-design-2026-10-01.md).
+    <!-- Xaf.EditDraft.Core: the platform-agnostic part of the edit-draft (入力控) engine (milestone M1,
+         docs/xaf-editdraft-library-design-2026-10-01.md).
          Supported contract v1: XAF + XPO, Guid-keyed BaseObject records, SQL Server.
-         References DevExpress and BCL packages only: never NursingHome_Chart.*, CareCrew.*, Progress.*,
-         Llamachant* or DevExpress.ExpressApp.Blazor* (pinned by EditDraftLibraryIsolationTests).
+         References DevExpress packages, Newtonsoft.Json and the BCL only; no application assembly and no
+         DevExpress.ExpressApp.Blazor* (enforced by EditDraftLibraryIsolationTests).
          Package versions come from Directory.Packages.props (central package management). -->
     <PropertyGroup>
         <TargetFramework>net8.0</TargetFramework>
@@ -26,8 +26,8 @@
 
     <!-- Owner decision O-3 (milestone M2): the writer is internal to Core. The Blazor part (its restore, list and
          ListView-capture controllers) and the library's own test project, which exercises the writer, may see Core
-         internals; no application assembly may (pinned by EditDraftLibraryBlazorTests and EditDraftLibraryIsolationTests).
-         Gap G13 (2026-10-04): the first host's test project is no longer a friend; this repository has no such project. -->
+         internals; no other assembly may (gap G13, 2026-10-04; pinned by EditDraftCloseGapsTests and
+         EditDraftLibraryIsolationTests). -->
     <ItemGroup>
         <InternalsVisibleTo Include="Xaf.EditDraft.Blazor" />
         <InternalsVisibleTo Include="Xaf.EditDraft.Tests" />

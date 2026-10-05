@@ -55,7 +55,8 @@ test('T2 every change of one (owner token, load, context, member, generation) re
     assert.equal(typeof e.at, 'number');
     assert.equal(typeof e.seq, 'number');
     assert.equal(e.tr, false);
-    // 'CareCrew_InputJournal' is the first host's real localStorage key, which the library must never touch.
+    // GUARD: 'CareCrew_InputJournal' is a real application's own localStorage key outside the library's prefix; the
+    // library must never touch it.
     assert.ok(!w.storage.map.has('CareCrew_InputJournal'), 'no shared aggregate item');
     t.close();
 });

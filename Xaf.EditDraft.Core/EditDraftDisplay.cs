@@ -33,7 +33,7 @@ public static class EditDraftDisplay
         (beforeKnown ? (string.IsNullOrEmpty(before) ? EditDraftTexts.Of(t => t.Empty) : before) : EditDraftTexts.Of(t => t.Unknown)) + " → " +
         (string.IsNullOrEmpty(after) ? EditDraftTexts.Of(t => t.Empty) : after);
 
-    /// <summary>Long care text is cut for a grid cell; the full value is still what is restored.</summary>
+    /// <summary>Long text is cut for a grid cell; the full value is still what is restored.</summary>
     public static string Short(string text, int max = 60) =>
         string.IsNullOrEmpty(text) || text.Length <= max ? text ?? string.Empty : text.Substring(0, max) + "…";
 }

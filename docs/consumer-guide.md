@@ -1,9 +1,10 @@
 # Xaf.EditDraft consumer guide
 
 How to add Xaf.EditDraft to a DevExpress XAF Blazor application, what the library checks at startup, and what stays the
-application's responsibility. Version 0.4.0-preview.1 (the client-side input journal added in 0.3.0 is off by default
+application's responsibility. Version 0.4.1-preview.1 (the client-side input journal added in 0.3.0 is off by default
 and not covered here; see the `edit-draft-client-journal-*` write-ups). The working example is `samples/Xaf.EditDraft.Sample` (one class,
-`Note`); each step below names the sample file that does it. Upgrading from 0.3.0-preview.x: section 12.
+`Note`); each step below names the sample file that does it. Upgrading from 0.3.0-preview.x: section 12. Upgrading from
+0.4.0-preview.1: no code change; the Japanese `PersonalLoginOnly` text now reads 「このログインでは入力控を使えません。」.
 
 ## 1. What the library does
 

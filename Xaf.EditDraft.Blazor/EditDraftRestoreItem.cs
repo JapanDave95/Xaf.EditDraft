@@ -10,10 +10,9 @@ using Xaf.EditDraft.Core;
 namespace Xaf.EditDraft.Blazor;
 
 /// <summary>
-/// One drafted member as the 入力控 restore popup shows it (milestone M2). Before M2 the generic popup reused the
-/// chart popup's row type (the application's TenantChartDraftRestoreItem); this is the library's own row with the
-/// same members, captions, order and visibility, so the popup grid shows the same columns. Plain XAF non-persistent
-/// object (D9): <see cref="NonPersistentBaseObject"/>, the base the replaced Llamachant NPOBase derived from.
+/// One drafted member as the 入力控 restore popup shows it (milestone M2): the library's own row type, whose members,
+/// captions, order and visibility are the popup grid's columns. Plain XAF non-persistent
+/// object (D9): <see cref="NonPersistentBaseObject"/>, no third-party base.
 /// Milestone M3: the captions declared here are the English defaults; the captions shown come from the text set in
 /// use (<see cref="EditDraftPopupCaptions"/>), so a host that chose the Japanese set shows the same columns as before.
 /// </summary>

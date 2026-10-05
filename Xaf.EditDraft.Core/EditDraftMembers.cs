@@ -21,9 +21,9 @@ public static class EditDraftMembers
 {
     /// <summary>
     /// Every capturable member under <paramref name="policy"/>, reconstruction context first. For a
-    /// policy with a decision table (wave 1, non-chart) only members with a recorded, non-Excluded
+    /// policy with a decision table (a generic type) only members with a recorded, non-Excluded
     /// decision are admitted: reflection proposes, the table decides (design §1.3; Codex diag C3).
-    /// The chart policies (no table) are unchanged.
+    /// A policy without a table gets every candidate.
     /// </summary>
     internal static IReadOnlyList<EditDraftMemberSpec> Discover(EditDraftTypePolicy policy)
     {

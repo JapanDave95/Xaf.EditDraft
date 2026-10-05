@@ -7,8 +7,8 @@ using DevExpress.ExpressApp.Model;
 namespace Xaf.EditDraft.Core;
 
 /// <summary>
-/// 入力控 wave 1b (ListView capture, design docs/generic-edit-draft-wave1b-design-2026-10-01.md §3, owner
-/// B1/B4/B7): which ListViews capture and which carry the row badge and 開く. Pure, tested without XAF.
+/// 入力控 wave 1b (ListView capture, owner B1/B4/B7): which ListViews capture and which carry the row badge
+/// and 開く. Pure, tested without XAF.
 /// </summary>
 public static class EditDraftListAdmission
 {

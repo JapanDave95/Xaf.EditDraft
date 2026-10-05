@@ -8,7 +8,7 @@ namespace Xaf.EditDraft.Core;
 /// One persistent row's 入力控 capture context on a ListView (wave 1b, design §3): its own baseline,
 /// payload, write slot and sequence marks, keyed by the record's Oid (sorting, paging and filtering never
 /// change it). The list screen's contexts share the screen's EditorInstanceId. XAF-free so the capture,
-/// fallback and cancel rules are unit-tested against the compiled library (NursingHome_Chart.Rostering.Tests);
+/// fallback and cancel rules are unit-tested against the compiled library;
 /// EditDraftListCaptureControllerBlazor (in Xaf.EditDraft.Blazor since M2) owns the events, the gate and the worker — hence public.
 ///
 /// Baseline: prepared at the grid's EditingStarted (policy InitializingGetters first, fix-529), else by the

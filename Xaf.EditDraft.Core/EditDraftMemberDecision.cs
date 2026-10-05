@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace Xaf.EditDraft.Core;
 
-/// <summary>The audited disposition of one member of a registered non-chart type (design §1.3, owner Q1; test T3).</summary>
+/// <summary>The audited disposition of one member of a registered generic type (design §1.3, owner Q1; test T3).</summary>
 public enum EditDraftDisposition
 {
     /// <summary>Census A: SetPropertyValue only (or a setter that rewrites its own value). Captured and restorable.</summary>
@@ -22,7 +22,7 @@ public enum EditDraftDisposition
 /// <summary>
 /// One line of a type's decision table: what the engine does with the member and why.
 /// - <see cref="CensusCategory"/>: a label recorded with the decision; the gate does not read it. The helpers below write
-///   the labels of the library's first host's setter census: A restorable, B group, C side effect, D not restorable,
+///   the labels of a setter census (design §1.3): A restorable, B group, C side effect, D not restorable,
 ///   X excluded. Any label works.
 /// - <see cref="Reason"/>: why (for example "SetPropertyValue only"). Required, non-empty (the gate checks it).
 /// - <see cref="Evidence"/>: where the decision can be checked (for example the class file and line). Required, non-empty.

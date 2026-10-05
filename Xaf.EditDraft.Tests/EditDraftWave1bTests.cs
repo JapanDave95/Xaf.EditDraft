@@ -11,21 +11,17 @@ using NUnit.Framework;
 
 namespace Xaf.EditDraft.Tests
 {
-    // Generic edit-draft restore, wave 1b — ListView capture (owner decisions B1-B10; design
-    // docs/generic-edit-draft-wave1b-design-2026-10-01.md). Expectations come from the Codex requirement-only list
+    // Generic edit-draft restore, wave 1b — ListView capture (owner decisions B1-B10). Expectations come from the Codex
+    // requirement-only list
     // written BEFORE any code was shown to it: run 2026-10-01-editdraft-wave1b-065de8, tests a1 (E1-E35).
-    // Labels En refer to them. Logic tests run against pure code (EditDraftListRules, EditDraftRowContext) or an
-    // in-memory object space over the real StaffOverTimeHoliday class; the grid lifecycle, the badge rendering
-    // and the controllers' event wiring are pinned by source scans and verified in the Dev2 browser pass.
-    // Library milestone M3 (run 2026-10-02-editdraft-m3-1b4d82): moved here from NursingHome_Chart.Rostering.Tests
-    // (EditDraftWave1bTests.cs) with only the namespace changed, except E21's model-caption check (the caption now comes
-    // from the text set, M3 localisation) — the wave-1b tests on the library's own rules and source. The tests on the
-    // application's StaffOverTimeHoliday class, policies and files stay in that project. The helper below is the part of
-    // that project's Wave1b helper these tests use (the library source paths).
+    // Labels En refer to them. Logic tests run against pure code (EditDraftListRules, EditDraftRowContext); the grid
+    // lifecycle, the badge rendering and the controllers' event wiring are pinned by source scans and verified in the
+    // browser pass. Library milestone M3 (run 2026-10-02-editdraft-m3-1b4d82): the wave-1b tests on the library's own rules
+    // and source; E21's model-caption check reads the caption from the text set (M3 localisation). The helper below names
+    // the library source files these tests read.
 
     internal static class Wave1b
     {
-        public const string CaptureList = "StaffOverTimeHoliday_ListView";
         public const string ListCapture = "Xaf.EditDraft.Blazor/EditDraftListCaptureControllerBlazor.cs";
         public const string Badge = "Xaf.EditDraft.Blazor/EditDraftListBadgeControllerBlazor.cs";
     }
@@ -95,10 +91,10 @@ namespace Xaf.EditDraft.Tests
         {
             var keys = new Dictionary<string, string>(StringComparer.Ordinal)
             {
-                [EditDraftSwitch.EnabledKey] = "true", [EditDraftSwitch.TypeKey("StaffOverTimeHoliday")] = "true", [EditDraftSwitch.ListViewsKey] = "true"
+                [EditDraftSwitch.EnabledKey] = "true", [EditDraftSwitch.TypeKey("Note")] = "true", [EditDraftSwitch.ListViewsKey] = "true"
             };
             bool IsListEnabled(string id) => EditDraftSwitch.DecideList(keys.GetValueOrDefault(EditDraftSwitch.EnabledKey), keys.GetValueOrDefault(EditDraftSwitch.TypeKey(id)), keys.GetValueOrDefault(EditDraftSwitch.ListViewsKey));
-            var stillEnabled = EditDraftWriteGate.Bind("StaffOverTimeHoliday", IsListEnabled);
+            var stillEnabled = EditDraftWriteGate.Bind("Note", IsListEnabled);
             stillEnabled().Should().BeTrue();
             keys[EditDraftSwitch.ListViewsKey] = "false";
             stillEnabled().Should().BeFalse("switched off after queueing: the queued write is skipped");
@@ -229,16 +225,16 @@ namespace Xaf.EditDraft.Tests
         [Test]
         public void E21_provenance_names_the_origin_and_the_view_caption_and_never_the_editor_id()
         {
-            EditDraftProvenance.Origin(true, "残業・有給").Should().Be("一覧から（残業・有給）");
-            EditDraftProvenance.Origin(false, "残業・有給").Should().Be("詳細から（残業・有給）");
+            EditDraftProvenance.Origin(true, "メモ").Should().Be("一覧から（メモ）");
+            EditDraftProvenance.Origin(false, "メモ").Should().Be("詳細から（メモ）");
             EditDraftProvenance.Origin(true, "  ").Should().Be("一覧から");
             EditDraftProvenance.Origin(null, "x").Should().Be(EditDraftProvenance.Unknown);
-            EditDraftProvenance.Resolve(null, "StaffOverTimeHoliday_ListView").Should().Be("由来不明", "a view the model no longer has");
+            EditDraftProvenance.Resolve(null, "Note_ListView").Should().Be("由来不明", "a view the model no longer has");
             var restore = Wave1.Source("Xaf.EditDraft.Blazor/EditDraftRestoreControllerBlazor.cs");
             restore.Should().Contain("EditDraftProvenance.Resolve(Application?.Model, draft.ViewId)");
             restore.Should().NotContain("EditorInstanceId}", "operational, never shown");
             Wave1.Source("Xaf.EditDraft.Blazor/EditDraftListControllerBlazor.cs").Should().Contain("Origin = EditDraftProvenance.Resolve(Application.Model, d.ViewId)");
-            // Library M3 (localisation): the class declares the English caption; the caption shown is the text set's (CareCrew: Japanese).
+            // Library M3 (localisation): the class declares the English caption; the caption shown is the text set's (here: Japanese).
             Wave1.Source("Xaf.EditDraft.Blazor/EditDraftModels.cs").Should().Contain("[ModelDefault(\"AllowEdit\", \"False\")] public string Origin { get; set; }");
             EditDraftModelCaptions.Find(EditDraftPopupCaptions.All, typeof(EditDraftListItem), nameof(EditDraftListItem.Origin), EditDraftTextSet.Japanese).Should().Be("由来");
         }

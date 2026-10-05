@@ -26,10 +26,10 @@ namespace Xaf.EditDraft.Core;
 /// Values are READ from the object after the setter cascade. Baselines come from a snapshot taken when
 /// the record was bound. Saving retires the whole draft; closing without saving keeps it.
 ///
-/// INITIAL-LOAD RULE (owner ruling 2026-10-01, aligned with KB fix-529 on the chart branch): the policy's
+/// INITIAL-LOAD RULE (owner ruling 2026-10-01, aligned with KB fix-529): the policy's
 /// InitializingGetters (getters that write) run ONCE, under capture suppression, BEFORE the baseline is
 /// taken in BindTo, so their fill is baseline and not an edit; the restore re-check runs them on its fresh
-/// read. Nothing else is deferred: capture is live from activation, like the chart capture.
+/// read. Nothing else is deferred: capture is live from activation.
 ///
 /// Library (milestone M1): platform-agnostic, in Xaf.EditDraft.Core (owner decision D3). The registry, owner,
 /// switch section, clock and log sink come from the host (EditDraftServices). Gap G15 (2026-10-04): renamed from
@@ -308,7 +308,7 @@ public class EditDraftCaptureController : ObjectViewController<DetailView, objec
     /// <summary>
     /// KB fix-529 (owner ruling 2026-10-01): the policy's getters that write run here, once, BEFORE the baseline and
     /// with capture suppressed (BindTo is also called from View_CurrentObjectChanged, where the handler is already
-    /// subscribed), so the fill is baseline, not an edit. Empty for the wave-1 types.
+    /// subscribed), so the fill is baseline, not an edit. Nothing runs when the policy lists none.
     /// </summary>
     private void RunInitializingGetters(object record)
     {
@@ -416,7 +416,7 @@ public class EditDraftCaptureController : ObjectViewController<DetailView, objec
         EditDraftCaptureRules.Capture(_policy, _payload, _baseline, _record, path, IsNewRecord() == true);
 
     // ---------------------------------------------------------------------------------------
-    // Write — off the circuit, one at a time (same shape as the chart capture)
+    // Write — off the circuit, one at a time
     // ---------------------------------------------------------------------------------------
 
     // Public (library M1; internal since wave 1b): the ListView capture's row contexts (Xaf.EditDraft.Blazor since M2)
@@ -575,7 +575,7 @@ public class EditDraftCaptureController : ObjectViewController<DetailView, objec
         };
     }
 
-    /// <summary>「苦情対応／2026/09/30」: the type caption and the policy's context date (separator from EditDraftTexts). Never a person's name.</summary>
+    /// <summary>「メモ／2026/09/30」: the type caption and the policy's context date (separator from EditDraftTexts). Never a person's name.</summary>
     public static string ContextTextFor(string typeCaption, DateTime? date) =>
         date is { } d && d != DateTime.MinValue ? $"{typeCaption}{EditDraftTexts.Of(t => t.ContextSeparator)}{d:yyyy/MM/dd}" : typeCaption;
 

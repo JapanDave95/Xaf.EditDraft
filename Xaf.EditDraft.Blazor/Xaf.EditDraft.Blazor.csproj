@@ -3,8 +3,8 @@
          the ListView capture, the row badges and their stylesheet (milestone M2,
          docs/xaf-editdraft-library-design-2026-10-01.md §4.1). A Razor class library so that wwwroot/ is served as a
          static web asset at _content/Xaf.EditDraft.Blazor/... .
-         References Xaf.EditDraft.Core and DevExpress packages only: never NursingHome_Chart.*, CareCrew.*, Progress.*
-         or Llamachant* (pinned by EditDraftLibraryIsolationTests). Package versions come from Directory.Packages.props. -->
+         References Xaf.EditDraft.Core, DevExpress packages and the ASP.NET Core framework only; no application
+         assembly (enforced by EditDraftLibraryBlazorTests). Package versions come from Directory.Packages.props. -->
     <PropertyGroup>
         <TargetFramework>net8.0</TargetFramework>
         <RootNamespace>Xaf.EditDraft.Blazor</RootNamespace>

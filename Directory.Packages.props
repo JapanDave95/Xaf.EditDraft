@@ -1,7 +1,7 @@
 <Project>
   <!--
-    Central package versions for the library and the sample. The library was extracted from the CareCrew
-    solution on 2026-10-03 and these are the versions it was built and tested with there. Xaf.EditDraft.Tests
+    Central package versions for the library and the sample: the versions the library is built and tested
+    with (DevExpress 26.1.4 is the tested floor, see README.md). Xaf.EditDraft.Tests
     opts out of central management (ManagePackageVersionsCentrally=false) and pins its own test packages.
   -->
   <PropertyGroup>

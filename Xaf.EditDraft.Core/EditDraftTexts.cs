@@ -172,8 +172,8 @@ public sealed class EditDraftTextSet
     public string CaptionStoreContext { get; init; }
 
     /// <summary>
-    /// The Japanese set: the first host's strings, byte for byte (its tests pin them; unchanged by the 2026-10-04 gap work).
-    /// ListLead says drafts are deleted at expiry ("保存期限を過ぎると削除されます"), which holds only when a retention sweep runs
+    /// The Japanese set (the tests in this repository pin its strings). 0.4.1-preview.1: PersonalLoginOnly no longer names
+    /// a kind of login; it says what the English text says. ListLead says drafts are deleted at expiry ("保存期限を過ぎると削除されます"), which holds only when a retention sweep runs
     /// (EditDraftRetention); a host that uses this set should turn one on, or supply its own set.
     /// </summary>
     public static EditDraftTextSet Japanese { get; } = new()
@@ -229,7 +229,7 @@ public sealed class EditDraftTextSet
         DiscardFailedShownAgain = "破棄できませんでした。次回もう一度表示されます。",
         DiscardFailed = "破棄できませんでした。",
         SelectDraftToOpen = "開く入力控を選んでください。",
-        PersonalLoginOnly = "この画面の入力控は、職員個人のログインで使えます。",
+        PersonalLoginOnly = "このログインでは入力控を使えません。",
         OpenListTabFirst = "対象の一覧タブを開いてから、もう一度押してください。",
         ListOpenFailedReload = "入力控を開けませんでした。画面を再読み込みしてからもう一度お試しください。",
         ListOpenFailedContact = "入力控を開けませんでした。もう一度お試しください。続く場合は管理者に連絡してください。",

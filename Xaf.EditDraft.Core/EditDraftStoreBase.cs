@@ -15,8 +15,8 @@ namespace Xaf.EditDraft.Core;
 /// a table. No library type is named <c>EditDraft</c> (a type of that name under the Xaf namespace tree
 /// collides with the namespace Xaf.EditDraft, CS0118).
 ///
-/// The 17 members, their sizes and the four named indexes are the ones the library's first host declared before the
-/// extraction (milestone M1), so the table, columns and indexes of an existing database stay valid (no migration).
+/// The 17 members, their sizes and the four named indexes are unchanged since milestone M1 (apart from the two removals
+/// below), so the table, columns and indexes of an existing database stay valid (no migration).
 /// 0.4.0-preview.1 removed two members the library no longer uses (OwnerFlag and ScopeOid; their column names are in
 /// docs/consumer-guide.md, "Upgrading from 0.3.0-preview.1"): the library neither reads nor writes those columns. A host
 /// whose existing table has them declares them on its own store class with the same column names and types if it wants

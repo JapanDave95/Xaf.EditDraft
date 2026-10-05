@@ -1,5 +1,5 @@
-// Test harness for the Xaf.EditDraft client-side input journal (milestone M1). It mirrors the host application's jsdom
-// harness pattern: jsdom pages, the REAL module under test, everything it touches observable.
+// Test harness for the Xaf.EditDraft client-side input journal (milestone M1): jsdom pages, the REAL module under test,
+// everything it touches observable.
 //
 // Under test is Xaf.EditDraft.Blazor/wwwroot/edit-draft-journal.js, imported unchanged through a data: URL (an ES module
 // imported from these CommonJS tests). JOURNAL_JS=<path> runs the same tests against another copy (mutation checks).

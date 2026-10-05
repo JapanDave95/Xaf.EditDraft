@@ -2,8 +2,8 @@ namespace Xaf.EditDraft.Core;
 
 /// <summary>
 /// One drafted member as a restore plan shows it — the platform-neutral row the engine builds
-/// (<see cref="EditDraftRestorer.BuildItems"/>) and merges (<see cref="EditDraftOfferMerge"/>). A host maps it
-/// to its own popup row type (CareCrew: TenantChartDraftRestoreItem) and keeps identity on its side: each
+/// (<see cref="EditDraftRestorer.BuildItems"/>) and merges (<see cref="EditDraftOfferMerge"/>). A popup maps it
+/// to its own row type (the library's: Xaf.EditDraft.Blazor.EditDraftRestoreItem) and keeps identity on its side: each
 /// mapped row is a new object, created once per plan.
 /// </summary>
 public sealed class EditDraftRestoreRow

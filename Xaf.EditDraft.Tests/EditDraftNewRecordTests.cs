@@ -23,9 +23,9 @@ namespace Xaf.EditDraft.Tests
     // (tests a1): E01-E44 reused or changed per the rulings, N01-N33 added; the design's test ids T1-T16 are named beside them.
     // Logic runs against pure code (EditDraftCaptureRules, EditDraftNewRecordRules, EditDraftRecreate with a fake host) or an
     // in-memory object space over TEST-ONLY types; controller wiring is pinned by source scans; reloads, tabs and popups are
-    // the Dev2 browser pass. The security checks (EditDraftCreateAccess, MayRecreate) are SINGLE-MODEL: Claude's alone.
+    // the browser pass. The security checks (EditDraftCreateAccess, MayRecreate) are SINGLE-MODEL: Claude's alone.
 
-    /// <summary>A test-only record whose construction defaults depend on a clock, like 残業・有給 (日付 = today, times on 日付).</summary>
+    /// <summary>A test-only record whose construction defaults depend on a clock, like an Order with Date and Start (Day = today, times on Day).</summary>
     public class EditDraftNewProbe : BaseObject
     {
         /// <summary>The probe's clock: what AfterConstruction calls "today" (tests set it; the fixture is non-parallel).</summary>
@@ -48,7 +48,7 @@ namespace Xaf.EditDraft.Tests
         public DateTime Day { get => _day; set => SetPropertyValue(nameof(Day), ref _day, value); }
 
         private DateTime _start;
-        /// <summary>Like StaffOverTimeHoliday.StartTime: a time typed on another date is moved onto Day's date.</summary>
+        /// <summary>Like an Order's Start time: a time typed on another date is moved onto Day's date.</summary>
         public DateTime Start
         {
             get => _start;
@@ -168,13 +168,13 @@ namespace Xaf.EditDraft.Tests
         }
 
         [Test]
-        public void T1_E43_E30_the_existing_rule_the_chart_policies_and_the_inline_list_stay_existing_only()
+        public void T1_E43_E30_the_existing_rule_policies_without_a_decision_table_and_the_inline_list_stay_existing_only()
         {
             var policy = NewProbe.Policy();
             EditDraftCaptureController.IsAdmittedView(policy, NewProbe.View, true, isNew: true).Should().BeFalse("the existing-record rule (used by the restore offer) is unchanged");
             EditDraftCaptureController.IsAdmittedView(policy, NewProbe.View, true, isNew: false).Should().BeTrue();
-            var chart = new EditDraftTypePolicy(typeof(EditDraftNewProbe)) { PolicyId = "chart", AllowNewRecords = true };   // no decision table (0.4.0-preview.1: no owner kind)
-            EditDraftCaptureController.IsAdmittedViewIncludingNew(chart, NewProbe.View, true, true).Should().BeFalse("a policy without a decision table never enters the generic capture");
+            var noTable = new EditDraftTypePolicy(typeof(EditDraftNewProbe)) { PolicyId = "NoTable", AllowNewRecords = true };   // no decision table (0.4.0-preview.1: no owner kind)
+            EditDraftCaptureController.IsAdmittedViewIncludingNew(noTable, NewProbe.View, true, true).Should().BeFalse("a policy without a decision table never enters the generic capture");
             EditDraftCaptureController.IsAdmittedViewIncludingNew(null, NewProbe.View, true, true).Should().BeFalse("an unregistered type");
             EditDraftListAdmission.IsAdmittedList(policy, NewProbe.List, true, true, isNew: true).Should().BeFalse("inline new rows in a list stay out (design §3)");
             new EditDraftTypePolicy(typeof(EditDraftNewProbe)).AllowNewRecords.Should().BeFalse("opt-in: off by default");
@@ -287,7 +287,7 @@ namespace Xaf.EditDraft.Tests
             using var os = NewProbe.Space();
             var r = os.CreateObject<EditDraftNewProbe>();
             var baseline = NewProbe.Bind(policy, os, r);
-            r.Reason = "late shift";
+            r.Reason = "late order";
             EditDraftPayload payload = null;
             NewProbe.Notify(policy, ref payload, baseline, os, r, nameof(EditDraftNewProbe.Reason)).Should().BeTrue();
             payload.Entries.Select(e => (e.Path, e.Seeded)).Should().Equal(("Reason", false), ("Owner", true), ("Day", true), ("Start", true));

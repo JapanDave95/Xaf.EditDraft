@@ -144,8 +144,8 @@ namespace Xaf.EditDraft.Tests
             EditDraftJournalAttributeControllerBlazor.KindOf(new object(), "string").Should().Be(((string)null, (string)null), "an unknown (custom) component model: no guess from a descendant input");
             EditDraftJournalAttributeControllerBlazor.KindOf(new DxMemoModel(), "ref").Should().Be(((string)null, (string)null));
             // 0.4.0-preview.1: the owner kind is gone; a policy without a decision table (a host's own policy) stays out.
-            var chart = new EditDraftTypePolicy(typeof(EditDraftNewProbe)) { PolicyId = "chart", AllowNewRecords = true };
-            EditDraftCaptureController.IsAdmittedViewIncludingNew(chart, NewProbe.View, true, false).Should().BeFalse("policies without a decision table stay out (owner decision 15)");
+            var noTable = new EditDraftTypePolicy(typeof(EditDraftNewProbe)) { PolicyId = "NoTable", AllowNewRecords = true };
+            EditDraftCaptureController.IsAdmittedViewIncludingNew(noTable, NewProbe.View, true, false).Should().BeFalse("policies without a decision table stay out (owner decision 15)");
         }
 
         [Test]
@@ -273,7 +273,8 @@ namespace Xaf.EditDraft.Tests
             EditDraftJournalBoundary.TryParseEntry(key + "|c", stored.Replace("\"tr\":false}", "\"tr\":false,\"comp\":true}"), out var c).Should().BeTrue();
             c.Composing.Should().BeTrue();
             EditDraftJournalBoundary.TryParseEntry(key, stored.Replace("\"val\":\"会議\"", "\"val\":\"" + new string('x', 12001) + "\""), out _).Should().BeFalse("over the value limit");
-            // "CareCrew_InputJournal" is the first host's real localStorage key, which the library must never touch.
+            // GUARD: "CareCrew_InputJournal" is a real application's own localStorage key outside the library's prefix; the
+            // library must never touch it.
             EditDraftJournalBoundary.TryParseEntry("CareCrew_InputJournal", stored, out _).Should().BeFalse("not a journal key");
         }
 
