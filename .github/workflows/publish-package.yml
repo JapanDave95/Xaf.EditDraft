@@ -20,6 +20,10 @@
 # The publish job checks this before building (nothing is published without it); after a successful publish the
 # release job creates the GitHub Release from that section (title "<version>[ — <label>]", pre-release when the
 # version has a suffix such as -preview.1) and attaches the .nupkg files. The release job runs no repository code.
+#
+# Scripts read the tag, repository, owner and actor from GitHub's default environment variables (GITHUB_REF_NAME,
+# GITHUB_REPOSITORY, GITHUB_REPOSITORY_OWNER, GITHUB_ACTOR), never from ${{ }} expressions pasted into the script text,
+# so a crafted tag name is only ever data. ${{ }} is used for secrets in env: blocks only.
 name: Publish NuGet package
 
 # Only a tag publishes: there is deliberately no manual trigger, so the tag-equals-version check below always runs.
@@ -55,14 +59,14 @@ jobs:
           $props = Get-Content Directory.Build.props -Raw
           if ($props -notmatch '<Version>([^<]+)</Version>') { throw 'No <Version> in Directory.Build.props' }
           $version = $matches[1].Trim()
-          $tag = '${{ github.ref_name }}'.Substring(1)
+          $tag = $env:GITHUB_REF_NAME.Substring(1)
           if ($tag -ne $version) { throw "Tag v$tag does not match <Version>$version</Version>" }
           "Publishing version $version"
 
       - name: Check that CHANGELOG.md has a section for this version
         shell: pwsh
         run: |
-          $version = '${{ github.ref_name }}'.Substring(1)
+          $version = $env:GITHUB_REF_NAME.Substring(1)
           $dash = [string][char]0x2014
           $text = [IO.File]::ReadAllText((Resolve-Path CHANGELOG.md), [Text.Encoding]::UTF8) -replace "`r`n", "`n"
           if ($text -notmatch ('(?m)^## ' + [regex]::Escape($version) + ' ' + $dash + ' \d{4}-\d{2}-\d{2}')) {
@@ -102,7 +106,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          dotnet nuget add source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" --name github --username "${{ github.actor }}" --password $env:GH_TOKEN --store-password-in-clear-text
+          dotnet nuget add source "https://nuget.pkg.github.com/$env:GITHUB_REPOSITORY_OWNER/index.json" --name github --username $env:GITHUB_ACTOR --password $env:GH_TOKEN --store-password-in-clear-text
           Get-ChildItem packages -Filter *.nupkg | ForEach-Object {
             dotnet nuget push $_.FullName --source github --api-key $env:GH_TOKEN --skip-duplicate --no-symbols
           }
@@ -139,7 +143,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = '${{ github.ref_name }}'
+          $tag = $env:GITHUB_REF_NAME
+          $repo = $env:GITHUB_REPOSITORY
           $version = $tag.Substring(1)
           $dash = [string][char]0x2014
           $text = [IO.File]::ReadAllText((Resolve-Path CHANGELOG.md), [Text.Encoding]::UTF8) -replace "`r`n", "`n"
@@ -148,12 +153,12 @@ jobs:
           $parts = @($m.Groups[1].Value.Trim() -split [regex]::Escape($dash) | ForEach-Object { $_.Trim() } | Where-Object { $_ })
           if ($parts.Count -lt 1 -or $parts[0] -notmatch '^\d{4}-\d{2}-\d{2}$') { throw "Bad CHANGELOG header for $version" }
           $title = if ($parts.Count -ge 2) { "$version $dash " + ($parts[1..($parts.Count - 1)] -join " $dash ") } else { $version }
-          $body = $m.Groups[2].Value.Trim() + "`n`nFull history: [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)`n"
+          $body = $m.Groups[2].Value.Trim() + "`n`nFull history: [CHANGELOG.md](https://github.com/$repo/blob/main/CHANGELOG.md)`n"
           $notes = Join-Path $env:RUNNER_TEMP 'release-notes.md'
           [IO.File]::WriteAllText($notes, $body, (New-Object System.Text.UTF8Encoding($false)))
-          gh release view $tag --repo '${{ github.repository }}' *> $null
+          gh release view $tag --repo $repo *> $null
           if ($LASTEXITCODE -eq 0) { "Release $tag already exists; not changed"; exit 0 }
-          $ghArgs = @('release', 'create', $tag, '--repo', '${{ github.repository }}', '--title', $title, '--notes-file', $notes, '--verify-tag')
+          $ghArgs = @('release', 'create', $tag, '--repo', $repo, '--title', $title, '--notes-file', $notes, '--verify-tag')
           if ($version.Contains('-')) { $ghArgs += '--prerelease' }
           $ghArgs += (Get-ChildItem packages -Filter *.nupkg | Where-Object { $_.Name -notlike '*.snupkg' } | ForEach-Object { $_.FullName })
           gh @ghArgs
