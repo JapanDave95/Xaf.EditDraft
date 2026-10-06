@@ -222,7 +222,10 @@ public class SampleXafNativeAccessTests
 
 /// <summary>
 /// A host's store class that keeps the two columns 0.3.0-preview.1's store base declared (the upgrade path in
-/// docs/consumer-guide.md, "Upgrading from 0.3.0-preview.1"): same column names and types, declared by the host.
+/// docs/consumer-guide.md, section 12, "Upgrading from 0.3.0-preview.1 and 0.3.0-preview.2"): same column names and
+/// types, declared by the host. The names LoginIsStaffMember and SubSectionOid are deliberate: versions 0.1.0 to 0.3.0
+/// of this library created exactly these two columns in every application's store table, so an application upgrading
+/// from those versions has them. Do not rename them here; the test would then no longer cover that upgrade.
 /// </summary>
 [Persistent("drafts.LegacyColumnsDraft")]
 public class LegacyColumnsStore : EditDraftStoreBase
