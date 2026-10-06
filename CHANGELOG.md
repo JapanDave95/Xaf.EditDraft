@@ -6,6 +6,17 @@ is pushed (see README, "Publishing a version"). The package release notes (`<Pac
 
 Each section is headed `## <version> — <yyyy-mm-dd> — <short label>`. The publish workflow refuses a tag whose version
 has no section, and creates the GitHub Release from the section: title `<version> — <label>`, body the section text.
+Changes not yet released collect under "Unreleased"; at release time that heading becomes the version's heading.
+
+## Unreleased
+
+- Reproducible builds: `Deterministic` is on, and `ContinuousIntegrationBuild` is on in GitHub Actions, so the same
+  commit gives byte-identical DLLs on any machine and in any folder. To check a published package, rebuild its tag with
+  `dotnet pack -c Release -p:ContinuousIntegrationBuild=true` and compare the DLLs inside the two packages (the .nupkg
+  files themselves differ only in their zip entry timestamps).
+- The publish workflow creates the GitHub Release from this file after a successful publish, attaches the `.nupkg`
+  files, and refuses a tag whose version has no section here. Its scripts read the tag and repository from environment
+  variables rather than interpolated expressions.
 
 ## 0.4.1-preview.1 — 2026-10-05 — no first-host traces
 

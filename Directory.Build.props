@@ -1,7 +1,14 @@
 <Project>
-  <!-- Build settings shared by every project in this repository (unchanged since 2026-10-03). -->
+  <!-- Build settings shared by every project in this repository.
+       Reproducible builds (2026-10-06): Deterministic makes the compiler output depend only on its inputs.
+       ContinuousIntegrationBuild maps the source folder to a fixed root (/_/) so the build machine's paths do not end
+       up in the binaries; it is on in GitHub Actions only, because locally it would replace real paths in the symbols
+       and make debugging the library harder. The same commit then gives byte-identical DLLs on any machine: to check
+       a published package, rebuild its tag with `dotnet pack -c Release -p:ContinuousIntegrationBuild=true` and compare
+       the DLLs inside the two packages (the .nupkg files themselves differ only in their zip entry timestamps). -->
   <PropertyGroup>
-    <Deterministic>false</Deterministic>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
     <RunAnalyzersDuringBuild>False</RunAnalyzersDuringBuild>
   </PropertyGroup>
 
