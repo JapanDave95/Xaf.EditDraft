@@ -14,7 +14,9 @@ restore or recreate a record is decided by the application's roles and permissio
 (`IEditDraftAccessCheck`); the scope and owner-kind concepts of the first host are removed (see
 `docs/xaf-native-access-2026-10-05.md` and the consumer guide's upgrade section). Version 0.4.1-preview.1 is a cleanup
 with no API change: the library source, texts and tests no longer name the first host's classes, files, screens or
-projects, and the Japanese `PersonalLoginOnly` text is reworded (`docs/decouple-cleanup-2026-10-05.md`).
+projects, and the Japanese `PersonalLoginOnly` text is reworded (`docs/decouple-cleanup-2026-10-05.md`). Version
+0.4.2-preview.1 changes no library code: builds are reproducible, and each release now gets a GitHub Release with its
+packages attached (`CHANGELOG.md`).
 
 ## Projects
 
@@ -47,7 +49,7 @@ for public packages: a consumer needs a GitHub personal access token (classic) w
    (the Blazor package depends on Core at the same version):
 
    ```xml
-   <PackageReference Include="Xaf.EditDraft.Blazor" Version="0.4.1-preview.1" />
+   <PackageReference Include="Xaf.EditDraft.Blazor" Version="0.4.2-preview.1" />
    ```
 
 3. The packages declare the DevExpress packages they need (26.1.4) as dependencies and do not contain them. DevExpress

@@ -8,7 +8,9 @@ Each section is headed `## <version> — <yyyy-mm-dd> — <short label>`. The pu
 has no section, and creates the GitHub Release from the section: title `<version> — <label>`, body the section text.
 Changes not yet released collect under "Unreleased"; at release time that heading becomes the version's heading.
 
-## Unreleased
+## 0.4.2-preview.1 — 2026-10-06 — reproducible builds
+
+No library code change; build and release tooling only.
 
 - Reproducible builds: `Deterministic` is on, and `ContinuousIntegrationBuild` is on in GitHub Actions, so the same
   commit gives byte-identical DLLs on any machine and in any folder. To check a published package, rebuild its tag with
